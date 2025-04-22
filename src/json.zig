@@ -73,6 +73,7 @@ pub const Letter = struct {
 pub const Offer = struct {
     id: []const u8 = "",
 
+    accepted: bool = false,
     client_shortname: []const u8,
     date: []const u8 = "HEUTE",
     project_name: []const u8 = "",
@@ -107,6 +108,9 @@ pub const Offer = struct {
 
 pub const Invoice = struct {
     id: []const u8 = "",
+
+    due_date: ?[]const u8 = null,
+    paid_date: ?[]const u8 = null,
 
     client_shortname: []const u8,
     date: []const u8 = "HEUTE",
