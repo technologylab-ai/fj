@@ -1,0 +1,10 @@
+**/*.aux
+**/*.log
+**/*.out
+**/*.pdf
+docs/
+zig-out/
+.zig-cache/
+*--2025-XXXX--*/
+offer--2025-XXXX--testclient/
+,*/
