@@ -129,7 +129,7 @@ structure and layout, but leaves all meaningful content — text, metadata, layo
 — under your direct control.
 
 Everything is local, version-controlled, and reproducible. You can sync your
-archive using fi git push, or host it behind SSH on a hardened server. Since
+archive using `fi git push`, or host it behind SSH on a hardened server. Since
 everything is file-based, fi works just as well remotely or in air-gapped
 environments.
 
