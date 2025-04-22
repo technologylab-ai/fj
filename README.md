@@ -12,6 +12,7 @@ $ fi -h
   letter          Manager letters
   offer           Manager offers
   invoice         Manage invoices
+  serve           Start the HTTP server for a web UI
 
  General Options:
   -h, --help      Displays this help message then exits
