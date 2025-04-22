@@ -1,0 +1,24 @@
+.{
+    .name = .fi,
+    .version = "0.0.2",
+    .fingerprint = 0x461007226960844d, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.14.0",
+    .dependencies = .{
+        .zli = .{
+            .url = "git+https://github.com/renerocksai/zli?ref=v0.1.2#ef764110f4e60c8e9439f244cce437282c02f280",
+            .hash = "zli-0.1.1-pechggeGAAAPwjQaUd6KZchJGhjKobNmSX-1rAKterwr",
+        },
+        .zeit = .{
+            .url = "git+https://github.com/rockorager/zeit?ref=v0.6.0#44bebf856693332b168d8ba2c45b9d1ec15511de",
+            .hash = "zeit-0.0.0-5I6bk_pZAgB03N1p1GmVOZ--gOFwwQSRKj1UXb5tnaKS",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        // For example...
+        //"LICENSE",
+        //"README.md",
+    },
+}

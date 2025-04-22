@@ -1,0 +1,12 @@
+# Lines starting with a # are comments and ignored.
+# This is a multi-part CSV file where you can group billable items into multiple
+# group.
+#
+# Lines starting with a single String will be taken as group name
+# All other lines must obey the header:
+# "description", count(f32), "unit", price_per_unit, "remarks"
+#
+# Example:
+#
+# "Entwicklung"
+# "Flux-Compensator", 1, "Monat", "50.000,00", "Easy peasy"

@@ -1,0 +1,239 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[margin=2cm]{geometry}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[table]{xcolor}
+\usepackage{siunitx}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage[normalem]{ulem}
+
+\usepackage{xcolor}
+\definecolor{linkblue}{RGB}{70, 130, 230}
+\usepackage[colorlinks=true, urlcolor=linkblue]{hyperref}
+\usepackage[most]{tcolorbox}
+
+\definecolor{nimred}{RGB}{130, 0, 0}
+
+\usepackage{config-defaults}
+
+% Load (and override defaults)
+\IfFileExists{config.tex}{%
+  \input{config.tex}%
+}{%
+  % Silent fallback if file doesn't exist — nothing to do
+}
+
+% Load rates.tex
+\IfFileExists{rates.tex}{%
+  \input{rates.tex}%
+}{%
+  % Silent fallback if file doesn't exist — nothing to do
+  % we will error out later anyway
+}
+
+\sisetup{
+  locale = DE,
+  output-decimal-marker = {,},
+  group-separator = {.},
+  detect-weight = true,
+  detect-family = true
+}
+
+% Column types
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+
+% Fancy header/footer config
+\pagestyle{fancy}
+\fancyhf{}
+  \lhead{\textbf{Angebot} \FiDocId}
+  \chead{\textbf{\FiCompanyName}}
+  \rhead{\small{Seite \thepage/\pageref{LastPage}}}
+  \cfoot{\small{\FiCompanyRegisteredAt \space  · \FiCompanyID \space · \FiUID}}
+  \rfoot{}
+
+\fancypagestyle{firstpage}{
+  \lhead{\textbf{Angebot} \FiDocId}
+  \chead{\textbf{\FiCompanyName}}
+  \rhead{\small{Seite \thepage/\pageref{LastPage}}}
+  \cfoot{\small{\FiCompanyRegisteredAt \space  · \FiCompanyID \space · \FiUID}}
+  \rfoot{}
+}
+
+% Commands for table
+\newcommand{\itemrow}[7]{%
+  #1 & #2 & #3 & #4 & #5 & #6 & #7 \\
+}
+
+\newcommand{\groupheader}[1]{%
+  \addlinespace[1em]
+  \multicolumn{7}{l}{\textbf{#1}} \\
+  \addlinespace[0.3em]
+}
+
+
+\newcommand{\grayit}[1]{\textcolor{gray}{\scriptsize\textit{#1}}}
+
+\newcommand{\contactinfo}{%
+    \FiCompanyUrl \\
+    \FiCompanyEmail \\
+}
+
+\begin{document}
+
+\thispagestyle{firstpage}
+
+\renewcommand{\footrulewidth}{0.4pt}
+
+\begin{minipage}[t]{0.40\textwidth}
+\raggedright
+\vspace{-2.9em}
+  \textsc{\FiClientCompany}\\[0.3ex]
+  \textbf{\FiClientCareOf}\\[0.3ex]
+  \FiClientStreet \\[0.3ex]
+  \FiClientAreaCode\space \FiClientCity\\[0.3ex]
+  \FiClientCountry \\[0.3ex]
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.65\textwidth}
+\begin{center}
+\begin{tabularx}{10cm}{@{}m{3.2cm} >{\raggedright\arraybackslash}X@{}}
+\includegraphics[width=4cm]{logo.png} &
+\begin{minipage}[t]{\linewidth}
+  %\vspace{-2.8em}
+  \vspace{-3.5em}
+  \small
+  \textbf{\FiCompanyName} \\[-0.2em]
+  \FiCompanyStreet\\[-0.2ex]
+  \FiCompanyAreaCodeCity\\[1.2ex]
+  \contactinfo
+\end{minipage}
+\end{tabularx}
+\end{center}
+\end{minipage}
+
+% Avoid para indents
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+% Start of the letter
+\vspace{1.5cm}
+\null\hfill Wien, am \FiDate
+
+\vspace{1.5cm}
+\textbf{Angebot \FiDocId \space für Projekt ``\FiProjectName"}
+\vspace{1cm}
+
+\greeting\\[2ex]
+\\
+Bezugnehmend auf Ihre Anfrage per E-Mail vom 2025-MM-DD, übersende ich Ihnen mein Angebot.
+
+\makeatletter
+\@ifundefined{validthru}{
+}{
+\vspace{1em}
+Dieses Angebot ist gültig bis: \validthru.
+}
+\makeatother
+
+\vspace{2em}
+\FiGoodbye \\[2ex]
+\FiMyName
+
+% PROJEKT-KALKULATION
+\pagebreak
+\vspace{0.5em}
+\section*{Angebot \FiDocId: ``\FiProjectName"}
+
+\vspace{1em}
+
+% TABLE START
+{\footnotesize
+\renewcommand{\arraystretch}{1.3}
+\rowcolors{2}{white}{gray!10}
+
+\begin{longtable}{C{1cm} L{3.5cm} C{1.2cm} C{1.6cm} R{2cm} R{2cm} L{3cm}}
+\toprule
+\textbf{Pos} & \textbf{Item} & \textbf{Anzahl} & \textbf{Einheit} & \textbf{Netto / Einh.} & \textbf{Netto gesamt} & \textbf{Bemerkung} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Pos} & \textbf{Item} & \textbf{Anzahl} & \textbf{Einheit} & \textbf{Netto / Einh.} & \textbf{Netto gesamt} & \textbf{Bemerkung} \\
+\midrule
+\endhead
+
+% <BEGIN BILLABLES>
+% <END BILLABLES>
+
+\bottomrule
+\bottomrule
+\end{longtable}
+}
+
+
+\makeatletter
+\@ifundefined{devtime}{ \vspace{1em}}{
+Die geschätzte Entwicklungszeit beläuft sich auf ca. \textbf{\devtime} ab Auftragserteilung.
+}
+\makeatother
+
+\input{totals.tex}
+
+\definecolor{optionblue}{RGB}{0, 120, 180}
+\vspace{1em}
+\begin{tabularx}{\textwidth}{@{}X R{4cm}@{}}
+\toprule
+
+% <BEGIN GROUPSUMS>
+% <END GROUPSUMS>
+
+\midrule
+\\[0.3em]
+  \textit{Netto} & \textit{\FiGrandTotal \space €} \\[0.3em]
+  \textit{{+ {\FiVatPercent}\% Ust.}} & \textit{\FiVatAmount\space  €} \\[0.1em]
+\textbf{{TOTAL}} & \textbf{\FiGrandTotalPlusVat\space  €} \\[0.5em]
+\bottomrule
+\bottomrule
+\end{tabularx}
+
+\vspace{1cm}
+\ifShowAllNetto
+Alle Preise verstehen sich netto in EUR.\\[1em]
+\fi
+
+\ifShowNoVat
+ {Gemäß{} \S{} 3a (10) Z 4 ÖUStG im Zusammenhang mit \S{} 3a (9) lit. a ÖUStG
+  wird auf die Verrechnung von Umsatzsteuer verzichtet.}\\[1em]
+\fi
+
+\ifShowAgb
+Es gelten unsere allgemeinen Geschäftsbedingungen (AGB),
+abrufbar unter:\\
+\url{\FiTermsOfServiceUrl}.
+\fi
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
