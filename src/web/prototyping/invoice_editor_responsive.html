@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Invoice 2025-004 — fi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: sans-serif; margin: 0; }
+    header, nav, main { padding: 1em; }
+    nav a { margin-right: 1em; display: inline-block; margin-bottom: 0.5em; }
+
+    textarea {
+      width: 100%;
+      height: 18em;
+      font-family: monospace;
+      margin-top: 0.5em;
+    }
+
+    .main-grid {
+      display: flex;
+      gap: 2em;
+      margin-bottom: 2em;
+    }
+
+    .editor-block {
+      flex: 1 1 0;
+    }
+
+    .actions button {
+      margin-right: 1em;
+      margin-top: 0.5em;
+    }
+
+    iframe {
+      width: 100%;
+      height: 40em;
+      border: 1px solid #ccc;
+      background: #fff;
+      margin-top: 2em;
+    }
+
+    @media (max-width: 768px) {
+      .main-grid {
+        flex-direction: column;
+      }
+      textarea { height: 14em; }
+      iframe { height: 30em; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>fi — The Commandline Company</strong>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/client">Clients</a>
+      <a href="/rate">Rate Sets</a>
+      <a href="/offer">Offers</a>
+      <a href="/invoice">Invoices</a>
+      <a href="/letter">Letters</a>
+    </nav>
+  </header>
+
+  <main>
+    <h2>Invoice <span id="invoice-id">2025-004</span></h2>
+
+    <div class="main-grid">
+      <div class="editor-block">
+        <h3>invoice.json</h3>
+        <textarea id="json-editor">// GET /invoice/2025-004/invoice.json</textarea>
+        <div class="actions">
+          <button onclick="saveJson()">Save JSON</button>
+        </div>
+      </div>
+
+      <div class="editor-block">
+        <h3>billables.csv</h3>
+        <textarea id="csv-editor"># GET /invoice/2025-004/billables.csv</textarea>
+        <div class="actions">
+          <button onclick="saveCsv()">Save CSV</button>
+        </div>
+      </div>
+
+      <div class="editor-block">
+        <h3>invoice.tex</h3>
+        <textarea id="tex-editor">% GET /invoice/2025-004/invoice.tex</textarea>
+        <div class="actions">
+          <button onclick="saveTex()">Save TEX</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button onclick="compileInvoice()">Compile PDF</button>
+      <button onclick="commitInvoice()">Commit & Finalize</button>
+    </div>
+
+    <h3>PDF Preview</h3>
+    <iframe id="pdf-preview" src="/invoice/2025-004/pdf"></iframe>
+  </main>
+
+  <script>
+    // Your JS logic here (fetch, save, compile, commit)
+  </script>
+</body>
+</html>

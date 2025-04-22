@@ -306,6 +306,42 @@ pub const InvoiceCommand = struct {
     ;
 };
 
+pub const ServeCommand = struct {
+    fi_home: ?[]const u8 = null,
+    host: []const u8 = "0.0.0.0",
+    port: usize = 3000,
+
+    // positional: struct {
+    //     // subcommand: enum { start  },
+    // },
+
+    pub const aliases = .{
+        .fi_home = "C",
+    };
+
+    pub const help =
+        \\ Command: serve [options]
+        \\
+        \\ Usage:
+        \\
+        \\ fi serve [options]
+        \\
+        \\
+        \\ Options:
+        \\
+        \\ -h, --help               Displays this help message then exits.
+        \\
+        \\ -C, --fi_home            The FI_HOME dir to use.
+        \\                          Default: $FI_HOME orelse ~/.fi
+        \\ --host=                  The interface to listen on.
+        \\                          Default: 0.0.0.0
+        \\
+        \\ --port=                  The port to listen on.
+        \\                          Default: 3000
+        \\
+    ;
+};
+
 pub const Cli = union(enum) {
     init: InitCommand,
     git: GitCommand,
@@ -314,6 +350,7 @@ pub const Cli = union(enum) {
     letter: LetterCommand,
     offer: OfferCommand,
     invoice: InvoiceCommand,
+    serve: ServeCommand,
 
     pub const help =
         \\ Usage: fi [command] [options]
@@ -326,6 +363,7 @@ pub const Cli = union(enum) {
         \\  letter          Manager letters
         \\  offer           Manager offers
         \\  invoice         Manage invoices
+        \\  serve           Start the HTTP server for a web UI
         \\
         \\ General Options:
         \\  -h, --help      Displays this help message then exits

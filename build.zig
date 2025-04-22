@@ -15,16 +15,30 @@ pub fn build(b: *std.Build) void {
         .root_module = exe_mod,
     });
 
+    // 3rd party deps:
+    //
     const zli = b.dependency("zli", .{
         .target = target,
         .optimize = optimize,
     });
     exe.root_module.addImport("zli", zli.module("zli"));
+
     const zeit = b.dependency("zeit", .{
         .target = target,
         .optimize = optimize,
     });
     exe.root_module.addImport("zeit", zeit.module("zeit"));
+
+    const zap = b.dependency("zap", .{
+        .target = target,
+        .optimize = optimize,
+        .openssl = false, // set to true to enable TLS support
+    });
+
+    exe.root_module.addImport("zap", zap.module("zap"));
+    //
+    // End of 3rd party deps
+
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
