@@ -1,7 +1,7 @@
 const std = @import("std");
 const Cli = @import("cli.zig");
 const zli = @import("zli");
-const App = @import("app.zig");
+const Fi = @import("fi.zig");
 const Server = @import("web/server.zig");
 const Fatal = @import("fatal.zig");
 
@@ -23,47 +23,48 @@ pub fn main() !void {
 
     const result = zli.parse(&pargs, Cli.Cli);
 
-    var app: App = .{ .arena = arena };
-
-    defer app.deinit();
+    var fi: Fi = .{ .arena = arena };
+    defer fi.deinit();
 
     switch (result) {
         .init => |args| {
-            try app.setup(args.fi_home);
-            try app.cmd_init(args);
+            try fi.setup(args.fi_home);
+            try fi.cmd_init(args);
         },
         .git => |args| {
-            try app.setup(args.fi_home);
-            try app.cmd_git(args);
+            try fi.setup(args.fi_home);
+            try fi.cmd_git(args);
         },
         .client => |args| {
-            try app.setup(args.fi_home);
-            try app.cmd_client(args);
+            try fi.setup(args.fi_home);
+            try fi.cmd_client(args);
         },
         .rate => |args| {
-            try app.setup(args.fi_home);
-            try app.cmd_rate(args);
+            try fi.setup(args.fi_home);
+            try fi.cmd_rate(args);
         },
         .letter => |args| {
-            try app.setup(args.fi_home);
-            try app.cmd_letter(args);
+            try fi.setup(args.fi_home);
+            try fi.cmd_letter(args);
         },
         .offer => |args| {
-            try app.setup(args.fi_home);
-            try app.cmd_offer(args);
+            try fi.setup(args.fi_home);
+            try fi.cmd_offer(args);
         },
         .invoice => |args| {
-            try app.setup(args.fi_home);
-            try app.cmd_invoice(args);
+            try fi.setup(args.fi_home);
+            try fi.cmd_invoice(args);
         },
         .serve => |args| {
             Fatal.mode = .server;
-            try app.setup(args.fi_home);
+            try fi.setup(args.fi_home);
             try Server.start(
-                &app,
+                &fi,
                 .{
                     .host = args.host,
                     .port = args.port,
+                    .username = args.username,
+                    .password = args.password,
                     .work_dir = args.work_dir,
                 },
             );

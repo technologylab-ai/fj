@@ -312,6 +312,9 @@ pub const ServeCommand = struct {
     port: usize = 3000,
     work_dir: []const u8 = ".",
 
+    username: []const u8 = "admin",
+    password: []const u8 = "admin",
+
     // positional: struct {
     //     // subcommand: enum { start  },
     // },
@@ -341,6 +344,10 @@ pub const ServeCommand = struct {
         \\                          Default: 3000
         \\ --work-dir=              The working directory where drafts will be created.
         \\                          Default: .
+        \\ --username=              The username for authentication in the browser.
+        \\                          Default: admin
+        \\ --username=              The password for authentication in the browser.
+        \\                          Default: admin
         \\
     ;
 };
