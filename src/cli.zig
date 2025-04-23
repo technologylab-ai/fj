@@ -310,6 +310,7 @@ pub const ServeCommand = struct {
     fi_home: ?[]const u8 = null,
     host: []const u8 = "0.0.0.0",
     port: usize = 3000,
+    work_dir: []const u8 = ".",
 
     // positional: struct {
     //     // subcommand: enum { start  },
@@ -338,6 +339,8 @@ pub const ServeCommand = struct {
         \\
         \\ --port=                  The port to listen on.
         \\                          Default: 3000
+        \\ --work-dir=              The working directory where drafts will be created.
+        \\                          Default: .
         \\
     ;
 };

@@ -1,5 +1,4 @@
 const std = @import("std");
-const fatal = std.process.fatal;
 
 pub fn fileExists(file: []const u8) bool {
     _ = std.fs.cwd().statFile(file) catch return false;
