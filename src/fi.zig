@@ -25,7 +25,7 @@ const max_name_bytes = std.fs.max_name_bytes;
 
 const log = std.log.scoped(.fi);
 
-const App = @This();
+const Fi = @This();
 
 arena: Allocator,
 buf_fi_home: [1024]u8 = undefined,
@@ -43,15 +43,15 @@ const SubDirs = enum {
     templates,
 };
 
-pub fn setup(self: *App, fi_home: ?[]const u8) !void {
+pub fn setup(self: *Fi, fi_home: ?[]const u8) !void {
     _ = try self.fiHome(fi_home);
 }
 
-pub fn deinit(self: *const App) void {
+pub fn deinit(self: *const Fi) void {
     _ = self;
 }
 
-fn expandHomeDir(self: *const App, p: []const u8) ![]const u8 {
+fn expandHomeDir(self: *const Fi, p: []const u8) ![]const u8 {
     if (std.process.getEnvVarOwned(self.arena, "HOME")) |v| {
         return std.mem.replaceOwned(u8, self.arena, p, "~", v) catch |err| {
             try fatal("Cannot get expand {s}: {}\n", .{ p, err }, err);
@@ -62,7 +62,7 @@ fn expandHomeDir(self: *const App, p: []const u8) ![]const u8 {
     unreachable;
 }
 
-fn fiHome(self: *App, from_args: ?[]const u8) ![]const u8 {
+fn fiHome(self: *Fi, from_args: ?[]const u8) ![]const u8 {
     // return cached
     if (self.fi_home) |p| return p;
 
@@ -106,7 +106,7 @@ fn fiHome(self: *App, from_args: ?[]const u8) ![]const u8 {
     return self.fi_home.?;
 }
 
-fn fiHomeTest(self: *App, from_args: ?[]const u8) ![]const u8 {
+fn fiHomeTest(self: *Fi, from_args: ?[]const u8) ![]const u8 {
     const fi_home = try self.fiHome(from_args);
     if (!fsutil.isDirPresent(fi_home)) {
         try fatal(
@@ -118,7 +118,7 @@ fn fiHomeTest(self: *App, from_args: ?[]const u8) ![]const u8 {
     return fi_home;
 }
 
-fn generateTexDefaultsTemplate(self: *App) ![]const u8 {
+fn generateTexDefaultsTemplate(self: *Fi) ![]const u8 {
     var alist = std.ArrayListUnmanaged(u8).empty;
     const writer = alist.writer(self.arena);
     const defaults: fi_json.TexDefaults = .{};
@@ -131,7 +131,7 @@ fn generateTexDefaultsTemplate(self: *App) ![]const u8 {
     };
 }
 
-pub fn cmd_init(self: *App, args: Cli.InitCommand) !void {
+pub fn cmd_init(self: *Fi, args: Cli.InitCommand) !void {
     const fi_home = try self.fiHome(args.fi_home);
 
     log.info("Using FI_HOME = `{s}`", .{fi_home});
@@ -280,7 +280,7 @@ pub fn cmd_init(self: *App, args: Cli.InitCommand) !void {
     // now, append to default-config.sty
     {
         const ofilename = "config-defaults.sty";
-        log.info("Appending to... {s}/templates/{s}", .{ fi_home, ofilename });
+        log.info("Fiending to... {s}/templates/{s}", .{ fi_home, ofilename });
 
         const dest_path = try path.join(
             self.arena,
@@ -399,7 +399,7 @@ pub fn cmd_init(self: *App, args: Cli.InitCommand) !void {
     log.info("✅ fi init ... DONE!", .{});
 }
 
-pub fn cmd_git(self: *App, args: Cli.GitCommand) !void {
+pub fn cmd_git(self: *Fi, args: Cli.GitCommand) !void {
     const fi_home = try self.fiHomeTest(args.fi_home);
     var git: Git = .{ .arena = self.arena, .repo_dir = fi_home };
 
@@ -431,7 +431,7 @@ pub fn cmd_git(self: *App, args: Cli.GitCommand) !void {
     }
 }
 
-fn today(self: *const App) ![]const u8 {
+fn today(self: *const Fi) ![]const u8 {
     var today_buf: ["2025-12-31".len]u8 = undefined;
 
     var now = zeit.instant(.{}) catch |err| {
@@ -451,7 +451,7 @@ fn today(self: *const App) ![]const u8 {
     return self.arena.dupe(u8, ret) catch try fatal("OOM returning DATE", .{}, error.OutOfMemory);
 }
 
-fn isoTime(self: *const App) ![]const u8 {
+fn isoTime(self: *const Fi) ![]const u8 {
     var today_buf: ["2025-12-31 16:32:00".len]u8 = undefined;
 
     var now = zeit.instant(.{}) catch |err| {
@@ -474,7 +474,7 @@ fn isoTime(self: *const App) ![]const u8 {
     return self.arena.dupe(u8, ret) catch try fatal("OOM returning DATE", .{}, error.OutOfMemory);
 }
 
-fn year(self: *const App) !i32 {
+fn year(self: *const Fi) !i32 {
     var now = zeit.instant(.{}) catch |err| {
         try fatal("Unable to get current time: {}", .{err}, err);
     };
@@ -486,15 +486,15 @@ fn year(self: *const App) !i32 {
     return time.year;
 }
 
-pub fn cmd_client(self: *App, args: Cli.ClientCommand) !void {
+pub fn cmd_client(self: *Fi, args: Cli.ClientCommand) !void {
     return self.handleRecordCommand(args);
 }
 
-pub fn cmd_rate(self: *App, args: Cli.RateCommand) !void {
+pub fn cmd_rate(self: *Fi, args: Cli.RateCommand) !void {
     return self.handleRecordCommand(args);
 }
 
-fn recordPath(self: *const App, RecordType: type, shortname: []const u8, custom_path_: ?[]const u8, path_out: []u8) ![]const u8 {
+fn recordPath(self: *const Fi, RecordType: type, shortname: []const u8, custom_path_: ?[]const u8, path_out: []u8) ![]const u8 {
     const json_path: []const u8 = blk: {
         if (custom_path_) |custom_path| {
             break :blk std.fmt.bufPrint(path_out, "{s}/{s}.json", .{
@@ -532,13 +532,13 @@ fn recordPath(self: *const App, RecordType: type, shortname: []const u8, custom_
     return json_path;
 }
 
-fn recordExists(self: *const App, RecordType: type, shortname: []const u8) !bool {
+fn recordExists(self: *const Fi, RecordType: type, shortname: []const u8) !bool {
     var path_buf: [max_path_bytes]u8 = undefined;
     const json_path = try self.recordPath(RecordType, shortname, null, &path_buf);
     return fsutil.fileExists(json_path);
 }
 
-fn recordDir(self: *const App, RecordType: type, dir_out: []u8) ![]const u8 {
+fn recordDir(self: *const Fi, RecordType: type, dir_out: []u8) ![]const u8 {
     const json_dir: []const u8 = blk: {
         const subdir =
             switch (RecordType) {
@@ -561,7 +561,7 @@ fn recordDir(self: *const App, RecordType: type, dir_out: []u8) ![]const u8 {
     return json_dir;
 }
 
-fn loadRecord(self: *const App, RecordType: type, shortname: []const u8, opts: struct {
+fn loadRecord(self: *const Fi, RecordType: type, shortname: []const u8, opts: struct {
     custom_path: ?[]const u8 = null,
 }) !RecordType {
     assert(self.fi_home != null); // fiHome() must have been called, e.g. in setup()
@@ -595,7 +595,7 @@ fn loadRecord(self: *const App, RecordType: type, shortname: []const u8, opts: s
     };
 }
 
-fn writeRecord(self: *const App, shortname: []const u8, obj: anytype, opts: struct {
+fn writeRecord(self: *const Fi, shortname: []const u8, obj: anytype, opts: struct {
     allow_overwrite: bool = false,
     custom_path: ?[]const u8 = null,
 }) !void {
@@ -617,7 +617,7 @@ fn writeRecord(self: *const App, shortname: []const u8, obj: anytype, opts: stru
     };
 }
 
-fn handleRecordCommand(self: *App, args: anytype) !void {
+fn handleRecordCommand(self: *Fi, args: anytype) !void {
     _ = try self.fiHomeTest(args.fi_home);
 
     const RecordType = switch (@TypeOf(args)) {
@@ -796,20 +796,20 @@ fn handleRecordCommand(self: *App, args: anytype) !void {
     }
 }
 
-pub fn cmd_letter(self: *App, args: Cli.LetterCommand) !void {
+pub fn cmd_letter(self: *Fi, args: Cli.LetterCommand) !void {
     return self.handleDocumentCommand(args);
 }
 
-pub fn cmd_offer(self: *App, args: Cli.OfferCommand) !void {
+pub fn cmd_offer(self: *Fi, args: Cli.OfferCommand) !void {
     return self.handleDocumentCommand(args);
 }
 
-pub fn cmd_invoice(self: *App, args: Cli.InvoiceCommand) !void {
+pub fn cmd_invoice(self: *Fi, args: Cli.InvoiceCommand) !void {
     return self.handleDocumentCommand(args);
 }
 
 pub fn handleDocumentCommand(
-    self: *App,
+    self: *Fi,
     args: anytype, // args will be inferred by CLI command type
 ) !void {
     _ = try self.fiHomeTest(args.fi_home);
@@ -856,7 +856,7 @@ const DocumentSubdirSpec = struct {
     name: []const u8,
 };
 
-fn documentTypeCreateSubdir(self: *const App, DocumentType: type, id: []const u8, client: []const u8) !DocumentSubdirSpec {
+fn documentTypeCreateSubdir(self: *const Fi, DocumentType: type, id: []const u8, client: []const u8) !DocumentSubdirSpec {
     const subdir_name_buf = self.arena.alloc(u8, max_name_bytes) catch |err| {
         try fatal("OOM creating subdir_name_buf!: {}", .{err}, err);
     };
@@ -888,7 +888,7 @@ fn documentCreateJsonFile(DocumentType: type, subdir_spec: DocumentSubdirSpec) !
     return file;
 }
 
-fn loadDocumentMeta(self: *const App, subdir_spec: DocumentSubdirSpec, DocumentType: type) !DocumentType {
+fn loadDocumentMeta(self: *const Fi, subdir_spec: DocumentSubdirSpec, DocumentType: type) !DocumentType {
     var filename_buf: [max_name_bytes]u8 = undefined;
 
     const document_type_name = documentTypeHumanName(DocumentType);
@@ -941,7 +941,7 @@ fn createDocumentName(DocumentType: type, id: []const u8, client: []const u8, ou
     };
 }
 
-fn copyTemplateFile(self: *const App, filename: []const u8, dest_dir_spec: DocumentSubdirSpec) !void {
+fn copyTemplateFile(self: *const Fi, filename: []const u8, dest_dir_spec: DocumentSubdirSpec) !void {
     const ifile_path = path.join(
         self.arena,
         &[_][]const u8{ self.fi_home.?, "templates", filename },
@@ -985,7 +985,7 @@ fn copyTemplateFile(self: *const App, filename: []const u8, dest_dir_spec: Docum
     };
 }
 
-fn cmdCreateNewDocument(self: *const App, args: anytype) !void {
+fn cmdCreateNewDocument(self: *const Fi, args: anytype) !void {
     const DocumentType = switch (@TypeOf(args)) {
         Cli.LetterCommand => fi_json.Letter,
         Cli.OfferCommand => fi_json.Offer,
@@ -1193,7 +1193,7 @@ fn cmdCreateNewDocument(self: *const App, args: anytype) !void {
     log.info("✅ created in `{s}/`!", .{subdir_spec.name});
 }
 
-fn findDocumentById(self: *const App, DocumentType: type, id: []const u8) ![]const u8 {
+fn findDocumentById(self: *const Fi, DocumentType: type, id: []const u8) ![]const u8 {
     const base_dir_name = try self.documentBaseDir(DocumentType);
     const human_doctype = documentTypeHumanName(DocumentType);
     const pattern = try std.fmt.allocPrint(self.arena, "{s}--{s}--", .{ human_doctype, id });
@@ -1213,7 +1213,7 @@ fn findDocumentById(self: *const App, DocumentType: type, id: []const u8) ![]con
     }
 }
 
-fn cmdCheckoutDocument(self: *App, args: anytype) !void {
+fn cmdCheckoutDocument(self: *Fi, args: anytype) !void {
     const DocumentType = switch (@TypeOf(args)) {
         Cli.LetterCommand => fi_json.Letter,
         Cli.OfferCommand => fi_json.Offer,
@@ -1280,7 +1280,7 @@ fn cmdCheckoutDocument(self: *App, args: anytype) !void {
     log.info("✅ created in `{s}/`!", .{dest_path});
 }
 
-fn cmdShowDocument(self: *App, args: anytype) !void {
+fn cmdShowDocument(self: *Fi, args: anytype) !void {
     const DocumentType = switch (@TypeOf(args)) {
         Cli.LetterCommand => fi_json.Letter,
         Cli.OfferCommand => fi_json.Offer,
@@ -1347,7 +1347,7 @@ fn cmdShowDocument(self: *App, args: anytype) !void {
     }
 }
 
-fn cmdOpenDocument(self: *App, args: anytype) !void {
+fn cmdOpenDocument(self: *Fi, args: anytype) !void {
     const DocumentType = switch (@TypeOf(args)) {
         Cli.LetterCommand => fi_json.Letter,
         Cli.OfferCommand => fi_json.Offer,
@@ -1386,7 +1386,7 @@ fn cmdOpenDocument(self: *App, args: anytype) !void {
     _ = try open.openDocument(pdf_path);
 }
 
-fn cmdListDocuments(self: *App, args: anytype) !void {
+fn cmdListDocuments(self: *Fi, args: anytype) !void {
     const DocumentType = switch (@TypeOf(args)) {
         Cli.LetterCommand => fi_json.Letter,
         Cli.OfferCommand => fi_json.Offer,
@@ -1409,7 +1409,7 @@ fn cmdListDocuments(self: *App, args: anytype) !void {
 }
 
 fn generateRatesTex(
-    self: *const App,
+    self: *const Fi,
     subdir_spec: DocumentSubdirSpec,
     rates_name: []const u8,
 ) !void {
@@ -1436,7 +1436,7 @@ fn generateRatesTex(
     });
 }
 
-fn generateTexConfig(self: *const App, file: File, id: []const u8, opts: anytype) !void {
+fn generateTexConfig(self: *const Fi, file: File, id: []const u8, opts: anytype) !void {
     const DocumentType = @TypeOf(opts);
 
     const client = try self.loadRecord(fi_json.Client, opts.client_shortname, .{});
@@ -1611,7 +1611,7 @@ fn generateTexConfig(self: *const App, file: File, id: []const u8, opts: anytype
     }
 }
 
-fn documentBaseDir(self: *const App, DocumentType: type) ![]const u8 {
+fn documentBaseDir(self: *const Fi, DocumentType: type) ![]const u8 {
     const subdir =
         switch (DocumentType) {
             fi_json.Letter => "letters",
@@ -1622,7 +1622,7 @@ fn documentBaseDir(self: *const App, DocumentType: type) ![]const u8 {
     return path.join(self.arena, &[_][]const u8{ self.fi_home.?, subdir });
 }
 
-fn documentDir(self: *const App, DocumentType: type, doc_dir_: ?[]const u8, dir_out: []u8) ![]const u8 {
+fn documentDir(self: *const Fi, DocumentType: type, doc_dir_: ?[]const u8, dir_out: []u8) ![]const u8 {
     const document_base: []const u8 = blk: {
         const subdir =
             switch (DocumentType) {
@@ -1653,7 +1653,7 @@ fn documentDir(self: *const App, DocumentType: type, doc_dir_: ?[]const u8, dir_
     return document_base;
 }
 
-fn generateBillablesTex(self: *const App, subdir_spec: DocumentSubdirSpec, obj: anytype) !void {
+fn generateBillablesTex(self: *const Fi, subdir_spec: DocumentSubdirSpec, obj: anytype) !void {
     var bfile = try subdir_spec.dir.openFile("billables.csv", .{});
     defer bfile.close();
 
@@ -1830,7 +1830,7 @@ fn generateBillablesTex(self: *const App, subdir_spec: DocumentSubdirSpec, obj: 
     try input_tex_file.writeAll(new_tex);
 }
 
-fn replaceSection(self: *const App, input: []const u8, section: []const u8, replacement: []const u8) ![]const u8 {
+fn replaceSection(self: *const Fi, input: []const u8, section: []const u8, replacement: []const u8) ![]const u8 {
     var alist = std.ArrayListUnmanaged(u8).empty;
     var writer = alist.writer(self.arena);
 
@@ -1862,7 +1862,7 @@ fn replaceSection(self: *const App, input: []const u8, section: []const u8, repl
     return alist.items;
 }
 
-fn cmdCompileDocument(self: *const App, args: anytype) !void {
+fn cmdCompileDocument(self: *const Fi, args: anytype) !void {
     const DocumentType = switch (@TypeOf(args)) {
         Cli.LetterCommand => fi_json.Letter,
         Cli.OfferCommand => fi_json.Offer,
@@ -1955,7 +1955,7 @@ fn cmdCompileDocument(self: *const App, args: anytype) !void {
     log.info("✅ compiled to `{s}/{s}`!", .{ subdir_spec.name, final_pdf });
 }
 
-fn cmdCommitDocument(self: *App, args: anytype) !void {
+fn cmdCommitDocument(self: *Fi, args: anytype) !void {
     // validate it
     // update it
     // compile it
@@ -2077,7 +2077,7 @@ fn cmdCommitDocument(self: *App, args: anytype) !void {
     log.info("✅  {s} {s} committed!", .{ documentTypeHumanName(DocumentType), obj.id });
 }
 
-fn getDocumentTypeId(self: *const App, DocumentType: type, lock_ptr: ?*fsutil.FileLock) ![]const u8 {
+fn getDocumentTypeId(self: *const Fi, DocumentType: type, lock_ptr: ?*fsutil.FileLock) ![]const u8 {
     const fi_home = self.fi_home.?; // we assert this has been set previously
     const subdir = switch (DocumentType) {
         fi_json.Letter => @tagName(SubDirs.letters),
@@ -2114,7 +2114,7 @@ fn getDocumentTypeId(self: *const App, DocumentType: type, lock_ptr: ?*fsutil.Fi
     return self.arena.dupe(u8, line);
 }
 
-fn incrementDocumentTypeId(self: *const App, DocumentType: type) ![]const u8 {
+fn incrementDocumentTypeId(self: *const Fi, DocumentType: type) ![]const u8 {
     const fi_home = self.fi_home.?; // we assert this has been set previously
 
     // create .id files
