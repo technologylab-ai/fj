@@ -1,5 +1,6 @@
 const std = @import("std");
-const fatal = std.process.fatal;
+const Fatal = @import("fatal.zig");
+const fatal = Fatal.fatal;
 
 arena: std.mem.Allocator,
 work_dir: ?[]const u8 = null,
@@ -18,7 +19,7 @@ fn showResultMessages(result: std.process.Child.RunResult) void {
     stderr.writeAll(result.stderr) catch unreachable;
 }
 
-fn cmd(self: *const OpenCommand, argv: []const []const u8) bool {
+fn cmd(self: *const OpenCommand, argv: []const []const u8) !bool {
     if (argv.len == 0) return false;
     const arglist = std.mem.join(self.arena, " ", argv) catch {
         return false;
@@ -35,7 +36,7 @@ fn cmd(self: *const OpenCommand, argv: []const []const u8) bool {
         .max_output_bytes = max_output_bytes,
         .expand_arg0 = .expand,
     }) catch |err| {
-        fatal("Could not launch `{s}`: {}", .{ arglist, err });
+        try fatal("Could not launch `{s}`: {}", .{ arglist, err }, err);
     };
     switch (result.term) {
         .Exited => |exit_code| {
@@ -69,7 +70,7 @@ fn cmd(self: *const OpenCommand, argv: []const []const u8) bool {
     }
 }
 
-pub fn openDocument(self: *const OpenCommand, document_filename: []const u8) bool {
+pub fn openDocument(self: *const OpenCommand, document_filename: []const u8) !bool {
     const command = switch (@import("builtin").os.tag) {
         .linux => "xdg-open",
         .macos => "open",

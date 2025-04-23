@@ -1,5 +1,6 @@
 const std = @import("std");
-const fatal = std.process.fatal;
+const Fatal = @import("fatal.zig");
+const fatal = Fatal.fatal;
 
 arena: std.mem.Allocator,
 work_dir: ?[]const u8 = null,
@@ -18,7 +19,7 @@ fn showResultMessages(result: std.process.Child.RunResult) void {
     stderr.writeAll(result.stderr) catch unreachable;
 }
 
-fn cmd(self: *const PdfLatex, argv: []const []const u8) bool {
+fn cmd(self: *const PdfLatex, argv: []const []const u8) !bool {
     const arglist = std.mem.join(self.arena, " ", argv) catch {
         return false;
     };
@@ -34,7 +35,7 @@ fn cmd(self: *const PdfLatex, argv: []const []const u8) bool {
         .max_output_bytes = max_output_bytes,
         .expand_arg0 = .expand,
     }) catch |err| {
-        fatal("Could not launch `pdflatex {s}`: {}", .{ arglist, err });
+        try fatal("Could not launch `pdflatex {s}`: {}", .{ arglist, err }, err);
     };
     switch (result.term) {
         .Exited => |exit_code| {
@@ -68,6 +69,6 @@ fn cmd(self: *const PdfLatex, argv: []const []const u8) bool {
     }
 }
 
-pub fn run(self: *const PdfLatex, tex_filename: []const u8) bool {
+pub fn run(self: *const PdfLatex, tex_filename: []const u8) !bool {
     return self.cmd(&[_][]const u8{ "pdflatex", tex_filename });
 }

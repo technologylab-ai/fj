@@ -1,5 +1,6 @@
 const std = @import("std");
-const fatal = std.process.fatal;
+const Fatal = @import("fatal.zig");
+const fatal = Fatal.fatal;
 
 arena: std.mem.Allocator,
 repo_dir: []const u8,
@@ -18,7 +19,7 @@ fn showResultMessages(result: std.process.Child.RunResult) void {
     stderr.writeAll(result.stderr) catch unreachable;
 }
 
-fn cmd(self: *const Git, argv: []const []const u8) bool {
+fn cmd(self: *const Git, argv: []const []const u8) !bool {
     const arglist = std.mem.join(self.arena, " ", argv) catch {
         return false;
     };
@@ -34,7 +35,7 @@ fn cmd(self: *const Git, argv: []const []const u8) bool {
         .max_output_bytes = max_output_bytes,
         .expand_arg0 = .expand,
     }) catch |err| {
-        fatal("Could not launch `git {s}`: {}", .{ arglist, err });
+        try fatal("Could not launch `git {s}`: {}", .{ arglist, err }, err);
     };
     switch (result.term) {
         .Exited => |exit_code| {
@@ -68,42 +69,42 @@ fn cmd(self: *const Git, argv: []const []const u8) bool {
     }
 }
 
-pub fn init(self: *const Git) bool {
+pub fn init(self: *const Git) !bool {
     return self.cmd(&[_][]const u8{ "git", "init" });
 }
 
-pub fn status(self: *const Git) bool {
+pub fn status(self: *const Git) !bool {
     return self.cmd(&[_][]const u8{ "git", "status" });
 }
 
 pub fn stage(
     self: *const Git,
     opts: union(enum) { file: []const u8, files: []const []const u8, all },
-) bool {
+) !bool {
     var args: std.ArrayListUnmanaged([]const u8) = .empty;
-    args.append(self.arena, "git") catch fatal("OOM!", .{});
-    args.append(self.arena, "add") catch fatal("OOM!", .{});
+    args.append(self.arena, "git") catch try fatal("OOM!", .{}, error.OutOfMemory);
+    args.append(self.arena, "add") catch try fatal("OOM!", .{}, error.OutOfMemory);
 
     switch (opts) {
-        .all => args.append(self.arena, ".") catch fatal("OOM!", .{}),
+        .all => args.append(self.arena, ".") catch try fatal("OOM!", .{}, error.OutOfMemory),
         .files => |files| {
-            for (files) |file| args.append(self.arena, file) catch fatal("OOM!", .{});
+            for (files) |file| args.append(self.arena, file) catch try fatal("OOM!", .{}, error.OutOfMemory);
         },
-        .file => |file| args.append(self.arena, file) catch fatal("OOM!", .{}),
+        .file => |file| args.append(self.arena, file) catch try fatal("OOM!", .{}, error.OutOfMemory),
     }
 
     return self.cmd(args.items);
 }
 
-pub fn commit(self: *const Git, commit_message: []const u8) bool {
+pub fn commit(self: *const Git, commit_message: []const u8) !bool {
     return self.cmd(&[_][]const u8{ "git", "commit", "-m", commit_message });
 }
 
-pub fn push(self: *const Git) bool {
+pub fn push(self: *const Git) !bool {
     return self.cmd(&[_][]const u8{ "git", "push", "-u", "origin", "master" });
 }
 
-pub fn pull(self: *const Git) bool {
+pub fn pull(self: *const Git) !bool {
     return self.cmd(&[_][]const u8{ "git", "pull" });
 }
 
@@ -112,7 +113,7 @@ pub fn remote(self: *const Git, opts: struct {
     subcommand: RemoteSubCommand,
     remote: ?[]const u8 = null,
     url: ?[]const u8 = null,
-}) bool {
+}) !bool {
     var args: std.ArrayListUnmanaged([]const u8) = .empty;
     switch (opts.subcommand) {
         .list => return self.cmd(&[_][]const u8{ "git", "remote", "-v" }),
@@ -121,33 +122,33 @@ pub fn remote(self: *const Git, opts: struct {
                 args.appendSlice(
                     self.arena,
                     &[_][]const u8{ "git", "remote", "show", remote_name },
-                ) catch fatal("OOM!", .{});
+                ) catch try fatal("OOM!", .{}, error.OutOfMemory);
                 return self.cmd(args.items);
             } else {
-                fatal("fi git remote requires a --remote= !", .{});
+                try fatal("fi git remote requires a --remote= !", .{}, error.Cli);
             }
         },
         .add => {
             if (opts.remote == null) {
-                fatal("fi git remote add requires a --remote= !", .{});
+                try fatal("fi git remote add requires a --remote= !", .{}, error.Cli);
             }
             if (opts.url == null) {
-                fatal("fi git remote add requires a --url= !", .{});
+                try fatal("fi git remote add requires a --url= !", .{}, error.Cli);
             }
             args.appendSlice(
                 self.arena,
                 &[_][]const u8{ "git", "remote", "add", opts.remote.?, opts.url.? },
-            ) catch fatal("OOM!", .{});
+            ) catch try fatal("OOM!", .{}, error.OutOfMemory);
             return self.cmd(args.items);
         },
         .delete => {
             if (opts.remote == null) {
-                fatal("fi git remote delete requires a --remote= !", .{});
+                try fatal("fi git remote delete requires a --remote= !", .{}, error.Cli);
             }
             args.appendSlice(
                 self.arena,
                 &[_][]const u8{ "git", "remote", "remove", opts.remote.? },
-            ) catch fatal("OOM!", .{});
+            ) catch try fatal("OOM!", .{}, error.OutOfMemory);
             return self.cmd(args.items);
         },
     }

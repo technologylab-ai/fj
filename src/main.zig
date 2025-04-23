@@ -3,6 +3,7 @@ const Cli = @import("cli.zig");
 const zli = @import("zli");
 const App = @import("app.zig");
 const Server = @import("web/server.zig");
+const Fatal = @import("fatal.zig");
 
 const assert = std.debug.assert;
 const log = std.log.scoped(.fi);
@@ -28,36 +29,44 @@ pub fn main() !void {
 
     switch (result) {
         .init => |args| {
-            app.setup(args.fi_home);
+            try app.setup(args.fi_home);
             try app.cmd_init(args);
         },
         .git => |args| {
-            app.setup(args.fi_home);
+            try app.setup(args.fi_home);
             try app.cmd_git(args);
         },
         .client => |args| {
-            app.setup(args.fi_home);
+            try app.setup(args.fi_home);
             try app.cmd_client(args);
         },
         .rate => |args| {
-            app.setup(args.fi_home);
+            try app.setup(args.fi_home);
             try app.cmd_rate(args);
         },
         .letter => |args| {
-            app.setup(args.fi_home);
+            try app.setup(args.fi_home);
             try app.cmd_letter(args);
         },
         .offer => |args| {
-            app.setup(args.fi_home);
+            try app.setup(args.fi_home);
             try app.cmd_offer(args);
         },
         .invoice => |args| {
-            app.setup(args.fi_home);
+            try app.setup(args.fi_home);
             try app.cmd_invoice(args);
         },
         .serve => |args| {
-            app.setup(args.fi_home);
-            try Server.start(&app, args.host, args.port);
+            Fatal.mode = .server;
+            try app.setup(args.fi_home);
+            try Server.start(
+                &app,
+                .{
+                    .host = args.host,
+                    .port = args.port,
+                    .work_dir = args.work_dir,
+                },
+            );
         },
     }
 }
