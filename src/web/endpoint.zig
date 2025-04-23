@@ -1,49 +1,42 @@
 const std = @import("std");
 const zap = @import("zap");
+const Context = @import("context.zig");
 
-const FiEndpoint = @This();
+const Allocator = std.mem.Allocator;
+const Endpoint = @This();
 
-alloc: std.mem.Allocator = undefined,
+// WIP this is just copied from the App example
 
+const HTTP_RESPONSE_TEMPLATE = "X";
+
+// the slug
 path: []const u8,
 error_strategy: zap.Endpoint.ErrorStrategy = .log_to_response,
 
-pub fn init(
-    a: std.mem.Allocator,
-    user_path: []const u8,
-) FiEndpoint {
-    return .{
-        .alloc = a,
-        .path = user_path,
-    };
+// authenticated GET requests go here
+// we use the endpoint, the context, the arena, and try
+pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
+    _ = ep;
+    _ = arena;
+    _ = context;
+    r.setStatus(.ok);
+    try r.sendBody(HTTP_RESPONSE_TEMPLATE);
 }
 
-pub fn deinit(self: *FiEndpoint) void {
-    self._users.deinit();
+// we also catch the unauthorized callback
+// we use the endpoint, the context, the arena, and try
+pub fn unauthorized(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
+    _ = ep;
+    _ = arena;
+    _ = context;
+    r.setStatus(.unauthorized);
+    try r.sendBody(HTTP_RESPONSE_TEMPLATE);
 }
 
-pub fn get(self: *FiEndpoint, r: zap.Request) !void {
-    _ = self;
-    _ = r;
-}
-
-pub fn post(self: *FiEndpoint, r: zap.Request) !void {
-    _ = self;
-    _ = r;
-}
-
-pub fn options(_: *FiEndpoint, r: zap.Request) !void {
-    try r.setHeader("Access-Control-Allow-Origin", "*");
-    try r.setHeader("Access-Control-Allow-Methods", "GET, POST, HEAD");
-    r.setStatus(zap.http.StatusCode.no_content);
-    r.markAsFinished(true);
-}
-
-pub fn head(_: *FiEndpoint, r: zap.Request) !void {
-    r.setStatus(zap.http.StatusCode.no_content);
-    r.markAsFinished(true);
-}
-
-pub fn put(_: *FiEndpoint, _: zap.Request) !void {}
-pub fn patch(_: *FiEndpoint, _: zap.Request) !void {}
-pub fn delete(_: *FiEndpoint, _: zap.Request) !void {}
+// not implemented, don't care
+pub fn post(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
+pub fn put(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
+pub fn delete(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
+pub fn patch(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
+pub fn options(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
+pub fn head(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
