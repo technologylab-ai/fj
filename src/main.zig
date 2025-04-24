@@ -59,7 +59,7 @@ pub fn main() !void {
             Fatal.mode = .server;
             try fi.setup(args.fi_home);
             try Server.start(
-                &fi,
+                fi.fi_home.?,
                 .{
                     .host = args.host,
                     .port = args.port,
