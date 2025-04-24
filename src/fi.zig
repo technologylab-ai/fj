@@ -28,6 +28,8 @@ const log = std.log.scoped(.fi);
 const Fi = @This();
 
 arena: Allocator,
+
+// buffer for fi_home: so the arena can be reset between commands, outside of Fi
 buf_fi_home: [1024]u8 = undefined,
 fi_home: ?[]const u8 = null,
 
