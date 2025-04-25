@@ -16,15 +16,20 @@ input[type=text], input[type=password] {
   box-sizing: border-box;
 }
 
+label {
+  margin-right: 1em;
+}
+
 /* Set a style for all buttons */
 button {
-  background-color: #04AA6D;
+  background-color: #2020BD;
   color: white;
   padding: 14px 20px;
   margin: 8px 0;
   border: none;
   cursor: pointer;
   width: 100%;
+  max-width: 256px;
 }
 
 /* Add a hover effect for buttons */
@@ -48,12 +53,18 @@ button:hover {
 /* Logo image */
 img.logo {
   width: 40%;
+  max-width: 256px;
   border-radius: 50%;
 }
 
 /* Add padding to containers */
 .container {
   padding: 16px;
+  text-align: center;
+}
+
+input {
+  max-width: 256px;
 }
 
 
@@ -76,11 +87,15 @@ img.logo {
       </div>
 
       <div class="container">
+        <div>
         <label for="username"><b>Username</b></label>
         <input type="text" placeholder="Enter Username" name="username" required>
+        </div>
 
+        <div>
         <label for="password"><b>Password</b></label>
         <input type="password" placeholder="Enter Password" name="password" required>
+        </div>
 
         <button type="submit">Login</button>
       </div>
