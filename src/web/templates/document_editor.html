@@ -66,10 +66,12 @@
 
     <div class="main-grid">
       <div class="editor-block">
-        <h3>invoice.json</h3>
-        <textarea id="json-editor">// GET /invoice/2025-004/invoice.json</textarea>
+        <h3>{{type}}.json</h3>
+          <textarea id="json-editor" {{^editable}}readonly{{/editable}}>// GET /invoice/2025-004/invoice.json</textarea>
         <div class="actions">
+          {{#editable}}
           <button onclick="saveJson()">Save JSON</button>
+          {{/editable}}
         </div>
       </div>
 
@@ -77,7 +79,9 @@
         <h3>billables.csv</h3>
         <textarea id="csv-editor"># GET /invoice/2025-004/billables.csv</textarea>
         <div class="actions">
+          {{#editable}}
           <button onclick="saveCsv()">Save CSV</button>
+          {{/editable}}
         </div>
       </div>
 
@@ -85,18 +89,23 @@
         <h3>invoice.tex</h3>
         <textarea id="tex-editor">% GET /invoice/2025-004/invoice.tex</textarea>
         <div class="actions">
+          {{#editable}}
           <button onclick="saveTex()">Save TEX</button>
+          {{/editable}}
         </div>
       </div>
     </div>
 
     <div class="actions">
       <button onclick="compileInvoice()">Compile PDF</button>
+
+      {{#editable}}
       <button onclick="commitInvoice()">Commit & Finalize</button>
+      {{/editable}}
     </div>
 
     <h3>PDF Preview</h3>
-    <iframe id="pdf-preview" src="/invoice/2025-004/pdf"></iframe>
+      <iframe id="pdf-preview" src="/{{type}}/{{id}}/pdf"></iframe>
   </main>
 
   <script>
