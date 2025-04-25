@@ -58,6 +58,7 @@ const html_git_push = @embedFile("templates/git_push.html");
 const html_resource_editor = @embedFile("templates/resource_editor.html");
 const html_resource_list = @embedFile("templates/resource_list.html");
 const html_document_list = @embedFile("templates/document_list.html");
+const html_document_editor = @embedFile("templates/document_editor.html");
 
 // the slug
 path: []const u8,
@@ -159,6 +160,19 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 r,
                 fi_json.Invoice,
                 path["/invoice/view/".len..],
+                false,
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/invoice/pdf/") and
+            path.len > "/invoice/pdf/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_pdf(
+                arena,
+                context,
+                r,
+                fi_json.Invoice,
+                path["/invoice/pdf/".len..],
             );
         }
 
@@ -178,6 +192,19 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 r,
                 fi_json.Offer,
                 path["/offer/view/".len..],
+                false,
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/offer/pdf/") and
+            path.len > "/offer/pdf/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_pdf(
+                arena,
+                context,
+                r,
+                fi_json.Offer,
+                path["/offer/pdf/".len..],
             );
         }
 
@@ -196,6 +223,19 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 r,
                 fi_json.Letter,
                 path["/letter/view/".len..],
+                false,
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/letter/pdf/") and
+            path.len > "/letter/pdf/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_pdf(
+                arena,
+                context,
+                r,
+                fi_json.Letter,
+                path["/letter/pdf/".len..],
             );
         }
     }
@@ -531,13 +571,6 @@ fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     const year = try fi.year();
     const fi_config = try fi.loadConfigJson();
 
-    var num_invoices_open: isize = 0;
-    var num_invoices_total: isize = 0;
-    var num_offers_open: isize = 0;
-    var num_offers_total: isize = 0;
-
-    var invoiced_total_amount: usize = 0;
-
     var doc_type: []const u8 = undefined; // hack
     const documents = blk: {
         var recent_document_list = std.ArrayListUnmanaged(RecentDocument).empty;
@@ -549,7 +582,6 @@ fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
                     .positional = .{ .subcommand = .list },
                 };
                 const invoice_names = try fi.cmdListDocuments(invoices_cli);
-                num_invoices_total = @intCast(invoice_names.list.len);
                 for (invoice_names.list) |invoice_name| {
                     const id = try documentIdFromName(invoice_name);
                     const show_cli: Cli.InvoiceCommand = .{
@@ -563,11 +595,8 @@ fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
                         .{},
                     );
 
-                    invoiced_total_amount += obj.total orelse 0;
-
                     const status = status_blk: {
                         if (obj.paid_date == null) {
-                            num_invoices_open += 1;
                             break :status_blk "open";
                         } else {
                             break :status_blk "paid";
@@ -595,7 +624,6 @@ fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
                     .positional = .{ .subcommand = .list },
                 };
                 const offer_names = try fi.cmdListDocuments(offers_cli);
-                num_offers_total = @intCast(offer_names.list.len);
                 for (offer_names.list) |offer_name| {
                     const id = try documentIdFromName(offer_name);
                     const show_cli: Cli.OfferCommand = .{
@@ -611,7 +639,6 @@ fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
 
                     const status = status_blk: {
                         if (obj.accepted_date == null) {
-                            num_offers_open += 1;
                             break :status_blk "open";
                         } else {
                             break :status_blk "accepted";
@@ -688,14 +715,183 @@ fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     }
 }
 
-fn document_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type, id: []const u8) !void {
-    _ = arena;
-    _ = context;
-    _ = r;
-    _ = ResourceType;
-    _ = id;
+fn document_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8, editable: bool) !void {
+    const Document = struct {
+        type: []const u8,
+        id: []const u8,
+        client: []const u8,
+        date: []const u8,
+        status: []const u8,
+        amount: []const u8,
+
+        json: []const u8,
+        billables: []const u8,
+        tex: []const u8,
+    };
+
+    var fi = createFi(arena, context);
+    const fi_config = try fi.loadConfigJson();
+
+    var doc_type: []const u8 = undefined; // hack
+
+    const document: Document = blk: {
+        switch (DocumentType) {
+            fi_json.Invoice => {
+                doc_type = "invoice";
+                const show_cli: Cli.InvoiceCommand = .{
+                    .positional = .{ .subcommand = .show, .arg = id },
+                };
+                const invoice_files = try fi.cmdShowDocument(show_cli);
+                const obj = try std.json.parseFromSliceLeaky(
+                    fi_json.Invoice,
+                    arena,
+                    invoice_files.show.json,
+                    .{},
+                );
+
+                const status = status_blk: {
+                    if (obj.paid_date == null) {
+                        break :status_blk "open";
+                    } else {
+                        break :status_blk "paid";
+                    }
+                };
+                break :blk .{
+                    // we don't dup() them because of the arena
+                    .type = "invoice",
+                    .id = obj.id,
+                    .client = obj.client_shortname,
+                    .date = obj.updated[0..10],
+                    .status = status,
+                    .amount = try Format.floatThousandsAlloc(
+                        arena,
+                        @as(f32, @floatFromInt(obj.total orelse 0)),
+                        .{ .comma = ',', .sep = '.' },
+                    ),
+                    .json = invoice_files.show.json,
+                    .billables = invoice_files.show.billables,
+                    .tex = invoice_files.show.tex,
+                };
+            },
+
+            fi_json.Offer => {
+                doc_type = "offer";
+                const show_cli: Cli.OfferCommand = .{
+                    .positional = .{ .subcommand = .show, .arg = id },
+                };
+                const offer_files = try fi.cmdShowDocument(show_cli);
+                const obj = try std.json.parseFromSliceLeaky(
+                    fi_json.Offer,
+                    arena,
+                    offer_files.show.json,
+                    .{},
+                );
+
+                const status = status_blk: {
+                    if (obj.accepted_date == null) {
+                        break :status_blk "open";
+                    } else {
+                        break :status_blk "accepted";
+                    }
+                };
+                break :blk .{
+                    // we don't dup() them because of the arena
+                    .type = "offer",
+                    .id = obj.id,
+                    .client = obj.client_shortname,
+                    .date = obj.updated[0..10],
+                    .status = status,
+                    .amount = try Format.floatThousandsAlloc(
+                        arena,
+                        @as(f32, @floatFromInt(obj.total orelse 0)),
+                        .{ .comma = ',', .sep = '.' },
+                    ),
+                    .json = offer_files.show.json,
+                    .billables = offer_files.show.billables,
+                    .tex = offer_files.show.tex,
+                };
+            },
+
+            fi_json.Letter => {
+                doc_type = "letter";
+                const show_cli: Cli.LetterCommand = .{
+                    .positional = .{ .subcommand = .show, .arg = id },
+                };
+                const letter_files = try fi.cmdShowDocument(show_cli);
+                const obj = try std.json.parseFromSliceLeaky(
+                    fi_json.Letter,
+                    arena,
+                    letter_files.show.json,
+                    .{},
+                );
+
+                break :blk .{
+                    // we don't dup() them because of the arena
+                    .type = "letter",
+                    .id = obj.id,
+                    .client = obj.client_shortname,
+                    .date = obj.updated[0..10],
+                    .status = "",
+                    .amount = "",
+                    .json = letter_files.show.json,
+                    .billables = letter_files.show.billables,
+                    .tex = letter_files.show.tex,
+                };
+            },
+            else => unreachable,
+        }
+    };
+
+    const params = .{
+        .type = doc_type,
+        .document = document,
+        .currency_symbol = fi_config.CurrencySymbol,
+        .editable = editable,
+        .json = document.json,
+        .billables = document.billables,
+        .tex = document.tex,
+        .id = document.id,
+    };
+
+    var mustache = try zap.Mustache.fromData(html_document_editor);
+    defer mustache.deinit();
+    const result = mustache.build(params);
+    defer result.deinit();
+
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
 }
 
+fn document_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
+    var fi = createFi(arena, context);
+
+    const document_base = try fi.documentBaseDir(DocumentType);
+
+    const human_doctype = Fi.documentTypeHumanName(DocumentType);
+
+    const document_dir_name = blk: {
+        if (Fi.startsWithIC(id, human_doctype)) {
+            break :blk id;
+        } else {
+            break :blk try fi.findDocumentById(DocumentType, id);
+        }
+    };
+
+    // Linux XDG_OPEN || macos open || windows: explorer.exe?
+    const pdf_filename = try std.fmt.allocPrint(
+        arena,
+        "{s}.pdf",
+        .{document_dir_name},
+    );
+    const pdf_path = try std.fs.path.join(
+        arena,
+        &[_][]const u8{ document_base, document_dir_name, pdf_filename },
+    );
+    log.info("Opening {s}", .{pdf_path});
+
+    try r.sendFile(pdf_path);
+}
 fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
     const git: Git = .{
         .arena = arena,

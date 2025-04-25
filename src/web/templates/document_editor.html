@@ -14,6 +14,7 @@
       height: 18em;
       font-family: monospace;
       margin-top: 0.5em;
+      font-size: 0.8em;
     }
 
     .main-grid {
@@ -33,7 +34,7 @@
 
     iframe {
       width: 100%;
-      height: 40em;
+      height: 75em;
       border: 1px solid #ccc;
       background: #fff;
       margin-top: 2em;
@@ -62,7 +63,7 @@
   </header>
 
   <main>
-    <h2>Invoice <span id="invoice-id">2025-004</span></h2>
+    <h2>{{type}} <span id="invoice-id">{{id}}</span></h2>
 
     <div class="main-grid">
       <div class="editor-block">
@@ -105,7 +106,8 @@
     </div>
 
     <h3>PDF Preview</h3>
-      <iframe id="pdf-preview" src="/{{type}}/{{id}}/pdf"></iframe>
+/{{type}}/pdf/{{id}}
+      <iframe id="pdf-preview" src="/{{type}}/pdf/{{id}}"></iframe>
   </main>
 
   <script>
