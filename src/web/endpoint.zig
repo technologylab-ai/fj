@@ -110,11 +110,37 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
             r.setStatus(.ok);
             return ep.resource_list(arena, context, r, fi_json.Client);
         }
+        if (std.mem.startsWith(u8, path, "/client/view/") and
+            path.len > "/client/view/".len)
+        {
+            r.setStatus(.ok);
+            return ep.resource_view(
+                arena,
+                context,
+                r,
+                fi_json.Client,
+                path["/client/view/".len..],
+                false,
+            );
+        }
 
         // rates
         if (std.mem.eql(u8, path, "/rate")) {
             r.setStatus(.ok);
             return ep.resource_list(arena, context, r, fi_json.Rate);
+        }
+        if (std.mem.startsWith(u8, path, "/rate/view/") and
+            path.len > "/rate/view/".len)
+        {
+            r.setStatus(.ok);
+            return ep.resource_view(
+                arena,
+                context,
+                r,
+                fi_json.Rate,
+                path["/rate/view/".len..],
+                false,
+            );
         }
 
         // invoices
@@ -123,16 +149,54 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
             return ep.document_list(arena, context, r, fi_json.Invoice);
         }
 
+        if (std.mem.startsWith(u8, path, "/invoice/view/") and
+            path.len > "/invoice/view/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_view(
+                arena,
+                context,
+                r,
+                fi_json.Invoice,
+                path["/invoice/view/".len..],
+            );
+        }
+
         // offers
         if (std.mem.eql(u8, path, "/offer")) {
             r.setStatus(.ok);
             return ep.document_list(arena, context, r, fi_json.Offer);
         }
 
+        if (std.mem.startsWith(u8, path, "/offer/view/") and
+            path.len > "/offer/view/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_view(
+                arena,
+                context,
+                r,
+                fi_json.Offer,
+                path["/offer/view/".len..],
+            );
+        }
+
         // letters
         if (std.mem.eql(u8, path, "/letter")) {
             r.setStatus(.ok);
             return ep.document_list(arena, context, r, fi_json.Letter);
+        }
+        if (std.mem.startsWith(u8, path, "/letter/view/") and
+            path.len > "/letter/view/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_view(
+                arena,
+                context,
+                r,
+                fi_json.Letter,
+                path["/letter/view/".len..],
+            );
         }
     }
 
@@ -406,6 +470,43 @@ fn resource_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     }
 }
 
+fn resource_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type, id: []const u8, editable: bool) !void {
+    var fi = createFi(arena, context);
+    log.debug("fi_home: {s}", .{fi.fi_home.?});
+
+    const type_string = switch (ResourceType) {
+        fi_json.Client => "client",
+        fi_json.Rate => "rate",
+        else => unreachable,
+    };
+
+    const obj = try fi.loadRecord(
+        ResourceType,
+        try arena.dupe(u8, id),
+        .{ .custom_path = null },
+    );
+
+    var alist: std.ArrayListUnmanaged(u8) = .empty;
+    const writer = alist.writer(arena);
+    try std.json.stringify(obj, .{ .whitespace = .indent_4 }, writer);
+
+    const params = .{
+        .type = type_string,
+        .shortname = id,
+        .json = alist.items,
+        .editable = editable,
+    };
+
+    var mustache = try zap.Mustache.fromData(html_resource_editor);
+    defer mustache.deinit();
+    const result = mustache.build(params);
+    defer result.deinit();
+
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
+}
+
 fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type) !void {
     const RecentDocument = struct {
         type: []const u8,
@@ -585,6 +686,14 @@ fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     if (result.str()) |rendered| {
         try r.sendBody(rendered);
     }
+}
+
+fn document_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type, id: []const u8) !void {
+    _ = arena;
+    _ = context;
+    _ = r;
+    _ = ResourceType;
+    _ = id;
 }
 
 fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {

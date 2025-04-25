@@ -62,12 +62,10 @@
   </header>
 
   <main>
-    <h2>{{type}} <span id="resource-id">{{id}}</span></h2>
-
     <div class="main-grid">
       <div class="editor-block">
-        <h3>{{type}}.json</h3>
-        <textarea id="json-editor">{{json}}</textarea>
+        <h3>{{type}} {{shortname}}.json</h3>
+        <textarea id="json-editor" {{^editable}}readonly{{/editable}}>{{json}}</textarea>
         <div class="actions">
             {{#editable}}
           <button onclick="saveJson()">Save JSON</button>
@@ -78,6 +76,9 @@
     <div class="actions">
             {{#editable}}
       <button onclick="commit()">Commit</button>
+            {{/editable}}
+            {{^editable}}
+      <button onclick="edit()">Edit</button>
             {{/editable}}
     </div>
 
