@@ -436,7 +436,7 @@ pub fn cmd_init(self: *Fi, args: Cli.InitCommand) !void {
         if (!try git.commit("[auto-fi] Initial commit")) {
             try fatal("Aborting git commit!", .{}, error.Abort);
         }
-        _ = try git.status();
+        _ = try git.status(null);
     }
     log.info("✅ fi init ... DONE!", .{});
 }
@@ -462,13 +462,13 @@ pub fn cmd_git(self: *Fi, args: Cli.GitCommand) !void {
             }
         },
         .pull => {
-            _ = try git.pull();
+            _ = try git.pull(null);
         },
         .push => {
-            _ = try git.push();
+            _ = try git.push(null);
         },
         .status => {
-            _ = try git.status();
+            _ = try git.status(null);
         },
     }
 }
