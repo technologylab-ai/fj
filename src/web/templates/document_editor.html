@@ -67,7 +67,7 @@
     <div class="main-grid">
       <div class="editor-block">
         <h3>{{type}}.json</h3>
-          <textarea id="json-editor" {{^editable}}readonly{{/editable}}>// GET /invoice/2025-004/invoice.json</textarea>
+          <textarea id="json-editor" {{^editable}}readonly{{/editable}}>{{json}}</textarea>
         <div class="actions">
           {{#editable}}
           <button onclick="saveJson()">Save JSON</button>
@@ -77,7 +77,7 @@
 
       <div class="editor-block">
         <h3>billables.csv</h3>
-        <textarea id="csv-editor"># GET /invoice/2025-004/billables.csv</textarea>
+        <textarea id="csv-editor" {{^editable}}readonly{{/editable}}>{{billables}}</textarea>
         <div class="actions">
           {{#editable}}
           <button onclick="saveCsv()">Save CSV</button>
@@ -87,7 +87,7 @@
 
       <div class="editor-block">
         <h3>invoice.tex</h3>
-        <textarea id="tex-editor">% GET /invoice/2025-004/invoice.tex</textarea>
+        <textarea id="tex-editor" {{^editable}}readonly{{/editable}}>{{tex}}</textarea>
         <div class="actions">
           {{#editable}}
           <button onclick="saveTex()">Save TEX</button>

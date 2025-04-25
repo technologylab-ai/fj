@@ -539,6 +539,7 @@ pub fn cmdRate(self: *Fi, args: Cli.RateCommand) !HandleRecordCommandResult {
 fn recordPath(self: *const Fi, RecordType: type, shortname: []const u8, custom_path_: ?[]const u8, path_out: []u8) ![]const u8 {
     const json_path: []const u8 = blk: {
         if (custom_path_) |custom_path| {
+            log.debug("custom_path = {s}", .{custom_path});
             break :blk std.fmt.bufPrint(path_out, "{s}/{s}.json", .{
                 custom_path,
                 shortname,
@@ -557,6 +558,7 @@ fn recordPath(self: *const Fi, RecordType: type, shortname: []const u8, custom_p
                     fi_json.Rate => "rates",
                     else => unreachable,
                 };
+            log.debug("subdir={s}, shortname={s}", .{ subdir, shortname });
             break :blk std.fmt.bufPrint(path_out, "{s}/{s}/{s}.json", .{
                 self.fi_home.?,
                 subdir,
@@ -603,13 +605,14 @@ fn recordDir(self: *const Fi, RecordType: type, dir_out: []u8) ![]const u8 {
     return json_dir;
 }
 
-fn loadRecord(self: *const Fi, RecordType: type, shortname: []const u8, opts: struct {
+pub fn loadRecord(self: *const Fi, RecordType: type, shortname: []const u8, opts: struct {
     custom_path: ?[]const u8 = null,
 }) !RecordType {
     assert(self.fi_home != null); // fiHome() must have been called, e.g. in setup()
 
     var path_buf: [max_path_bytes]u8 = undefined;
     const json_path = try self.recordPath(RecordType, shortname, opts.custom_path, &path_buf);
+    log.debug("json_path = {s}", .{json_path});
 
     // now load it
     var json_file = cwd().openFile(json_path, .{}) catch |err| {
@@ -851,7 +854,7 @@ pub fn handleRecordCommand(self: *Fi, args: anytype) !HandleRecordCommandResult 
                         std.io.getStdOut().writer().print("- {s}\n", .{element.name[0 .. element.name.len - 5]}) catch |err| {
                             try fatal("Cannot print to stdout: {}", .{err}, err);
                         };
-                        try alist.append(self.arena, element.name);
+                        try alist.append(self.arena, element.name[0 .. element.name.len - 5]);
                     }
                 }
             }
