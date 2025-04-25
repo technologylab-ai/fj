@@ -140,12 +140,15 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
     };
 
     var fi = createFi(arena, context);
+    const year = try fi.year();
     const fi_config = try fi.loadConfigJson();
 
     var num_invoices_open: isize = 0;
     var num_invoices_total: isize = 0;
     var num_offers_open: isize = 0;
     var num_offers_total: isize = 0;
+
+    var invoiced_total_amount: usize = 0;
 
     const recent_documents = blk: {
         var recent_document_list = std.ArrayListUnmanaged(RecentDocument).empty;
@@ -169,6 +172,8 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
                 .{},
             );
 
+            invoiced_total_amount += obj.total orelse 0;
+
             const status = status_blk: {
                 if (obj.paid_date == null) {
                     num_invoices_open += 1;
@@ -184,9 +189,9 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
                 .client = obj.client_shortname,
                 .date = obj.updated[0..10],
                 .status = status,
-                .amount = try Format.intThousandsAlloc(
+                .amount = try Format.floatThousandsAlloc(
                     arena,
-                    obj.total orelse 0,
+                    @as(f32, @floatFromInt(obj.total orelse 0)),
                     .{ .comma = ',', .sep = '.' },
                 ),
             });
@@ -226,9 +231,9 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
                 .client = obj.client_shortname,
                 .date = obj.updated[0..10],
                 .status = status,
-                .amount = try Format.intThousandsAlloc(
+                .amount = try Format.floatThousandsAlloc(
                     arena,
-                    obj.total orelse 0,
+                    @as(f32, @floatFromInt(obj.total orelse 0)),
                     .{ .comma = ',', .sep = '.' },
                 ),
             });
@@ -266,9 +271,7 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         // 5. sort them descendingly by date
 
         const unsorted = try recent_document_list.toOwnedSlice(arena);
-        log.debug("before sort len={d}", .{unsorted.len});
         std.mem.sort(RecentDocument, unsorted, {}, RecentDocument.greaterThan);
-        log.debug("after sort len={d}", .{unsorted.len});
 
         // 6. cap them at 5
         break :blk unsorted[0..@min(unsorted.len, 5)];
@@ -284,20 +287,23 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
 
     const params = .{
         .recent_docs = recent_documents,
-        .invoiced_total = "0,00",
         .currency_symbol = fi_config.CurrencySymbol,
         .invoices_total = num_invoices_total,
         .invoices_open = num_invoices_open,
         .offers_total = num_offers_total,
         .offers_open = num_offers_open,
         .git_status = git_status_alist.items,
+        .invoiced_total = try Format.floatThousandsAlloc(
+            arena,
+            @as(f32, @floatFromInt(invoiced_total_amount)),
+            .{ .comma = ',', .sep = '.' },
+        ),
+        .year = year,
     };
     const result = mustache.build(params);
     defer result.deinit();
 
     if (result.str()) |rendered| {
-        log.debug("recent_docs.len = {d}", .{params.recent_docs.len});
-        // log.debug("rendered = {s}", .{rendered});
         try r.sendBody(rendered);
     }
 }

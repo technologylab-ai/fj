@@ -473,7 +473,7 @@ pub fn cmd_git(self: *Fi, args: Cli.GitCommand) !void {
     }
 }
 
-fn today(self: *const Fi) ![]const u8 {
+pub fn today(self: *const Fi) ![]const u8 {
     var today_buf: ["2025-12-31".len]u8 = undefined;
 
     var now = zeit.instant(.{}) catch |err| {
@@ -493,7 +493,7 @@ fn today(self: *const Fi) ![]const u8 {
     return self.arena.dupe(u8, ret) catch try fatal("OOM returning DATE", .{}, error.OutOfMemory);
 }
 
-fn isoTime(self: *const Fi) ![]const u8 {
+pub fn isoTime(self: *const Fi) ![]const u8 {
     var today_buf: ["2025-12-31 16:32:00".len]u8 = undefined;
 
     var now = zeit.instant(.{}) catch |err| {
@@ -516,7 +516,7 @@ fn isoTime(self: *const Fi) ![]const u8 {
     return self.arena.dupe(u8, ret) catch try fatal("OOM returning DATE", .{}, error.OutOfMemory);
 }
 
-fn year(self: *const Fi) !i32 {
+pub fn year(self: *const Fi) !i32 {
     var now = zeit.instant(.{}) catch |err| {
         try fatal("Unable to get current time: {}", .{err}, err);
     };
