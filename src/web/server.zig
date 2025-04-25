@@ -115,7 +115,6 @@ pub fn start(fi_home: []const u8, opts: InitOpts) !void {
         .port = opts.port,
     });
 
-    zap.mimetypeRegister("png", "image/png");
     std.debug.print(
         "Serving: {s}\n\nVisit me at http://{s}:{d}\n\n",
         .{
