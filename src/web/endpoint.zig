@@ -128,7 +128,12 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
 
         pub fn lessThan(ctx: void, a: @This(), b: @This()) bool {
             _ = ctx;
-            return std.mem.lessThan(u8, a.date, b.date);
+            return std.mem.order(u8, a.date, b.date) == .lt;
+        }
+
+        pub fn greaterThan(ctx: void, a: @This(), b: @This()) bool {
+            _ = ctx;
+            return std.mem.order(u8, a.date, b.date) == .gt;
         }
     };
 
@@ -258,12 +263,13 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
 
         // 5. sort them descendingly by date
 
-        log.debug("before sort len={d}", .{recent_document_list.items.len});
-        // std.mem.sort(RecentDocument, try recent_document_list.toOwnedSlice(arena), {}, RecentDocument.lessThan);
-        log.debug("after sort len={d}", .{recent_document_list.items.len});
+        const unsorted = try recent_document_list.toOwnedSlice(arena);
+        log.debug("before sort len={d}", .{unsorted.len});
+        std.mem.sort(RecentDocument, unsorted, {}, RecentDocument.greaterThan);
+        log.debug("after sort len={d}", .{unsorted.len});
 
         // 6. cap them at 5
-        break :blk recent_document_list.items[0..@min(recent_document_list.items.len, 5)];
+        break :blk unsorted[0..@min(unsorted.len, 5)];
     };
 
     const params = .{
