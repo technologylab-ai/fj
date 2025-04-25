@@ -73,7 +73,7 @@ pub const Letter = struct {
 pub const Offer = struct {
     id: []const u8 = "",
 
-    accepted: bool = false,
+    accepted_date: ?[]const u8 = null,
     client_shortname: []const u8,
     date: []const u8 = "HEUTE",
     project_name: []const u8 = "",
@@ -83,9 +83,6 @@ pub const Offer = struct {
         greeting: ?[]const u8 = null,
         show_rates: bool = false,
     },
-
-    // replaced by billables.csv convention
-    // billable_items: []const BillableItemGroup,
 
     devtime: ?[]const u8 = null,
 
@@ -104,6 +101,7 @@ pub const Offer = struct {
     created: []const u8,
     updated: []const u8,
     revision: usize,
+    total: ?usize = null,
 };
 
 pub const Invoice = struct {
@@ -128,9 +126,6 @@ pub const Invoice = struct {
         show_agb: bool = true,
     },
 
-    // replaced by billables.csv convention
-    // billable_items: []const BillableItemGroup,
-
     vat: struct {
         percent: usize = 0,
         show_exempt_notice: bool = true,
@@ -141,4 +136,5 @@ pub const Invoice = struct {
     created: []const u8,
     updated: []const u8,
     revision: usize,
+    total: ?usize = null,
 };

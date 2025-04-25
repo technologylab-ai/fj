@@ -37,23 +37,23 @@ pub fn main() !void {
         },
         .client => |args| {
             try fi.setup(args.fi_home);
-            try fi.cmd_client(args);
+            _ = try fi.cmdClient(args);
         },
         .rate => |args| {
             try fi.setup(args.fi_home);
-            try fi.cmd_rate(args);
+            _ = try fi.cmdRate(args);
         },
         .letter => |args| {
             try fi.setup(args.fi_home);
-            try fi.cmd_letter(args);
+            _ = try fi.cmdLetter(args);
         },
         .offer => |args| {
             try fi.setup(args.fi_home);
-            try fi.cmd_offer(args);
+            _ = try fi.cmdOffer(args);
         },
         .invoice => |args| {
             try fi.setup(args.fi_home);
-            try fi.cmd_invoice(args);
+            _ = try fi.cmdInvoice(args);
         },
         .serve => |args| {
             Fatal.mode = .server;
