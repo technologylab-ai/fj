@@ -45,20 +45,11 @@ const log = std.log.scoped(.endpoint);
 // GET     /letter                     HTML: Offer Overview HTML page
 // GET     /offer                      HTML: Offer Overview HTML page
 // GET     /invoice                    HTML: Offer Overview HTML page
+// GET     /offer/new                  HTML: Show editor
 // GET     /offer/edit/:id             HTML: Show editor
 // GET     /offer/view/:id             HTML: Show editor READONLY
+// GET     /offer/pdf/:id              Show PDF
 //
-// API:
-//
-// GET     /offer/list                 JSON: List all offers
-// GET     /offer/new                  JSON: Create new offer
-// GET     /offer/:id/offer.json       JSON: Return raw offer JSON
-// POST    /offer/:id/offer.json       JSON: Replace offer JSON
-// GET     /offer/:id/billables.csv     CSV: Return raw CSV
-// POST    /offer/:id/billables.csv    JSON: Replace CSV
-// POST    /offer/:id/compile          JSON: Compile offer
-// POST    /offer/:id/commit           JSON: Finalize + commit
-// GET     /offer/:id/pdf               PDF: Return compiled PDF
 
 const html_login = @embedFile("templates/login.html");
 const html_dashboard = @embedFile("templates/dashboard.html");
@@ -66,6 +57,7 @@ const html_404_not_found = "<html><body><h1>404 - Not found!</h1></body></html";
 const html_git_push = @embedFile("templates/git_push.html");
 const html_resource_editor = @embedFile("templates/resource_editor.html");
 const html_resource_list = @embedFile("templates/resource_list.html");
+const html_document_list = @embedFile("templates/document_list.html");
 
 // the slug
 path: []const u8,
@@ -123,6 +115,24 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
         if (std.mem.eql(u8, path, "/rate")) {
             r.setStatus(.ok);
             return ep.resource_list(arena, context, r, fi_json.Rate);
+        }
+
+        // invoices
+        if (std.mem.eql(u8, path, "/invoice")) {
+            r.setStatus(.ok);
+            return ep.document_list(arena, context, r, fi_json.Invoice);
+        }
+
+        // offers
+        if (std.mem.eql(u8, path, "/offer")) {
+            r.setStatus(.ok);
+            return ep.document_list(arena, context, r, fi_json.Offer);
+        }
+
+        // letters
+        if (std.mem.eql(u8, path, "/letter")) {
+            r.setStatus(.ok);
+            return ep.document_list(arena, context, r, fi_json.Letter);
         }
     }
 
@@ -387,6 +397,187 @@ fn resource_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         .resources = resources,
     };
     var mustache = try zap.Mustache.fromData(html_resource_list);
+    defer mustache.deinit();
+    const result = mustache.build(params);
+    defer result.deinit();
+
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
+}
+
+fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type) !void {
+    const RecentDocument = struct {
+        type: []const u8,
+        id: []const u8,
+        client: []const u8,
+        date: []const u8,
+        status: []const u8,
+        amount: []const u8,
+
+        pub fn lessThan(ctx: void, a: @This(), b: @This()) bool {
+            _ = ctx;
+            return std.mem.order(u8, a.date, b.date) == .lt;
+        }
+
+        pub fn greaterThan(ctx: void, a: @This(), b: @This()) bool {
+            _ = ctx;
+            return std.mem.order(u8, a.date, b.date) == .gt;
+        }
+    };
+
+    var fi = createFi(arena, context);
+    const year = try fi.year();
+    const fi_config = try fi.loadConfigJson();
+
+    var num_invoices_open: isize = 0;
+    var num_invoices_total: isize = 0;
+    var num_offers_open: isize = 0;
+    var num_offers_total: isize = 0;
+
+    var invoiced_total_amount: usize = 0;
+
+    var doc_type: []const u8 = undefined; // hack
+    const documents = blk: {
+        var recent_document_list = std.ArrayListUnmanaged(RecentDocument).empty;
+
+        switch (DocumentType) {
+            fi_json.Invoice => {
+                doc_type = "invoice";
+                const invoices_cli: Cli.InvoiceCommand = .{
+                    .positional = .{ .subcommand = .list },
+                };
+                const invoice_names = try fi.cmdListDocuments(invoices_cli);
+                num_invoices_total = @intCast(invoice_names.list.len);
+                for (invoice_names.list) |invoice_name| {
+                    const id = try documentIdFromName(invoice_name);
+                    const show_cli: Cli.InvoiceCommand = .{
+                        .positional = .{ .subcommand = .show, .arg = id },
+                    };
+                    const invoice_files = try fi.cmdShowDocument(show_cli);
+                    const obj = try std.json.parseFromSliceLeaky(
+                        fi_json.Invoice,
+                        arena,
+                        invoice_files.show.json,
+                        .{},
+                    );
+
+                    invoiced_total_amount += obj.total orelse 0;
+
+                    const status = status_blk: {
+                        if (obj.paid_date == null) {
+                            num_invoices_open += 1;
+                            break :status_blk "open";
+                        } else {
+                            break :status_blk "paid";
+                        }
+                    };
+                    try recent_document_list.append(arena, .{
+                        // we don't dup() them because of the arena
+                        .type = "invoice",
+                        .id = obj.id,
+                        .client = obj.client_shortname,
+                        .date = obj.updated[0..10],
+                        .status = status,
+                        .amount = try Format.floatThousandsAlloc(
+                            arena,
+                            @as(f32, @floatFromInt(obj.total orelse 0)),
+                            .{ .comma = ',', .sep = '.' },
+                        ),
+                    });
+                }
+            },
+
+            fi_json.Offer => {
+                doc_type = "offer";
+                const offers_cli: Cli.OfferCommand = .{
+                    .positional = .{ .subcommand = .list },
+                };
+                const offer_names = try fi.cmdListDocuments(offers_cli);
+                num_offers_total = @intCast(offer_names.list.len);
+                for (offer_names.list) |offer_name| {
+                    const id = try documentIdFromName(offer_name);
+                    const show_cli: Cli.OfferCommand = .{
+                        .positional = .{ .subcommand = .show, .arg = id },
+                    };
+                    const offer_files = try fi.cmdShowDocument(show_cli);
+                    const obj = try std.json.parseFromSliceLeaky(
+                        fi_json.Offer,
+                        arena,
+                        offer_files.show.json,
+                        .{},
+                    );
+
+                    const status = status_blk: {
+                        if (obj.accepted_date == null) {
+                            num_offers_open += 1;
+                            break :status_blk "open";
+                        } else {
+                            break :status_blk "accepted";
+                        }
+                    };
+                    try recent_document_list.append(arena, .{
+                        // we don't dup() them because of the arena
+                        .type = "offer",
+                        .id = obj.id,
+                        .client = obj.client_shortname,
+                        .date = obj.updated[0..10],
+                        .status = status,
+                        .amount = try Format.floatThousandsAlloc(
+                            arena,
+                            @as(f32, @floatFromInt(obj.total orelse 0)),
+                            .{ .comma = ',', .sep = '.' },
+                        ),
+                    });
+                }
+            },
+
+            fi_json.Letter => {
+                doc_type = "letter";
+                const letters_cli: Cli.LetterCommand = .{
+                    .positional = .{ .subcommand = .list },
+                };
+                const letter_names = try fi.cmdListDocuments(letters_cli);
+                for (letter_names.list) |letter_name| {
+                    const id = try documentIdFromName(letter_name);
+                    const show_cli: Cli.LetterCommand = .{
+                        .positional = .{ .subcommand = .show, .arg = id },
+                    };
+                    const letter_files = try fi.cmdShowDocument(show_cli);
+                    const obj = try std.json.parseFromSliceLeaky(
+                        fi_json.Letter,
+                        arena,
+                        letter_files.show.json,
+                        .{},
+                    );
+
+                    try recent_document_list.append(arena, .{
+                        // we don't dup() them because of the arena
+                        .type = "letter",
+                        .id = obj.id,
+                        .client = obj.client_shortname,
+                        .date = obj.updated[0..10],
+                        .status = "",
+                        .amount = "",
+                    });
+                }
+            },
+            else => unreachable,
+        }
+
+        const sorted = try recent_document_list.toOwnedSlice(arena);
+        std.mem.sort(RecentDocument, sorted, {}, RecentDocument.greaterThan);
+        break :blk sorted;
+    };
+
+    const params = .{
+        .type = doc_type,
+        .documents = documents,
+        .currency_symbol = fi_config.CurrencySymbol,
+        .year = year,
+    };
+
+    var mustache = try zap.Mustache.fromData(html_document_list);
     defer mustache.deinit();
     const result = mustache.build(params);
     defer result.deinit();

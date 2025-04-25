@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard — fi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: sans-serif; margin: 0; }
+    header, nav, main { padding: 1em; }
+    nav a { margin-right: 1em; display: inline-block; margin-bottom: 0.5em; }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+      margin: 1em 0;
+    }
+
+    .stat-card {
+      flex: 1 1 10em;
+      padding: 1em;
+      background: #f4f4f4;
+      border-radius: 6px;
+      min-width: 120px;
+    }
+
+    .comment {
+      color: grey;
+    }
+
+    footer {
+      width: inherit;
+      margin-left: 1em;
+      margin-right: 1em;
+      margin-top: 5em;
+      font-size: 0.8em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+      font-size: 0.95em;
+    }
+
+    th, td {
+      padding: 0.5em;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    .actions a {
+      margin-right: 0.5em;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+      .stats { flex-direction: column; }
+      table thead { display: none; }
+      table, table tbody, table tr, table td {
+        display: block;
+        width: 100%;
+      }
+
+      table tr {
+        margin-bottom: 1em;
+        border: 1px solid #ccc;
+        padding: 0.5em;
+        border-radius: 6px;
+      }
+
+      table td {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.25em 0;
+      }
+
+      table td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        flex-basis: 40%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>fi — The Commandline Company</strong>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/client">Clients</a>
+      <a href="/rate">Rate Sets</a>
+      <a href="/offer">Offers</a>
+      <a href="/invoice">Invoices</a>
+      <a href="/letter">Letters</a>
+    </nav>
+  </header>
+
+  <main>
+    <h3>{{type}}s</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Client</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Amount</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="documents">
+          <tr >
+          {{^documents}}
+            <td colspan="6" class="comment"><i>(No {{type}}s).</i></td>
+          {{/documents}}
+
+          </tr>
+          {{#documents}}
+          <tr>
+            <td data-label="ID">{{id}}</td>
+            <td data-label="Client">{{client}}</td>
+            <td data-label="Date">{{date}}</td>
+            <td data-label="Status">{{status}}</td>
+            <td data-label="Amount">{{amount}}</td>
+            <td data-label="Actions" class="actions">
+              <a href="/{{type}}/view/{{id}}">View</a>
+              <a href="/{{type}}/edit/{{id}}">Edit</a>
+              <a href="/{{type}}/pdf/{{id}}" target="_blank">PDF</a>
+            </td>
+          </tr>
+          {{/documents}}
+
+      </tbody>
+    </table>
+  </main>
+  <script>
+    // so far, no script needed.
+  </script>
+</body>
+</html>
+
