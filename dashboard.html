@@ -24,17 +24,6 @@
       min-width: 120px;
     }
 
-    .comment {
-      color: grey;
-    }
-
-    footer {
-      position: absolute;
-      bottom: 0em;
-      font-size: 0.8em;
-      width: 100%;
-    }
-
     table {
       width: 100%;
       border-collapse: collapse;
@@ -101,15 +90,15 @@
     <div class="stats">
       <div class="stat-card">
         <strong>Invoiced Total (2025)</strong><br />
-        <span id="total-invoiced">{{ currency_symbol }} {{invoiced_total}}</span>
+        <span id="total-invoiced">€ 18,900.00</span>
       </div>
       <div class="stat-card">
         <strong>Invoices</strong><br />
-        <span id="invoice-count">{{invoices_total}} total / {{invoices_open}} open</span>
+        <span id="invoice-count">7 total / 2 drafts</span>
       </div>
       <div class="stat-card">
         <strong>Offers</strong><br />
-        <span id="offer-count">{{offers_total}} total / {{offers_open}} open</span>
+        <span id="offer-count">5 total / 1 open</span>
       </div>
     </div>
 
@@ -127,39 +116,37 @@
         </tr>
       </thead>
       <tbody id="recent-documents">
-          <tr >
-          {{^recent_docs}}
-            <td colspan="7" class="comment"><i>(No recent documents).</i></td>
-          {{/recent_docs}}
-
-          </tr>
-          {{#recent_docs}}
-          <tr>
-            <td data-label="Type">{{type}}</td>
-            <td data-label="ID">{{id}}</td>
-            <td data-label="Client">{{client}}</td>
-            <td data-label="Date">{{date}}</td>
-            <td data-label="Status">{{status}}</td>
-            <td data-label="Amount">{{amount}}</td>
-            <td data-label="Actions" class="actions">
-              <a href="/{{type}}/{{id}}">View</a>
-              <a href="/{{type}}/{{id}}/pdf" target="_blank">PDF</a>
-            </td>
-          </tr>
-          {{/recent_docs}}
-
+        <tr>
+          <td data-label="Type">Invoice</td>
+          <td data-label="ID">2025-007</td>
+          <td data-label="Client">acme</td>
+          <td data-label="Date">2025-04-01</td>
+          <td data-label="Status">final</td>
+          <td data-label="Amount">€ 2,800.00</td>
+          <td data-label="Actions" class="actions">
+            <a href="/invoice/2025-007">View</a>
+            <a href="/invoice/2025-007/pdf" target="_blank">PDF</a>
+          </td>
+        </tr>
+        <tr>
+          <td data-label="Type">Offer</td>
+          <td data-label="ID">2025-012</td>
+          <td data-label="Client">foocorp</td>
+          <td data-label="Date">2025-04-20</td>
+          <td data-label="Status">draft</td>
+          <td data-label="Amount">—</td>
+          <td data-label="Actions" class="actions">
+            <a href="/offer/2025-012">View</a>
+            <a href="/offer/2025-012/pdf" target="_blank">PDF</a>
+          </td>
+        </tr>
       </tbody>
     </table>
 
-    <footer>
-      <hr>
-      <b> Git Status </b>
-      <pre>{{git_status}}</pre>
-    </footer>
   </main>
 
   <script>
-    // so far, no script needed.
+    // JS to dynamically fill in totals and recent-documents goes here
   </script>
 </body>
 </html>

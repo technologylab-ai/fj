@@ -11,15 +11,15 @@ const log = std.log.scoped(.git);
 
 const max_output_bytes: usize = 200 * 1024;
 
-fn showResultMessages(result: std.process.Child.RunResult) void {
-    var stdout = std.io.getStdOut();
-    var stderr = std.io.getStdErr();
+fn showResultMessages(result: std.process.Child.RunResult, writer: ?std.io.AnyWriter) void {
+    var stdout = writer orelse std.io.getStdOut().writer().any();
+    var stderr = writer orelse std.io.getStdErr().writer().any();
     stdout.writeAll(result.stdout) catch unreachable;
     // stderr.writeAll("\n") catch unreachable;
     stderr.writeAll(result.stderr) catch unreachable;
 }
 
-fn cmd(self: *const Git, argv: []const []const u8) !bool {
+fn cmd(self: *const Git, argv: []const []const u8, writer: ?std.io.AnyWriter) !bool {
     const arglist = std.mem.join(self.arena, " ", argv) catch {
         return false;
     };
@@ -41,40 +41,40 @@ fn cmd(self: *const Git, argv: []const []const u8) !bool {
         .Exited => |exit_code| {
             if (exit_code != 0) {
                 log.err("`git {s}` returned exit code {d}.", .{ arglist, exit_code });
-                showResultMessages(result);
+                showResultMessages(result, writer);
                 return false;
             }
             log.info("{s} OK:", .{arglist});
-            showResultMessages(result);
+            showResultMessages(result, writer);
             return true;
         },
         .Signal => |signal| {
             // show stdout, stderr
             log.err("`git {s}` received signal: {d}!", .{ arglist, signal });
-            showResultMessages(result);
+            showResultMessages(result, writer);
             return false;
         },
         .Stopped => |stopped| {
             // show stdout, stderr
             log.err("`git {s}` was stopped with code: {d}!", .{ arglist, stopped });
-            showResultMessages(result);
+            showResultMessages(result, writer);
             return false;
         },
         .Unknown => |unk| {
             // show stdout, stderr
             log.err("`git {s}` caused unknown code: {d}!", .{ arglist, unk });
-            showResultMessages(result);
+            showResultMessages(result, writer);
             return false;
         },
     }
 }
 
 pub fn init(self: *const Git) !bool {
-    return self.cmd(&[_][]const u8{ "git", "init" });
+    return self.cmd(&[_][]const u8{ "git", "init" }, null);
 }
 
-pub fn status(self: *const Git) !bool {
-    return self.cmd(&[_][]const u8{ "git", "status" });
+pub fn status(self: *const Git, writer: ?std.io.AnyWriter) !bool {
+    return self.cmd(&[_][]const u8{ "git", "status" }, writer);
 }
 
 pub fn stage(
@@ -93,19 +93,19 @@ pub fn stage(
         .file => |file| args.append(self.arena, file) catch try fatal("OOM!", .{}, error.OutOfMemory),
     }
 
-    return self.cmd(args.items);
+    return self.cmd(args.items, null);
 }
 
 pub fn commit(self: *const Git, commit_message: []const u8) !bool {
-    return self.cmd(&[_][]const u8{ "git", "commit", "-m", commit_message });
+    return self.cmd(&[_][]const u8{ "git", "commit", "-m", commit_message }, null);
 }
 
-pub fn push(self: *const Git) !bool {
-    return self.cmd(&[_][]const u8{ "git", "push", "-u", "origin", "master" });
+pub fn push(self: *const Git, writer: ?std.io.AnyWriter) !bool {
+    return self.cmd(&[_][]const u8{ "git", "push", "-u", "origin", "master" }, writer);
 }
 
-pub fn pull(self: *const Git) !bool {
-    return self.cmd(&[_][]const u8{ "git", "pull" });
+pub fn pull(self: *const Git, writer: ?std.io.AnyWriter) !bool {
+    return self.cmd(&[_][]const u8{ "git", "pull" }, writer);
 }
 
 pub const RemoteSubCommand = enum { add, show, delete, list };
@@ -116,14 +116,14 @@ pub fn remote(self: *const Git, opts: struct {
 }) !bool {
     var args: std.ArrayListUnmanaged([]const u8) = .empty;
     switch (opts.subcommand) {
-        .list => return self.cmd(&[_][]const u8{ "git", "remote", "-v" }),
+        .list => return self.cmd(&[_][]const u8{ "git", "remote", "-v" }, null),
         .show => {
             if (opts.remote) |remote_name| {
                 args.appendSlice(
                     self.arena,
                     &[_][]const u8{ "git", "remote", "show", remote_name },
                 ) catch try fatal("OOM!", .{}, error.OutOfMemory);
-                return self.cmd(args.items);
+                return self.cmd(args.items, null);
             } else {
                 try fatal("fi git remote requires a --remote= !", .{}, error.Cli);
             }
@@ -139,7 +139,7 @@ pub fn remote(self: *const Git, opts: struct {
                 self.arena,
                 &[_][]const u8{ "git", "remote", "add", opts.remote.?, opts.url.? },
             ) catch try fatal("OOM!", .{}, error.OutOfMemory);
-            return self.cmd(args.items);
+            return self.cmd(args.items, null);
         },
         .delete => {
             if (opts.remote == null) {
@@ -149,7 +149,7 @@ pub fn remote(self: *const Git, opts: struct {
                 self.arena,
                 &[_][]const u8{ "git", "remote", "remove", opts.remote.? },
             ) catch try fatal("OOM!", .{}, error.OutOfMemory);
-            return self.cmd(args.items);
+            return self.cmd(args.items, null);
         },
     }
 }

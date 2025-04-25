@@ -2,6 +2,7 @@ const std = @import("std");
 const zap = @import("zap");
 const Fi = @import("../fi.zig");
 const Cli = @import("../cli.zig");
+const Git = @import("../git.zig");
 const fi_json = @import("../json.zig");
 const Context = @import("context.zig");
 const Format = @import("../format.zig");
@@ -22,7 +23,6 @@ const log = std.log.scoped(.endpoint);
 //
 // API:
 //
-// GET     /stats.json                 JSON: optional: computed stats, recent docs, etc.
 // GET     /git/push                   JSON: push archive
 
 // Resources:
@@ -43,6 +43,8 @@ const log = std.log.scoped(.endpoint);
 // GET     /letter                     HTML: Offer Overview HTML page
 // GET     /offer                      HTML: Offer Overview HTML page
 // GET     /invoice                    HTML: Offer Overview HTML page
+// GET     /offer/edit/:id             HTML: Show editor
+// GET     /offer/view/:id             HTML: Show editor READONLY
 //
 // API:
 //
@@ -272,6 +274,14 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         break :blk unsorted[0..@min(unsorted.len, 5)];
     };
 
+    const git: Git = .{
+        .arena = arena,
+        .repo_dir = context.fi_home,
+    };
+
+    var git_status_alist = std.ArrayListUnmanaged(u8).empty;
+    _ = try git.status(git_status_alist.writer(arena).any());
+
     const params = .{
         .recent_docs = recent_documents,
         .invoiced_total = "0,00",
@@ -280,6 +290,7 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         .invoices_open = num_invoices_open,
         .offers_total = num_offers_total,
         .offers_open = num_offers_open,
+        .git_status = git_status_alist.items,
     };
     const result = mustache.build(params);
     defer result.deinit();
