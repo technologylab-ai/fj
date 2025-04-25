@@ -61,6 +61,7 @@ const log = std.log.scoped(.endpoint);
 const html_login = @embedFile("templates/login.html");
 const html_dashboard = @embedFile("templates/dashboard.html");
 const html_404_not_found = "<html><body><h1>404 - Not found!</h1></body></html";
+const html_git_push = @embedFile("templates/git_push.html");
 
 // the slug
 path: []const u8,
@@ -101,6 +102,12 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
             r.setStatus(.ok);
             return ep.show_dashboard(arena, context, r);
         }
+
+        // git push
+        if (std.mem.eql(u8, path, "/git/push")) {
+            r.setStatus(.ok);
+            return ep.git_push(arena, context, r);
+        }
     }
 
     r.setStatus(.not_found);
@@ -117,9 +124,6 @@ fn documentIdFromName(docname: []const u8) ![]const u8 {
 }
 
 fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
-    var mustache = try zap.Mustache.fromData(html_dashboard);
-    defer mustache.deinit();
-
     const RecentDocument = struct {
         type: []const u8,
         id: []const u8,
@@ -300,6 +304,31 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         ),
         .year = year,
     };
+
+    var mustache = try zap.Mustache.fromData(html_dashboard);
+    defer mustache.deinit();
+    const result = mustache.build(params);
+    defer result.deinit();
+
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
+}
+
+fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
+    const git: Git = .{
+        .arena = arena,
+        .repo_dir = context.fi_home,
+    };
+
+    var alist = std.ArrayListUnmanaged(u8).empty;
+    _ = try git.push(alist.writer(arena).any());
+
+    const params = .{
+        .message = alist.items,
+    };
+    var mustache = try zap.Mustache.fromData(html_git_push);
+    defer mustache.deinit();
     const result = mustache.build(params);
     defer result.deinit();
 
