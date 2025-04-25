@@ -27,15 +27,17 @@ const log = std.log.scoped(.endpoint);
 
 // Resources:
 // ----------
-// GET     /client                     HTML: Client Overview HTML page
-// GET     /client/create               HTML: Client Overview HTML page
+// GET     /client                      HTML: Client Overview HTML page
+// GET     /rate                        HTML: Client Overview HTML page
+// GET     /client/view/:id             HTML: Client viewer
+// GET     /rate/view/:id               HTML: Rate viewer
+// GET     /client/edit/:id             HTML: Client editor
+// GET     /rate/edit/:id               HTML: Rate editor
+// GET     /rate/new                    HTML: New Rate editor
+// GET     /client/new                  HTML: New Client editor
+// POST    /client/:shortname/commit    HTML: Replace client JSON
+// POST    /rate/:shortname/commit      HTML: Replace client JSON
 //
-// API:
-//
-// GET     /client/list                JSON: List all clients
-// GET     /client/new                 JSON: Create new client, return raw JSON
-// GET     /client/:shortname          JSON: Return raw client JSON
-// POST    /client/:shortname/commit   JSON: Replace client JSON
 
 // Documents:
 // ----------
@@ -62,6 +64,8 @@ const html_login = @embedFile("templates/login.html");
 const html_dashboard = @embedFile("templates/dashboard.html");
 const html_404_not_found = "<html><body><h1>404 - Not found!</h1></body></html";
 const html_git_push = @embedFile("templates/git_push.html");
+const html_resource_editor = @embedFile("templates/resource_editor.html");
+const html_resource_list = @embedFile("templates/resource_list.html");
 
 // the slug
 path: []const u8,
@@ -107,6 +111,18 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
         if (std.mem.eql(u8, path, "/git/push")) {
             r.setStatus(.ok);
             return ep.git_push(arena, context, r);
+        }
+
+        // clients
+        if (std.mem.eql(u8, path, "/client")) {
+            r.setStatus(.ok);
+            return ep.resource_list(arena, context, r, fi_json.Client);
+        }
+
+        // rates
+        if (std.mem.eql(u8, path, "/rate")) {
+            r.setStatus(.ok);
+            return ep.resource_list(arena, context, r, fi_json.Rate);
         }
     }
 
@@ -315,6 +331,71 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
     }
 }
 
+fn resource_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type) !void {
+    const ListItem = struct {
+        shortname: []const u8,
+        remarks: []const u8,
+
+        pub fn lessThan(ctx: void, a: @This(), b: @This()) bool {
+            _ = ctx;
+            return std.mem.order(u8, a.shortname, b.shortname) == .lt;
+        }
+
+        pub fn greaterThan(ctx: void, a: @This(), b: @This()) bool {
+            _ = ctx;
+            return std.mem.order(u8, a.shortname, b.shortname) == .gt;
+        }
+    };
+
+    var fi = createFi(arena, context);
+    log.debug("fi_home: {s}", .{fi.fi_home.?});
+
+    const type_string, const CliCommand = switch (ResourceType) {
+        fi_json.Client => .{ "client", Cli.ClientCommand },
+        fi_json.Rate => .{ "rate", Cli.RateCommand },
+        else => unreachable,
+    };
+
+    const resources = blk: {
+        var list = std.ArrayListUnmanaged(ListItem).empty;
+
+        // 1. get all the clients / rates
+        const list_cli: CliCommand = .{
+            .positional = .{ .subcommand = .list },
+        };
+
+        const names = try fi.handleRecordCommand(list_cli);
+        for (names.list) |shortname| {
+            log.debug("trying to load {} {s} {s}", .{ ResourceType, type_string, shortname });
+            const obj = try fi.loadRecord(ResourceType, try arena.dupe(u8, shortname), .{ .custom_path = null });
+            try list.append(arena, .{
+                // we don't dup() them because of the arena
+                .shortname = obj.shortname,
+                .remarks = obj.remarks orelse "",
+            });
+        }
+
+        // 2. sort them descendingly by date
+        const sorted = try list.toOwnedSlice(arena);
+        std.mem.sort(ListItem, sorted, {}, ListItem.lessThan);
+
+        break :blk sorted;
+    };
+
+    const params = .{
+        .type = type_string,
+        .resources = resources,
+    };
+    var mustache = try zap.Mustache.fromData(html_resource_list);
+    defer mustache.deinit();
+    const result = mustache.build(params);
+    defer result.deinit();
+
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
+}
+
 fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
     const git: Git = .{
         .arena = arena,
@@ -332,6 +413,9 @@ fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
     const result = mustache.build(params);
     defer result.deinit();
 
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
     if (result.str()) |rendered| {
         try r.sendBody(rendered);
     }

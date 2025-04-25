@@ -62,45 +62,29 @@
   </header>
 
   <main>
-    <h2>Invoice <span id="invoice-id">2025-004</span></h2>
+    <h2>{{type}} <span id="resource-id">{{id}}</span></h2>
 
     <div class="main-grid">
       <div class="editor-block">
-        <h3>invoice.json</h3>
-        <textarea id="json-editor">// GET /invoice/2025-004/invoice.json</textarea>
+        <h3>{{type}}.json</h3>
+        <textarea id="json-editor">{{json}}</textarea>
         <div class="actions">
+            {{#editable}}
           <button onclick="saveJson()">Save JSON</button>
+            {{/editable}}
         </div>
       </div>
-
-      <div class="editor-block">
-        <h3>billables.csv</h3>
-        <textarea id="csv-editor"># GET /invoice/2025-004/billables.csv</textarea>
-        <div class="actions">
-          <button onclick="saveCsv()">Save CSV</button>
-        </div>
-      </div>
-
-      <div class="editor-block">
-        <h3>invoice.tex</h3>
-        <textarea id="tex-editor">% GET /invoice/2025-004/invoice.tex</textarea>
-        <div class="actions">
-          <button onclick="saveTex()">Save TEX</button>
-        </div>
-      </div>
-    </div>
 
     <div class="actions">
-      <button onclick="compileInvoice()">Compile PDF</button>
-      <button onclick="commitInvoice()">Commit & Finalize</button>
+            {{#editable}}
+      <button onclick="commit()">Commit</button>
+            {{/editable}}
     </div>
 
-    <h3>PDF Preview</h3>
-    <iframe id="pdf-preview" src="/invoice/2025-004/pdf"></iframe>
   </main>
 
   <script>
-    // Your JS logic here (fetch, save, compile, commit)
+    // JS logic here (fetch, save, compile, commit)
   </script>
 </body>
 </html>
