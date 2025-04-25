@@ -29,10 +29,11 @@
     }
 
     footer {
-      position: absolute;
-      bottom: 0em;
+      width: inherit;
+      margin-left: 1em;
+      margin-right: 1em;
+      margin-top: 5em;
       font-size: 0.8em;
-      width: 100%;
     }
 
     table {
@@ -151,12 +152,12 @@
       </tbody>
     </table>
 
-    <footer>
-      <hr>
-      <b> Git Status </b>
-      <pre>{{git_status}}</pre>
-    </footer>
   </main>
+  <footer>
+    <hr>
+    <b> Git Status </b>
+    <pre>{{git_status}}</pre>
+    </footer>
 
   <script>
     // so far, no script needed.
