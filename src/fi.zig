@@ -18,7 +18,7 @@ const assert = std.debug.assert;
 const File = std.fs.File;
 const Dir = std.fs.Dir;
 const cwd = std.fs.cwd;
-const startsWithIC = std.ascii.startsWithIgnoreCase;
+pub const startsWithIC = std.ascii.startsWithIgnoreCase;
 
 const max_path_bytes = std.fs.max_path_bytes;
 const max_name_bytes = std.fs.max_name_bytes;
@@ -932,7 +932,7 @@ pub fn handleDocumentCommand(
     }
 }
 
-fn documentTypeHumanName(DocumentType: type) []const u8 {
+pub fn documentTypeHumanName(DocumentType: type) []const u8 {
     return switch (DocumentType) {
         fi_json.Letter => "letter",
         fi_json.Invoice => "invoice",
@@ -1833,7 +1833,7 @@ fn generateTexConfig(self: *const Fi, file: File, id: []const u8, opts: anytype)
     }
 }
 
-fn documentBaseDir(self: *const Fi, DocumentType: type) ![]const u8 {
+pub fn documentBaseDir(self: *const Fi, DocumentType: type) ![]const u8 {
     const subdir =
         switch (DocumentType) {
             fi_json.Letter => "letters",
