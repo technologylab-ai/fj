@@ -468,7 +468,7 @@ fn allDocsAndStats(_: *Endpoint, arena: Allocator, context: *Context, DocumentTy
                 .id = try arena.dupe(u8, id),
                 .client = try arena.dupe(u8, obj.client_shortname),
                 .date = try arena.dupe(u8, obj.date),
-                .sort_date = try arena.dupe(u8, obj.updated[0..10]),
+                .sort_date = try arena.dupe(u8, obj.updated),
                 .status = try arena.dupe(u8, status),
                 .amount = try arena.dupe(u8, amount),
             };
@@ -695,7 +695,7 @@ fn toDocument(_: *Endpoint, arena: Allocator, obj: anytype, files: Fi.DocumentFi
         .id = obj.id,
         .client = obj.client_shortname,
         .date = obj.date,
-        .sort_date = obj.updated[0..10],
+        .sort_date = obj.updated,
         .status = status,
         .amount = amount,
         .json = files.json,
