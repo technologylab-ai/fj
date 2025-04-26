@@ -1475,6 +1475,7 @@ pub fn cmdShowDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
 
     const human_doctype = documentTypeHumanName(DocumentType);
 
+    log.debug("show document id: {s}", .{id});
     const document_dir_name = blk: {
         if (startsWithIC(id, human_doctype)) {
             break :blk id;
@@ -1623,7 +1624,7 @@ pub fn cmdListDocuments(self: *Fi, args: anytype) !HandleDocumentCommandResult {
         if (startsWithIC(entry.name, human_doctype)) {
             count += 1;
             try writer.print("  - {s}\n", .{entry.name});
-            try alist.append(self.arena, entry.name);
+            try alist.append(self.arena, try self.arena.dupe(u8, entry.name));
         }
     }
     try writer.print("{d} element(s).\n", .{count});
@@ -2188,7 +2189,7 @@ pub fn cmdCompileDocument(self: *const Fi, args: anytype) !HandleDocumentCommand
     return .{ .compile = try self.readDocumentFiles(DocumentType, subdir_spec) };
 }
 
-fn cmdCommitDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
+pub fn cmdCommitDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
     // validate it
     // update it
     // compile it
@@ -2213,7 +2214,8 @@ fn cmdCommitDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
 
     // automatically validates the json
     var obj = try self.loadDocumentMeta(subdir_spec, DocumentType);
-    if (!std.ascii.endsWithIgnoreCase(obj.id, "XXX")) {
+    const has_temp_id = std.ascii.endsWithIgnoreCase(obj.id, "XXX");
+    if (args.force == false and !has_temp_id) {
         try fatal("This document already has a non-temporary ID `{s}`! Have you committed it already?", .{obj.id}, error.AlreadyCommitted);
     }
 
@@ -2233,9 +2235,10 @@ fn cmdCommitDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
     };
 
     // bump ID
-    const new_id = try self.incrementDocumentTypeId(DocumentType);
     const old_id = try self.arena.dupe(u8, obj.id);
-    obj.id = new_id;
+    if (has_temp_id) {
+        obj.id = try self.incrementDocumentTypeId(DocumentType);
+    }
 
     // update json
     {
@@ -2260,7 +2263,7 @@ fn cmdCommitDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
 
     var dest_path_buf: [max_path_bytes]u8 = undefined;
     // delete the .pdf with the temp id XXX
-    {
+    if (has_temp_id) {
         const temp_pdf = try std.fmt.allocPrint(
             self.arena,
             "{s}.pdf",
@@ -2279,9 +2282,11 @@ fn cmdCommitDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
         var dir_name_buf: [max_name_bytes]u8 = undefined;
         const document_dir_name = try createDocumentName(DocumentType, obj.id, obj.client_shortname, &dir_name_buf);
         const dest_path = try self.documentDir(DocumentType, document_dir_name, &dest_path_buf);
-        cwd().makeDir(dest_path) catch |err| {
-            try fatal("Error creating dir `{s}`: {}", .{ dest_path, err }, err);
-        };
+        if (has_temp_id) {
+            cwd().makeDir(dest_path) catch |err| {
+                try fatal("Error creating dir `{s}`: {}", .{ dest_path, err }, err);
+            };
+        }
         var dest_dir = try cwd().openDir(dest_path, .{});
         defer dest_dir.close();
 

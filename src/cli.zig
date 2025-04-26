@@ -175,6 +175,8 @@ pub const LetterCommand = struct {
     list_all: bool = false,
     to: ?[]const u8 = null,
 
+    force: bool = false,
+
     positional: struct {
         subcommand: enum { new, show, checkout, commit, list, open, compile },
         arg: ?[]const u8 = null,
@@ -218,6 +220,8 @@ pub const OfferCommand = struct {
     project: ?[]const u8 = null,
     rates: ?[]const u8 = null,
     to: ?[]const u8 = null,
+
+    force: bool = false,
 
     positional: struct {
         subcommand: enum { new, checkout, commit, list, show, open, compile },
@@ -264,6 +268,8 @@ pub const InvoiceCommand = struct {
     project: ?[]const u8 = null,
     rates: ?[]const u8 = null,
     to: ?[]const u8 = null,
+
+    force: bool = false,
 
     positional: struct {
         subcommand: enum { new, show, checkout, commit, list, open, compile },
