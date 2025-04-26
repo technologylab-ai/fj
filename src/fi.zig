@@ -20,8 +20,8 @@ const Dir = std.fs.Dir;
 const cwd = std.fs.cwd;
 pub const startsWithIC = std.ascii.startsWithIgnoreCase;
 
-const max_path_bytes = std.fs.max_path_bytes;
-const max_name_bytes = std.fs.max_name_bytes;
+pub const max_path_bytes = std.fs.max_path_bytes;
+pub const max_name_bytes = std.fs.max_name_bytes;
 
 const log = std.log.scoped(.fi);
 
@@ -430,10 +430,10 @@ pub fn cmd_init(self: *Fi, args: Cli.InitCommand) !void {
         if (!try git.init()) {
             try fatal("Aborting git init!", .{}, error.Abort);
         }
-        if (!try git.stage(.all)) {
+        if (!try git.stage(.all, null)) {
             try fatal("Aborting git stage!", .{}, error.Abort);
         }
-        if (!try git.commit("[auto-fi] Initial commit")) {
+        if (!try git.commit("[auto-fi] Initial commit", null)) {
             try fatal("Aborting git commit!", .{}, error.Abort);
         }
         _ = try git.status(null);
@@ -536,7 +536,7 @@ pub fn cmdRate(self: *Fi, args: Cli.RateCommand) !HandleRecordCommandResult {
     return self.handleRecordCommand(args);
 }
 
-fn recordPath(self: *const Fi, RecordType: type, shortname: []const u8, custom_path_: ?[]const u8, path_out: []u8) ![]const u8 {
+pub fn recordPath(self: *const Fi, RecordType: type, shortname: []const u8, custom_path_: ?[]const u8, path_out: []u8) ![]const u8 {
     const json_path: []const u8 = blk: {
         if (custom_path_) |custom_path| {
             log.debug("custom_path = {s}", .{custom_path});
@@ -641,7 +641,7 @@ pub fn loadRecord(self: *const Fi, RecordType: type, shortname: []const u8, opts
     };
 }
 
-fn writeRecord(self: *const Fi, shortname: []const u8, obj: anytype, opts: struct {
+pub fn writeRecord(self: *const Fi, shortname: []const u8, obj: anytype, opts: struct {
     allow_overwrite: bool = false,
     custom_path: ?[]const u8 = null,
 }) ![]const u8 {
@@ -2293,7 +2293,7 @@ fn cmdCommitDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
     // git commit
     {
         var git: Git = .{ .arena = self.arena, .repo_dir = self.fi_home.? };
-        if (!try git.stage(.all)) {
+        if (!try git.stage(.all, null)) {
             try fatal("Aborting Git commit!", .{}, error.Abort);
         }
         const commit_msg = try std.fmt.allocPrint(
@@ -2301,7 +2301,7 @@ fn cmdCommitDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
             "[auto-fi] Committing {s} {s}",
             .{ human_doctype, obj.id },
         );
-        if (!try git.commit(commit_msg)) {
+        if (!try git.commit(commit_msg, null)) {
             try fatal("Aborting! Git commit", .{}, error.Abort);
         }
     }

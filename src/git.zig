@@ -80,6 +80,7 @@ pub fn status(self: *const Git, writer: ?std.io.AnyWriter) !bool {
 pub fn stage(
     self: *const Git,
     opts: union(enum) { file: []const u8, files: []const []const u8, all },
+    writer: ?std.io.AnyWriter,
 ) !bool {
     var args: std.ArrayListUnmanaged([]const u8) = .empty;
     args.append(self.arena, "git") catch try fatal("OOM!", .{}, error.OutOfMemory);
@@ -93,11 +94,11 @@ pub fn stage(
         .file => |file| args.append(self.arena, file) catch try fatal("OOM!", .{}, error.OutOfMemory),
     }
 
-    return self.cmd(args.items, null);
+    return self.cmd(args.items, writer);
 }
 
-pub fn commit(self: *const Git, commit_message: []const u8) !bool {
-    return self.cmd(&[_][]const u8{ "git", "commit", "-m", commit_message }, null);
+pub fn commit(self: *const Git, commit_message: []const u8, writer: ?std.io.AnyWriter) !bool {
+    return self.cmd(&[_][]const u8{ "git", "commit", "-m", commit_message }, writer);
 }
 
 pub fn push(self: *const Git, writer: ?std.io.AnyWriter) !bool {

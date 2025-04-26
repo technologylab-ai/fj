@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Invoice 2025-004 — fi</title>
+    <title>Edit {{type}} {{shortname}}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { font-family: sans-serif; margin: 0; }
@@ -62,26 +62,22 @@
   </header>
 
   <main>
-    <div class="main-grid">
-      <div class="editor-block">
-        <h3>{{type}} {{shortname}}.json</h3>
-        <textarea id="json-editor" {{^editable}}readonly{{/editable}}>{{json}}</textarea>
-        <div class="actions">
-            {{#editable}}
-          <button onclick="saveJson()">Save JSON</button>
-            {{/editable}}
+    <form action="/{{type}}/commit/{{shortname}}" method="post">
+      <div class="main-grid">
+        <div class="editor-block">
+          <h3>{{type}} {{shortname}}.json</h3>
+          <textarea id="json-editor" name="json" {{^editable}}readonly{{/editable}}>{{json}}</textarea>
         </div>
+
+      <div class="actions">
+              {{#editable}}
+        <input type="submit" value="commit">
+              {{/editable}}
+              {{^editable}}
+        <a href="/{{type}}/edit/{{shortname}}">edit</button>
+              {{/editable}}
       </div>
-
-    <div class="actions">
-            {{#editable}}
-      <button onclick="commit()">Commit</button>
-            {{/editable}}
-            {{^editable}}
-      <button onclick="edit()">Edit</button>
-            {{/editable}}
-    </div>
-
+    </form>
   </main>
 
   <script>
