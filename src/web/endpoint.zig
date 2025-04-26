@@ -34,7 +34,7 @@ const log = std.log.scoped(.endpoint);
 // GET     /<type>/view/:shortname      <type> viewer
 // GET     /<type>/edit/:shortname      <type> editor
 // POST    /<type>/commit/:shortname    -> Back to dashboard
-// GET     /<type>/new/:shortname       <type> editor           New <type> editor
+// POST    /<type>/new/:shortname       <type> editor           New <type> editor
 //
 
 // Documents:
@@ -81,6 +81,7 @@ const html_resource_editor = @embedFile("templates/resource_editor.html");
 const html_resource_list = @embedFile("templates/resource_list.html");
 const html_document_list = @embedFile("templates/document_list.html");
 const html_document_editor = @embedFile("templates/document_editor.html");
+const html_error = @embedFile("templates/error.html");
 
 // the slug
 path: []const u8,
@@ -1204,6 +1205,16 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
             return ep.show_dashboard(arena, context, r);
         }
 
+        // /client/new
+        if (std.mem.eql(u8, path, "/client/new")) {
+            return ep.resource_new(
+                arena,
+                context,
+                r,
+                Client,
+            );
+        }
+
         // /client/commit/:shortname
         if (std.mem.startsWith(u8, path, "/client/commit/") and
             path.len > "/client/commit/".len)
@@ -1214,6 +1225,16 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 r,
                 Client,
                 path["/client/commit/".len..],
+            );
+        }
+
+        // /rate/new
+        if (std.mem.eql(u8, path, "/rate/new")) {
+            return ep.resource_new(
+                arena,
+                context,
+                r,
+                Rate,
             );
         }
 
@@ -1311,6 +1332,87 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
 
     r.setStatus(.not_found);
     try r.sendBody(html_404_not_found);
+}
+
+fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type) !void {
+    var fi = createFi(arena, context);
+    log.debug("fi_home: {s}", .{fi.fi_home.?});
+
+    const type_string = switch (ResourceType) {
+        Client => "client",
+        Rate => "rate",
+        else => unreachable,
+    };
+
+    try r.parseBody();
+
+    const shortname = blk: {
+        const fio_params = r.h.*.params;
+        const key = zap.fio.fiobj_str_new("shortname", "shortname".len);
+        const fio_shortname = zap.fio.fiobj_hash_get(fio_params, key);
+
+        const elem = zap.fio.fiobj_ary_index(fio_shortname, 0);
+        const shortname = zap.util.fio2str(elem) orelse return error.NoString;
+        break :blk shortname;
+    };
+
+    const expected_filename = try std.fmt.allocPrint(arena, "{s}.json", .{shortname});
+    if (fsutil.fileExists(expected_filename)) {
+        const message = try std.fmt.allocPrint(
+            arena,
+            "Error: {s} {s} already exists!",
+            .{ type_string, shortname },
+        );
+        var mustache = try zap.Mustache.fromData(html_error);
+        defer mustache.deinit();
+        const result = mustache.build(.{ .message = message });
+        defer result.deinit();
+
+        if (result.str()) |rendered| {
+            return try r.sendBody(rendered);
+        } else {
+            return;
+        }
+    }
+
+    const Command = switch (ResourceType) {
+        Client => ClientCommand,
+        Rate => RateCommand,
+        Letter => LetterCommand,
+        else => unreachable,
+    };
+
+    const command: Command = .{
+        .positional = .{ .subcommand = .new, .arg = shortname },
+    };
+
+    _ = try fi.handleRecordCommand(command);
+
+    const obj = try fi.loadRecord(
+        ResourceType,
+        try arena.dupe(u8, shortname),
+        .{ .custom_path = "." },
+    );
+
+    var alist: std.ArrayListUnmanaged(u8) = .empty;
+    const writer = alist.writer(arena);
+    try std.json.stringify(obj, .{ .whitespace = .indent_4 }, writer);
+
+    const params = .{
+        .type = type_string,
+        .shortname = shortname,
+        .json = alist.items,
+        .editable = true,
+    };
+
+    var mustache = try zap.Mustache.fromData(html_resource_editor);
+    defer mustache.deinit();
+    const result = mustache.build(params);
+    defer result.deinit();
+
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
 }
 
 fn resource_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type, shortname: []const u8) !void {

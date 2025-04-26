@@ -854,7 +854,7 @@ pub fn handleRecordCommand(self: *Fi, args: anytype) !HandleRecordCommandResult 
                         std.io.getStdOut().writer().print("- {s}\n", .{element.name[0 .. element.name.len - 5]}) catch |err| {
                             try fatal("Cannot print to stdout: {}", .{err}, err);
                         };
-                        try alist.append(self.arena, element.name[0 .. element.name.len - 5]);
+                        try alist.append(self.arena, try self.arena.dupe(u8, element.name[0 .. element.name.len - 5]));
                     }
                 }
             }
