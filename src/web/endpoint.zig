@@ -8,6 +8,7 @@ const Context = @import("context.zig");
 const Format = @import("../format.zig");
 const fsutil = @import("../fsutil.zig");
 const util = @import("util.zig");
+const Fatal = @import("../fatal.zig");
 
 const Allocator = std.mem.Allocator;
 const Endpoint = @This();
@@ -915,6 +916,7 @@ fn document_new(
     const command: Command = blk: {
         if (DocumentType == Letter) {
             break :blk .{
+                // .positional = .{ .subcommand = .new, .arg = client },
                 .positional = .{ .subcommand = .new, .arg = client },
             };
         } else {
@@ -926,7 +928,24 @@ fn document_new(
         }
     };
 
-    const result = try fi.cmdCreateNewDocument(command);
+    const result = fi.cmdCreateNewDocument(command) catch |err| {
+        const message = try std.fmt.allocPrint(
+            arena,
+            "{}:\n{s}",
+            .{ err, Fatal.errormsg },
+        );
+        var mustache = try zap.Mustache.fromData(html_error);
+        defer mustache.deinit();
+        const result = mustache.build(.{ .message = message });
+        defer result.deinit();
+
+        if (result.str()) |rendered| {
+            return try r.sendBody(rendered);
+        } else {
+            return;
+        }
+        return;
+    };
 
     const obj = try std.json.parseFromSliceLeaky(
         DocumentType,
