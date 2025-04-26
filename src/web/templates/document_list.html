@@ -98,6 +98,17 @@
 
   <main>
     <h2>{{type}}s</h2>
+
+    <form action="/{{type}}/new" method="post">
+        <input type="text" placeholder="client shortname" name="client" required>
+        {{^is_letter}}
+        <input type="text" placeholder="rates shortname" name="rates" required>
+        <input type="text" placeholder="project" name="project" required>
+        {{/is_letter}}
+        <input type="submit" value="new"/>
+    </form>
+
+
     <table>
       <thead>
         <tr>
