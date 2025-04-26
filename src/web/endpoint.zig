@@ -6,6 +6,7 @@ const Git = @import("../git.zig");
 const fi_json = @import("../json.zig");
 const Context = @import("context.zig");
 const Format = @import("../format.zig");
+const fsutil = @import("../fsutil.zig");
 
 const Allocator = std.mem.Allocator;
 const Endpoint = @This();
@@ -54,7 +55,7 @@ const log = std.log.scoped(.endpoint);
 const html_login = @embedFile("templates/login.html");
 const html_dashboard = @embedFile("templates/dashboard.html");
 const html_404_not_found = "<html><body><h1>404 - Not found!</h1></body></html";
-const html_git_push = @embedFile("templates/git_push.html");
+const html_git_command = @embedFile("templates/git_command.html");
 const html_resource_editor = @embedFile("templates/resource_editor.html");
 const html_resource_list = @embedFile("templates/resource_list.html");
 const html_document_list = @embedFile("templates/document_list.html");
@@ -100,6 +101,12 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
             return ep.show_dashboard(arena, context, r);
         }
 
+        // git commit
+        if (std.mem.eql(u8, path, "/git/commit")) {
+            r.setStatus(.ok);
+            return ep.git_commit(arena, context, r);
+        }
+
         // git push
         if (std.mem.eql(u8, path, "/git/push")) {
             r.setStatus(.ok);
@@ -124,6 +131,19 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 false,
             );
         }
+        if (std.mem.startsWith(u8, path, "/client/edit/") and
+            path.len > "/client/edit/".len)
+        {
+            r.setStatus(.ok);
+            return ep.resource_view(
+                arena,
+                context,
+                r,
+                fi_json.Client,
+                path["/client/edit/".len..],
+                true,
+            );
+        }
 
         // rates
         if (std.mem.eql(u8, path, "/rate")) {
@@ -141,6 +161,19 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 fi_json.Rate,
                 path["/rate/view/".len..],
                 false,
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/rate/edit/") and
+            path.len > "/rate/edit/".len)
+        {
+            r.setStatus(.ok);
+            return ep.resource_view(
+                arena,
+                context,
+                r,
+                fi_json.Rate,
+                path["/rate/edit/".len..],
+                true,
             );
         }
 
@@ -902,9 +935,39 @@ fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
     _ = try git.push(alist.writer(arena).any());
 
     const params = .{
+        .command = "push",
         .message = alist.items,
     };
-    var mustache = try zap.Mustache.fromData(html_git_push);
+    var mustache = try zap.Mustache.fromData(html_git_command);
+    defer mustache.deinit();
+    const result = mustache.build(params);
+    defer result.deinit();
+
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
+}
+
+fn git_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
+    const git: Git = .{
+        .arena = arena,
+        .repo_dir = context.fi_home,
+    };
+
+    var alist = std.ArrayListUnmanaged(u8).empty;
+    const writer = alist.writer(arena).any();
+    if (try git.stage(.all, writer)) {
+        _ = try git.commit("Committed via web", writer);
+    }
+
+    const params = .{
+        .command = "commit",
+        .message = alist.items,
+    };
+    var mustache = try zap.Mustache.fromData(html_git_command);
     defer mustache.deinit();
     const result = mustache.build(params);
     defer result.deinit();
@@ -925,10 +988,129 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
             r.setStatus(.ok);
             return ep.show_dashboard(arena, context, r);
         }
+
+        // /client/commit/:shortname
+        if (std.mem.startsWith(u8, path, "/client/commit/") and
+            path.len > "/client/commit/".len)
+        {
+            return ep.resource_commit(
+                arena,
+                context,
+                r,
+                fi_json.Client,
+                path["/client/commit/".len..],
+            );
+        }
+
+        // /rate/commit/:shortname
+        if (std.mem.startsWith(u8, path, "/rate/commit/") and
+            path.len > "/rate/commit/".len)
+        {
+            return ep.resource_commit(
+                arena,
+                context,
+                r,
+                fi_json.Rate,
+                path["/rate/commit/".len..],
+            );
+        }
     }
 
     r.setStatus(.not_found);
     try r.sendBody(html_404_not_found);
+}
+
+fn fiobj_type(o: zap.fio.FIOBJ) []const u8 {
+    const value_type = switch (zap.fio.fiobj_type(o)) {
+        zap.fio.FIOBJ_T_NULL => "null",
+        zap.fio.FIOBJ_T_TRUE => "true",
+        zap.fio.FIOBJ_T_FALSE => "false",
+        zap.fio.FIOBJ_T_NUMBER => "number",
+        zap.fio.FIOBJ_T_FLOAT => "float",
+        zap.fio.FIOBJ_T_STRING => "string",
+        zap.fio.FIOBJ_T_ARRAY => "array",
+        zap.fio.FIOBJ_T_HASH => "hash",
+        zap.fio.FIOBJ_T_DATA => "data",
+        zap.fio.FIOBJ_T_UNKNOWN => "unknown",
+        else => "shit",
+    };
+    return value_type;
+}
+const CallbackContext_KV = struct {
+    allocator: Allocator,
+    params: *std.ArrayList(zap.Request.HttpParamKV),
+    last_error: ?anyerror = null,
+
+    pub fn callback(fiobj_value: zap.fio.FIOBJ, context_: ?*anyopaque) callconv(.C) c_int {
+        const ctx: *@This() = @as(*@This(), @ptrCast(@alignCast(context_)));
+        // this is thread-safe, guaranteed by fio
+        const fiobj_key: zap.fio.FIOBJ = zap.fio.fiobj_hash_key_in_loop();
+        log.debug("value_type = {s}", .{fiobj_type(fiobj_value)});
+        ctx.params.append(.{
+            .key = zap.util.fio2strAlloc(ctx.allocator, fiobj_key) catch |err| {
+                ctx.last_error = err;
+                return -1;
+            },
+            .value = zap.Request.fiobj2HttpParam(ctx.allocator, fiobj_value) catch |err| {
+                ctx.last_error = err;
+                return -1;
+            },
+        }) catch |err| {
+            // what to do?
+            // signal the caller that an error occured by returning -1
+            // also, set the error
+            ctx.last_error = err;
+            return -1;
+        };
+        return 0;
+    }
+};
+
+fn resource_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type, shortname: []const u8) !void {
+    var fi = createFi(arena, context);
+
+    try r.parseBody();
+    if (r.body) |body| {
+        log.debug("BODY: `{s}`", .{body});
+    }
+
+    const json = blk: {
+        const fio_params = r.h.*.params;
+        log.debug("type of params = {s}", .{fiobj_type(r.h.*.params)});
+
+        const param_count = zap.fio.fiobj_hash_count(fio_params);
+        log.debug("param_count = {d}", .{param_count});
+
+        const key = zap.fio.fiobj_str_new("json", "json".len);
+        const fio_json = zap.fio.fiobj_hash_get(fio_params, key);
+        log.debug("fio_json = {s}", .{fiobj_type(fio_json)});
+
+        const elem = zap.fio.fiobj_ary_index(fio_json, 0);
+        log.debug("elem = {s}", .{fiobj_type(elem)});
+        const json = zap.util.fio2str(elem) orelse return error.NoString;
+        log.debug("json = {s}", .{json});
+        break :blk json;
+    };
+
+    var path_buf: [Fi.max_path_bytes]u8 = undefined;
+    const new_revision = blk: {
+        const json_path = try fi.recordPath(ResourceType, shortname, null, &path_buf);
+        if (fsutil.fileExists(json_path)) {
+            const existing = try fi.loadRecord(ResourceType, shortname, .{});
+            break :blk existing.revision + 1;
+        } else {
+            break :blk 0;
+        }
+    };
+
+    // now parse the specified one
+    var obj = try std.json.parseFromSliceLeaky(ResourceType, arena, json, .{});
+    obj.revision = new_revision;
+    obj.updated = try fi.isoTime();
+
+    // and write it into fi_home
+    _ = try fi.writeRecord(shortname, obj, .{ .allow_overwrite = true });
+    try r.redirectTo("/", null);
 }
 
 // unauthorized goes to login page
