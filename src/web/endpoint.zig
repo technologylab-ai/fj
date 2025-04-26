@@ -193,7 +193,30 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 r,
                 fi_json.Invoice,
                 path["/invoice/view/".len..],
-                false,
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/invoice/edit/") and
+            path.len > "/invoice/edit/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_edit(
+                arena,
+                context,
+                r,
+                fi_json.Invoice,
+                path["/invoice/edit/".len..],
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/invoice/edit/") and
+            path.len > "/invoice/edit/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_edit(
+                arena,
+                context,
+                r,
+                fi_json.Invoice,
+                path["/invoice/edit/".len..],
             );
         }
         if (std.mem.startsWith(u8, path, "/invoice/pdf/") and
@@ -206,6 +229,18 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 r,
                 fi_json.Invoice,
                 path["/invoice/pdf/".len..],
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/invoice/draftpdf/") and
+            path.len > "/invoice/draftpdf/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_draft_pdf(
+                arena,
+                context,
+                r,
+                fi_json.Invoice,
+                path["/invoice/draftpdf/".len..],
             );
         }
 
@@ -225,7 +260,18 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 r,
                 fi_json.Offer,
                 path["/offer/view/".len..],
-                false,
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/offer/edit/") and
+            path.len > "/offer/edit/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_edit(
+                arena,
+                context,
+                r,
+                fi_json.Offer,
+                path["/offer/edit/".len..],
             );
         }
         if (std.mem.startsWith(u8, path, "/offer/pdf/") and
@@ -238,6 +284,18 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 r,
                 fi_json.Offer,
                 path["/offer/pdf/".len..],
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/offer/draftpdf/") and
+            path.len > "/offer/draftpdf/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_draft_pdf(
+                arena,
+                context,
+                r,
+                fi_json.Offer,
+                path["/offer/draftpdf/".len..],
             );
         }
 
@@ -256,7 +314,18 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 r,
                 fi_json.Letter,
                 path["/letter/view/".len..],
-                false,
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/letter/edit/") and
+            path.len > "/letter/edit/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_edit(
+                arena,
+                context,
+                r,
+                fi_json.Letter,
+                path["/letter/edit/".len..],
             );
         }
         if (std.mem.startsWith(u8, path, "/letter/pdf/") and
@@ -269,6 +338,18 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 r,
                 fi_json.Letter,
                 path["/letter/pdf/".len..],
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/letter/draftpdf/") and
+            path.len > "/letter/draftpdf/".len)
+        {
+            r.setStatus(.ok);
+            return ep.document_draft_pdf(
+                arena,
+                context,
+                r,
+                fi_json.Letter,
+                path["/letter/draftpdf/".len..],
             );
         }
     }
@@ -748,20 +829,7 @@ fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     }
 }
 
-fn document_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8, editable: bool) !void {
-    const Document = struct {
-        type: []const u8,
-        id: []const u8,
-        client: []const u8,
-        date: []const u8,
-        status: []const u8,
-        amount: []const u8,
-
-        json: []const u8,
-        billables: []const u8,
-        tex: []const u8,
-    };
-
+fn document_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
     var fi = createFi(arena, context);
     const fi_config = try fi.loadConfigJson();
 
@@ -879,11 +947,328 @@ fn document_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         .type = doc_type,
         .document = document,
         .currency_symbol = fi_config.CurrencySymbol,
-        .editable = editable,
+        .editable = false,
         .json = document.json,
         .billables = document.billables,
         .tex = document.tex,
         .id = document.id,
+        .compile = false,
+    };
+
+    var mustache = try zap.Mustache.fromData(html_document_editor);
+    defer mustache.deinit();
+    const result = mustache.build(params);
+    defer result.deinit();
+
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
+}
+
+const Document = struct {
+    type: []const u8,
+    id: []const u8,
+    client: []const u8,
+    date: []const u8,
+    status: []const u8,
+    amount: []const u8,
+
+    json: []const u8,
+    billables: []const u8,
+    tex: []const u8,
+};
+
+fn document_edit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
+    var fi = createFi(arena, context);
+    const fi_config = try fi.loadConfigJson();
+
+    const document_subdir_name = try fi.findDocumentById(DocumentType, id);
+    const document_dir_path = try std.fs.path.join(arena, &.{ context.work_dir, document_subdir_name });
+    // we are in workdir
+    if (fsutil.isDirPresent(document_dir_path)) {
+        // delete it!
+        try std.fs.cwd().deleteTree(document_dir_path);
+    }
+
+    const document: Document = blk: {
+        switch (DocumentType) {
+            fi_json.Invoice => {
+                const checkout_cli: Cli.InvoiceCommand = .{
+                    .positional = .{ .subcommand = .checkout, .arg = id },
+                };
+                const invoice_files = try fi.cmdCheckoutDocument(checkout_cli);
+                const obj = try std.json.parseFromSliceLeaky(
+                    fi_json.Invoice,
+                    arena,
+                    invoice_files.checkout.json,
+                    .{},
+                );
+
+                const status = status_blk: {
+                    if (obj.paid_date == null) {
+                        break :status_blk "open";
+                    } else {
+                        break :status_blk "paid";
+                    }
+                };
+                break :blk .{
+                    // we don't dup() them because of the arena
+                    .type = "invoice",
+                    .id = obj.id,
+                    .client = obj.client_shortname,
+                    .date = obj.updated[0..10],
+                    .status = status,
+                    .amount = try Format.floatThousandsAlloc(
+                        arena,
+                        @as(f32, @floatFromInt(obj.total orelse 0)),
+                        .{ .comma = ',', .sep = '.' },
+                    ),
+                    .json = invoice_files.checkout.json,
+                    .billables = invoice_files.checkout.billables,
+                    .tex = invoice_files.checkout.tex,
+                };
+            },
+
+            fi_json.Offer => {
+                const checkout_cli: Cli.OfferCommand = .{
+                    .positional = .{ .subcommand = .checkout, .arg = id },
+                };
+                const offer_files = try fi.cmdCheckoutDocument(checkout_cli);
+                const obj = try std.json.parseFromSliceLeaky(
+                    fi_json.Offer,
+                    arena,
+                    offer_files.checkout.json,
+                    .{},
+                );
+
+                const status = status_blk: {
+                    if (obj.accepted_date == null) {
+                        break :status_blk "open";
+                    } else {
+                        break :status_blk "accepted";
+                    }
+                };
+                break :blk .{
+                    // we don't dup() them because of the arena
+                    .type = "offer",
+                    .id = obj.id,
+                    .client = obj.client_shortname,
+                    .date = obj.updated[0..10],
+                    .status = status,
+                    .amount = try Format.floatThousandsAlloc(
+                        arena,
+                        @as(f32, @floatFromInt(obj.total orelse 0)),
+                        .{ .comma = ',', .sep = '.' },
+                    ),
+                    .json = offer_files.checkout.json,
+                    .billables = offer_files.checkout.billables,
+                    .tex = offer_files.checkout.tex,
+                };
+            },
+
+            fi_json.Letter => {
+                const checkout_cli: Cli.LetterCommand = .{
+                    .positional = .{ .subcommand = .checkout, .arg = id },
+                };
+                const letter_files = try fi.cmdCheckoutDocument(checkout_cli);
+                const obj = try std.json.parseFromSliceLeaky(
+                    fi_json.Letter,
+                    arena,
+                    letter_files.checkout.json,
+                    .{},
+                );
+
+                break :blk .{
+                    // we don't dup() them because of the arena
+                    .type = "letter",
+                    .id = obj.id,
+                    .client = obj.client_shortname,
+                    .date = obj.updated[0..10],
+                    .status = "",
+                    .amount = "",
+                    .json = letter_files.checkout.json,
+                    .billables = letter_files.checkout.billables,
+                    .tex = letter_files.checkout.tex,
+                };
+            },
+            else => unreachable,
+        }
+    };
+
+    const doc_type = Fi.documentTypeHumanName(DocumentType);
+
+    const params = .{
+        .type = doc_type,
+        .document = document,
+        .currency_symbol = fi_config.CurrencySymbol,
+        .editable = true,
+        .json = document.json,
+        .billables = document.billables,
+        .tex = document.tex,
+        .id = document.id,
+        .compile = true,
+    };
+
+    var mustache = try zap.Mustache.fromData(html_document_editor);
+    defer mustache.deinit();
+    const result = mustache.build(params);
+    defer result.deinit();
+
+    if (result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
+}
+
+fn document_compile(
+    _: *Endpoint,
+    arena: Allocator,
+    context: *Context,
+    r: zap.Request,
+    DocumentType: type,
+    id: []const u8,
+) !void {
+    var fi = createFi(arena, context);
+    const fi_config = try fi.loadConfigJson();
+    const document_subdir_name = try fi.findDocumentById(DocumentType, id);
+
+    // cd into the subdir
+    log.debug("Current dir is {s}", .{try std.process.getCwdAlloc(arena)});
+    log.debug("Trying to change into {s}", .{document_subdir_name});
+    try std.process.changeCurDir(document_subdir_name);
+    defer {
+        std.process.changeCurDir(context.work_dir) catch |err| std.process.fatal("Cannot change to work_dir {s}: {}!!!", .{ context.work_dir, err });
+    }
+
+    // get the files passed in from the browser
+    try r.parseBody();
+
+    const json = blk: {
+        const fio_params = r.h.*.params;
+        const key = zap.fio.fiobj_str_new("json", "json".len);
+        const fio_json = zap.fio.fiobj_hash_get(fio_params, key);
+
+        const elem = zap.fio.fiobj_ary_index(fio_json, 0);
+        const json = zap.util.fio2str(elem) orelse return error.NoString;
+        break :blk json;
+    };
+
+    const billables = blk: {
+        const fio_params = r.h.*.params;
+        const key = zap.fio.fiobj_str_new("billables", "billables".len);
+        const fio_billables = zap.fio.fiobj_hash_get(fio_params, key);
+
+        const elem = zap.fio.fiobj_ary_index(fio_billables, 0);
+        const billables = zap.util.fio2str(elem) orelse return error.NoString;
+        break :blk billables;
+    };
+
+    const tex = blk: {
+        const fio_params = r.h.*.params;
+        const key = zap.fio.fiobj_str_new("tex", "tex".len);
+        const fio_tex = zap.fio.fiobj_hash_get(fio_params, key);
+
+        const elem = zap.fio.fiobj_ary_index(fio_tex, 0);
+        const tex = zap.util.fio2str(elem) orelse return error.NoString;
+        break :blk tex;
+    };
+
+    const doc_type = Fi.documentTypeHumanName(DocumentType);
+
+    // now save them
+    var cwd = std.fs.cwd();
+    const json_filename = try std.fmt.allocPrint(arena, "{s}.json", .{doc_type});
+    const billables_filename = "billables.csv";
+    const tex_filename = try std.fmt.allocPrint(arena, "{s}.tex", .{doc_type});
+
+    var json_file = try cwd.createFile(json_filename, .{});
+    defer json_file.close();
+    try json_file.writeAll(json);
+
+    if (DocumentType != fi_json.Letter) {
+        var billables_file = try cwd.createFile(billables_filename, .{});
+        defer billables_file.close();
+        try billables_file.writeAll(billables);
+    }
+
+    var tex_file = try cwd.createFile(tex_filename, .{});
+    defer tex_file.close();
+    try tex_file.writeAll(tex);
+
+    const CompileCommand = switch (DocumentType) {
+        fi_json.Invoice => Cli.InvoiceCommand,
+        fi_json.Offer => Cli.OfferCommand,
+        fi_json.Letter => Cli.LetterCommand,
+        else => unreachable,
+    };
+
+    const compileCommand: CompileCommand = .{
+        .positional = .{ .subcommand = .compile },
+    };
+
+    const files = try fi.cmdCompileDocument(compileCommand);
+
+    const obj = try std.json.parseFromSliceLeaky(
+        DocumentType,
+        arena,
+        files.compile.json,
+        .{},
+    );
+
+    const status: []const u8 = blk: {
+        switch (DocumentType) {
+            fi_json.Invoice => {
+                if (obj.paid_date == null) {
+                    break :blk "open";
+                } else {
+                    break :blk "paid";
+                }
+            },
+            fi_json.Offer => {
+                if (obj.accepted_date == null) {
+                    break :blk "open";
+                } else {
+                    break :blk "accepted";
+                }
+            },
+            fi_json.Letter => break :blk "",
+            else => unreachable,
+        }
+    };
+
+    const amount = blk: {
+        if (DocumentType == fi_json.Letter) {
+            break :blk "";
+        } else {
+            break :blk try Format.floatThousandsAlloc(
+                arena,
+                @as(f32, @floatFromInt(obj.total orelse 0)),
+                .{ .comma = ',', .sep = '.' },
+            );
+        }
+    };
+
+    const document: Document = .{
+        .type = doc_type,
+        .id = id,
+        .client = obj.client_shortname,
+        .date = obj.updated[0..10],
+        .status = status,
+        .amount = amount,
+        .json = files.compile.json,
+        .billables = files.compile.billables,
+        .tex = files.compile.tex,
+    };
+
+    const params = .{
+        .type = doc_type,
+        .document = document,
+        .currency_symbol = fi_config.CurrencySymbol,
+        .editable = true,
+        .json = document.json,
+        .billables = document.billables,
+        .tex = document.tex,
+        .id = document.id,
+        .compile = true,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -923,8 +1308,30 @@ fn document_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
     );
     log.info("Opening {s}", .{pdf_path});
 
+    try r.setHeader("Cache-Control", "no-store");
     try r.sendFile(pdf_path);
 }
+
+fn document_draft_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
+    var fi = createFi(arena, context);
+    const document_subdir_name = try fi.findDocumentById(DocumentType, id);
+
+    // Linux XDG_OPEN || macos open || windows: explorer.exe?
+    const pdf_filename = try std.fmt.allocPrint(
+        arena,
+        "{s}.pdf",
+        .{document_subdir_name},
+    );
+    const pdf_path = try std.fs.path.join(
+        arena,
+        &[_][]const u8{ document_subdir_name, pdf_filename },
+    );
+    log.info("Opening {s}", .{pdf_path});
+
+    try r.setHeader("Cache-Control", "no-store");
+    try r.sendFile(pdf_path);
+}
+
 fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
     const git: Git = .{
         .arena = arena,
@@ -1012,6 +1419,45 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 r,
                 fi_json.Rate,
                 path["/rate/commit/".len..],
+            );
+        }
+
+        // /invoice/compile/:shortname
+        if (std.mem.startsWith(u8, path, "/invoice/compile/") and
+            path.len > "/invoice/compile/".len)
+        {
+            return ep.document_compile(
+                arena,
+                context,
+                r,
+                fi_json.Invoice,
+                path["/invoice/compile/".len..],
+            );
+        }
+
+        // /offer/compile/:shortname
+        if (std.mem.startsWith(u8, path, "/offer/compile/") and
+            path.len > "/offer/compile/".len)
+        {
+            return ep.document_compile(
+                arena,
+                context,
+                r,
+                fi_json.Offer,
+                path["/offer/compile/".len..],
+            );
+        }
+
+        // /letter/compile/:shortname
+        if (std.mem.startsWith(u8, path, "/letter/compile/") and
+            path.len > "/letter/compile/".len)
+        {
+            return ep.document_compile(
+                arena,
+                context,
+                r,
+                fi_json.Letter,
+                path["/letter/compile/".len..],
             );
         }
     }

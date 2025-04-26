@@ -149,5 +149,5 @@ test floatThousands {
 }
 
 pub fn strip(str: []const u8) []const u8 {
-    return std.mem.trim(u8, str, " \t\n");
+    return std.mem.trim(u8, str, " \t\n\r");
 }
