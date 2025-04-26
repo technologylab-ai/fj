@@ -941,7 +941,7 @@ pub fn documentTypeHumanName(DocumentType: type) []const u8 {
     };
 }
 
-const DocumentSubdirSpec = struct {
+pub const DocumentSubdirSpec = struct {
     dir: Dir,
     name: []const u8,
 };
@@ -1390,7 +1390,7 @@ pub fn findDocumentById(self: *const Fi, DocumentType: type, id: []const u8) ![]
     }
 }
 
-fn cmdCheckoutDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
+pub fn cmdCheckoutDocument(self: *Fi, args: anytype) !HandleDocumentCommandResult {
     const DocumentType = switch (@TypeOf(args)) {
         Cli.LetterCommand => fi_json.Letter,
         Cli.OfferCommand => fi_json.Offer,
@@ -1895,8 +1895,10 @@ fn generateBillablesTex(self: *const Fi, subdir_spec: DocumentSubdirSpec, obj: a
     var group_sum_map: std.StringArrayHashMapUnmanaged(usize) = .empty;
     var current_group: []const u8 = "unnamed";
 
-    while (it.next()) |line| {
+    while (it.next()) |line_untrimmed| {
         line_count += 1;
+
+        const line = format.strip(line_untrimmed);
 
         // check if it's a comment
         if (std.mem.startsWith(u8, line, "#")) continue;
@@ -2086,7 +2088,7 @@ fn replaceSection(self: *const Fi, input: []const u8, section: []const u8, repla
     return alist.items;
 }
 
-fn cmdCompileDocument(self: *const Fi, args: anytype) !HandleDocumentCommandResult {
+pub fn cmdCompileDocument(self: *const Fi, args: anytype) !HandleDocumentCommandResult {
     const DocumentType = switch (@TypeOf(args)) {
         Cli.LetterCommand => fi_json.Letter,
         Cli.OfferCommand => fi_json.Offer,

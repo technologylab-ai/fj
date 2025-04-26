@@ -9,6 +9,8 @@ const Dir = std.fs.Dir;
 const Context = @import("context.zig");
 const Server = @This();
 
+const log = std.log.scoped(.server);
+
 pub const InitOpts = struct {
     host: []const u8,
     port: usize,
@@ -60,6 +62,18 @@ pub fn start(fi_home: []const u8, opts: InitOpts) !void {
     defer allocator.free(context.fi_home);
     defer allocator.free(context.logo_imgdata);
 
+    // cd into the working directory
+    std.process.changeCurDir(context.work_dir) catch |err| {
+        std.process.fatal(
+            "Cannot change into working directory `{s}`: {}",
+            .{ context.work_dir, err },
+        );
+    };
+    // get it back
+    context.work_dir = try std.process.getCwdAlloc(allocator);
+    log.info("My working directory is: {s}", .{context.work_dir});
+    defer allocator.free(context.work_dir);
+
     // fill the lookup table
     try context.auth_lookup.put(allocator, opts.username, opts.password);
     defer context.auth_lookup.deinit(allocator);
@@ -71,14 +85,6 @@ pub fn start(fi_home: []const u8, opts: InitOpts) !void {
         std.log.debug("    `{s}`: `{s}`", .{ entry.key_ptr.*, entry.value_ptr.* });
     }
     std.debug.print("\n", .{});
-
-    // cd into the working directory
-    std.process.changeCurDir(context.work_dir) catch |err| {
-        std.process.fatal(
-            "Cannot change into working directory `{s}`: {}",
-            .{ context.work_dir, err },
-        );
-    };
 
     //
     // App

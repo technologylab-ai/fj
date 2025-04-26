@@ -65,47 +65,44 @@
   <main>
     <h2>{{type}} <span id="invoice-id">{{id}}</span></h2>
 
-    <div class="main-grid">
-      <div class="editor-block">
-        <h3>{{type}}.json</h3>
-          <textarea id="json-editor" {{^editable}}readonly{{/editable}}>{{json}}</textarea>
-        <div class="actions">
-          {{#editable}}
-          <button onclick="saveJson()">Save JSON</button>
-          {{/editable}}
+    <form action="{{type}}/compile/{{id}}" method="post">
+      <div class="main-grid">
+        <div class="editor-block">
+          <h3>{{type}}.json</h3>
+            <textarea id="json-editor" name="json" {{^editable}}readonly{{/editable}}>{{json}}</textarea>
+        </div>
+
+        <div class="editor-block">
+          <h3>billables.csv</h3>
+          <textarea id="csv-editor" name="billables" {{^editable}}readonly{{/editable}}>{{billables}}</textarea>
+        </div>
+
+        <div class="editor-block">
+          <h3>invoice.tex</h3>
+          <textarea id="tex-editor" name="tex" {{^editable}}readonly{{/editable}}>{{tex}}</textarea>
         </div>
       </div>
 
-      <div class="editor-block">
-        <h3>billables.csv</h3>
-        <textarea id="csv-editor" {{^editable}}readonly{{/editable}}>{{billables}}</textarea>
-        <div class="actions">
-          {{#editable}}
-          <button onclick="saveCsv()">Save CSV</button>
-          {{/editable}}
-        </div>
+      <div class="actions">
+        <button type="submit" formaction="/{{type}}/compile/{{id}}">Compile PDF</button>
+
+        {{#editable}}
+        <button type="submit" formaction="/{{type}}/commit/{{id}}">Commit & Finalize</button>
+        {{/editable}}
+      </div>
+    </form>
+
+      <div>
+      {{#compile}}
+      <iframe id="pdf-preview" src="/{{type}}/draftpdf/{{id}}"></iframe>
+      {{/compile}}
       </div>
 
-      <div class="editor-block">
-        <h3>invoice.tex</h3>
-        <textarea id="tex-editor" {{^editable}}readonly{{/editable}}>{{tex}}</textarea>
-        <div class="actions">
-          {{#editable}}
-          <button onclick="saveTex()">Save TEX</button>
-          {{/editable}}
-        </div>
-      </div>
-    </div>
-
-    <div class="actions">
-      <button onclick="compileInvoice()">Compile PDF</button>
-
-      {{#editable}}
-      <button onclick="commitInvoice()">Commit & Finalize</button>
-      {{/editable}}
-    </div>
-
+      <div>
+      {{^compile}}
       <iframe id="pdf-preview" src="/{{type}}/pdf/{{id}}"></iframe>
+      {{/compile}}
+      </div>
   </main>
 
   <script>
