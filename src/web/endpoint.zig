@@ -34,7 +34,7 @@ const log = std.log.scoped(.endpoint);
 // GET     /<type>/view/:shortname      <type> viewer
 // GET     /<type>/edit/:shortname      <type> editor
 // POST    /<type>/commit/:shortname    -> Back to dashboard
-// POST    /<type>/new/:shortname       <type> editor           New <type> editor
+// POST    /<type>/new/:shortname       <type> editor
 //
 
 // Documents:
@@ -43,8 +43,9 @@ const log = std.log.scoped(.endpoint);
 // type: letter | offer | invoice
 //
 // GET     /<type>                      <type> Overview HTML page
-// GET     /<type>/new                  Show editor
-// GET     /<type>/edit/:id             Show editor
+// POST    /<type>/new                  Show editor for compilation: -> redirect to /<type>/compile/:new-id (if redirect uses /get)
+// GET     /<type>/edit/:id             Show editor editable=true, compile=true
+
 // GET     /<type>/view/:id             Show editor editable=false, compile=false
 // POST    /<type>/commit/:id           Show editor editable=true, compile=false
 // POST    /<type>/compile/:id          Show editor editable=true, compile=true
@@ -640,6 +641,7 @@ fn document_list(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         .documents = docs_and_stats.documents,
         .currency_symbol = fi_config.CurrencySymbol,
         .year = year,
+        .is_letter = DocumentType == Letter,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_list);
@@ -843,6 +845,127 @@ fn document_edit(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
     }
 }
 
+fn document_new(
+    ep: *Endpoint,
+    arena: Allocator,
+    context: *Context,
+    r: zap.Request,
+    DocumentType: type,
+) !void {
+    var fi = createFi(arena, context);
+
+    // get the files passed in from the browser
+    try r.parseBody();
+
+    const client = blk: {
+        const fio_params = r.h.*.params;
+        const key = zap.fio.fiobj_str_new("client", "client".len);
+        const fio_client = zap.fio.fiobj_hash_get(fio_params, key);
+
+        const elem = zap.fio.fiobj_ary_index(fio_client, 0);
+        const client = zap.util.fio2str(elem) orelse return error.NoString;
+        break :blk client;
+    };
+
+    const rates = blk: {
+        if (DocumentType == Letter) {
+            break :blk "";
+        }
+        const fio_params = r.h.*.params;
+        const key = zap.fio.fiobj_str_new("rates", "rates".len);
+        const fio_rates = zap.fio.fiobj_hash_get(fio_params, key);
+
+        const elem = zap.fio.fiobj_ary_index(fio_rates, 0);
+        const rates = zap.util.fio2str(elem) orelse return error.NoString;
+        break :blk rates;
+    };
+
+    const project = blk: {
+        if (DocumentType == Letter) {
+            break :blk "";
+        }
+        const fio_params = r.h.*.params;
+        const key = zap.fio.fiobj_str_new("project", "project".len);
+        const fio_project = zap.fio.fiobj_hash_get(fio_params, key);
+
+        const elem = zap.fio.fiobj_ary_index(fio_project, 0);
+        const project = zap.util.fio2str(elem) orelse return error.NoString;
+        break :blk project;
+    };
+
+    const doc_type = Fi.documentTypeHumanName(DocumentType);
+
+    const expected_path = try std.fmt.allocPrint(
+        arena,
+        "{s}--{d}-XXX--{s}",
+        .{ doc_type, try fi.year(), client },
+    );
+    if (fsutil.isDirPresent(expected_path)) {
+        // delete it
+        try std.fs.cwd().deleteTree(expected_path);
+    }
+
+    const Command = switch (DocumentType) {
+        Invoice => InvoiceCommand,
+        Offer => OfferCommand,
+        Letter => LetterCommand,
+        else => unreachable,
+    };
+
+    const command: Command = blk: {
+        if (DocumentType == Letter) {
+            break :blk .{
+                .positional = .{ .subcommand = .new, .arg = client },
+            };
+        } else {
+            break :blk .{
+                .positional = .{ .subcommand = .new, .arg = client },
+                .rates = rates,
+                .project = project,
+            };
+        }
+    };
+
+    const result = try fi.cmdCreateNewDocument(command);
+
+    const obj = try std.json.parseFromSliceLeaky(
+        DocumentType,
+        arena,
+        result.new.files.json,
+        .{},
+    );
+
+    const document = try ep.toDocument(arena, obj, result.new.files);
+    const fi_config = try fi.loadConfigJson();
+
+    // const document_name_instead_of_id = try std.fmt.allocPrint(
+    //     arena,
+    //     "{s}--{s}--{s}",
+    //     .{ doc_type, document.id, document.client },
+    // );
+    const params = .{
+        .type = doc_type,
+        .document = document,
+        .currency_symbol = fi_config.CurrencySymbol,
+        .editable = true,
+        .json = document.json,
+        .billables = document.billables,
+        .tex = document.tex,
+        .id = document.id,
+        .compile = true,
+        .is_letter = DocumentType == Letter,
+    };
+
+    var mustache = try zap.Mustache.fromData(html_document_editor);
+    defer mustache.deinit();
+    const mustache_result = mustache.build(params);
+    defer mustache_result.deinit();
+
+    if (mustache_result.str()) |rendered| {
+        try r.sendBody(rendered);
+    }
+}
+
 fn document_compile(
     ep: *Endpoint,
     arena: Allocator,
@@ -853,6 +976,7 @@ fn document_compile(
 ) !void {
     var fi = createFi(arena, context);
     const fi_config = try fi.loadConfigJson();
+    const doc_type = Fi.documentTypeHumanName(DocumentType);
     const document_subdir_name = try fi.findDocumentById(DocumentType, id);
 
     // cd into the subdir
@@ -898,8 +1022,6 @@ fn document_compile(
         const tex = zap.util.fio2str(elem) orelse return error.NoString;
         break :blk tex;
     };
-
-    const doc_type = Fi.documentTypeHumanName(DocumentType);
 
     // now save them
     var cwd = std.fs.cwd();
@@ -1105,7 +1227,6 @@ fn document_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
         }
     };
 
-    // Linux XDG_OPEN || macos open || windows: explorer.exe?
     const pdf_filename = try std.fmt.allocPrint(
         arena,
         "{s}.pdf",
@@ -1123,6 +1244,9 @@ fn document_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
 
 fn document_draft_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
     var fi = createFi(arena, context);
+
+    log.debug("document_draft_pdf called with id {s}", .{id});
+
     const document_subdir_name = try fi.findDocumentById(DocumentType, id);
 
     // Linux XDG_OPEN || macos open || windows: explorer.exe?
@@ -1138,7 +1262,11 @@ fn document_draft_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.
     log.info("Opening {s}", .{pdf_path});
 
     try r.setHeader("Cache-Control", "no-store");
-    try r.sendFile(pdf_path);
+    if (fsutil.fileExists(pdf_path)) {
+        try r.sendFile(pdf_path);
+    } else {
+        try r.sendBody(try std.fmt.allocPrint(arena, "{s} not found", .{pdf_path}));
+    }
 }
 
 fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
@@ -1248,6 +1376,36 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 r,
                 Rate,
                 path["/rate/commit/".len..],
+            );
+        }
+
+        // /invoice/new/:shortname
+        if (std.mem.eql(u8, path, "/invoice/new")) {
+            return ep.document_new(
+                arena,
+                context,
+                r,
+                Invoice,
+            );
+        }
+
+        // /offer/new/:shortname
+        if (std.mem.eql(u8, path, "/offer/new")) {
+            return ep.document_new(
+                arena,
+                context,
+                r,
+                Offer,
+            );
+        }
+
+        // /letter/new/:shortname
+        if (std.mem.eql(u8, path, "/letter/new")) {
+            return ep.document_new(
+                arena,
+                context,
+                r,
+                Letter,
             );
         }
 

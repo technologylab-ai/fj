@@ -884,9 +884,14 @@ pub const DocumentFileContents = struct {
     tex: []const u8,
 };
 
+pub const DocumentNewResult = struct {
+    files: DocumentFileContents,
+    temp_id: []const u8,
+};
+
 pub const HandleDocumentCommandResult = union(enum) {
     /// dir path
-    new: DocumentFileContents,
+    new: DocumentNewResult,
     show: DocumentFileContents,
     open: void,
     checkout: DocumentFileContents, // dir path
@@ -1105,7 +1110,7 @@ fn copyTemplateFile(self: *const Fi, filename: []const u8, dest_dir_spec: Docume
     };
 }
 
-fn cmdCreateNewDocument(self: *const Fi, args: anytype) !HandleDocumentCommandResult {
+pub fn cmdCreateNewDocument(self: *const Fi, args: anytype) !HandleDocumentCommandResult {
     const DocumentType = switch (@TypeOf(args)) {
         Cli.LetterCommand => fi_json.Letter,
         Cli.OfferCommand => fi_json.Offer,
@@ -1311,7 +1316,12 @@ fn cmdCreateNewDocument(self: *const Fi, args: anytype) !HandleDocumentCommandRe
 
     // DONE!
     log.info("✅ created in `{s}/`!", .{subdir_spec.name});
-    return .{ .new = try self.readDocumentFiles(DocumentType, subdir_spec) };
+    return .{
+        .new = .{
+            .temp_id = try self.arena.dupe(u8, temp_id),
+            .files = try self.readDocumentFiles(DocumentType, subdir_spec),
+        },
+    };
 }
 
 pub fn readDocumentFiles(self: *const Fi, DocumentType: type, subdir_spec: DocumentSubdirSpec) !DocumentFileContents {
@@ -1371,7 +1381,13 @@ pub fn readDocumentFiles(self: *const Fi, DocumentType: type, subdir_spec: Docum
 }
 
 pub fn findDocumentById(self: *const Fi, DocumentType: type, id: []const u8) ![]const u8 {
-    const base_dir_name = try self.documentBaseDir(DocumentType);
+    const base_dir_name = blk: {
+        if (std.mem.endsWith(u8, id, "XXX")) {
+            break :blk ".";
+        } else {
+            break :blk try self.documentBaseDir(DocumentType);
+        }
+    };
     const human_doctype = documentTypeHumanName(DocumentType);
     const pattern = try std.fmt.allocPrint(self.arena, "{s}--{s}--", .{ human_doctype, id });
 
@@ -2356,7 +2372,6 @@ fn getDocumentTypeId(self: *const Fi, DocumentType: type, lock_ptr: ?*fsutil.Fil
 fn incrementDocumentTypeId(self: *const Fi, DocumentType: type) ![]const u8 {
     const fi_home = self.fi_home.?; // we assert this has been set previously
 
-    // create .id files
     const subdir = switch (DocumentType) {
         fi_json.Letter => @tagName(SubDirs.letters),
         fi_json.Offer => @tagName(SubDirs.offers),
