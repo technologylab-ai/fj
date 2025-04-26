@@ -97,9 +97,13 @@
   </header>
 
   <main>
-    <h2>Dashboard</h2>
+    <h2>{{type}}s</h2>
 
-    <h3>{{type}}s</h3>
+    <form action="/{{type}}/new" method="post">
+        <input type="text" placeholder="{{type}} shortname" name="shortname" required>
+        <input type="submit" value="new"/>
+    </form>
+
     <table>
       <thead>
         <tr>
