@@ -7,6 +7,7 @@ const fi_json = @import("../json.zig");
 const Context = @import("context.zig");
 const Format = @import("../format.zig");
 const fsutil = @import("../fsutil.zig");
+const util = @import("util.zig");
 
 const Allocator = std.mem.Allocator;
 const Endpoint = @This();
@@ -15,42 +16,62 @@ const log = std.log.scoped(.endpoint);
 
 // Login:
 // ------
-// GET     /                           HTML: Login HTML
-// GET     /logo.png                    PNG: The logo.png
+// GET     /                            Login form
+// GET     /logo.png                    Logo
 
 // Dashboard:
 // ----------
-// GET     /                           HTML: Dashboard HMTL
+// GET     /                            Dashboard
+// POST    /                            Dashboard right after login
 //
-// API:
-//
-// GET     /git/push                   JSON: push archive
 
 // Resources:
 // ----------
-// GET     /client                      HTML: Client Overview HTML page
-// GET     /rate                        HTML: Client Overview HTML page
-// GET     /client/view/:id             HTML: Client viewer
-// GET     /rate/view/:id               HTML: Rate viewer
-// GET     /client/edit/:id             HTML: Client editor
-// GET     /rate/edit/:id               HTML: Rate editor
-// GET     /rate/new                    HTML: New Rate editor
-// GET     /client/new                  HTML: New Client editor
-// POST    /client/:shortname/commit    HTML: Replace client JSON
-// POST    /rate/:shortname/commit      HTML: Replace client JSON
+//
+// type: client | rate
+//
+// GET     /<type>                      <type> Overview page
+// GET     /<type>/view/:shortname      <type> viewer
+// GET     /<type>/edit/:shortname      <type> editor
+// POST    /<type>/commit/:shortname    -> Back to dashboard
+// GET     /<type>/new/:shortname       <type> editor           New <type> editor
 //
 
 // Documents:
 // ----------
 //
-// GET     /letter                     HTML: Offer Overview HTML page
-// GET     /offer                      HTML: Offer Overview HTML page
-// GET     /invoice                    HTML: Offer Overview HTML page
-// GET     /offer/new                  HTML: Show editor
-// GET     /offer/edit/:id             HTML: Show editor
-// GET     /offer/view/:id             HTML: Show editor READONLY
-// GET     /offer/pdf/:id              Show PDF
+// type: letter | offer | invoice
 //
+// GET     /<type>                      <type> Overview HTML page
+// GET     /<type>/new                  Show editor
+// GET     /<type>/edit/:id             Show editor
+// GET     /<type>/view/:id             Show editor editable=false, compile=false
+// POST    /<type>/commit/:id           Show editor editable=true, compile=false
+// POST    /<type>/compile/:id          Show editor editable=true, compile=true
+// GET     /<type>/new/:id              Show editor editable=true, compile=true
+//
+// GET     /<type>/pdf/:id              Show PDF from fi_home
+// GET     /<type>/draftpdf/:id         Show PDF from workdir
+//
+
+// Git:
+// ----
+//
+// GET     /git/commit                  Show git command result page
+// GET     /git/push                    Show git command result page
+
+const Client = fi_json.Client;
+const Rate = fi_json.Rate;
+const Letter = fi_json.Letter;
+const Offer = fi_json.Offer;
+const Invoice = fi_json.Invoice;
+
+const ClientCommand = Cli.ClientCommand;
+const RateCommand = Cli.RateCommand;
+const LetterCommand = Cli.LetterCommand;
+const OfferCommand = Cli.OfferCommand;
+const InvoiceCommand = Cli.InvoiceCommand;
+const GitCommand = Cli.GitCommand;
 
 const html_login = @embedFile("templates/login.html");
 const html_dashboard = @embedFile("templates/dashboard.html");
@@ -116,7 +137,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
         // clients
         if (std.mem.eql(u8, path, "/client")) {
             r.setStatus(.ok);
-            return ep.resource_list(arena, context, r, fi_json.Client);
+            return ep.resource_list(arena, context, r, Client);
         }
         if (std.mem.startsWith(u8, path, "/client/view/") and
             path.len > "/client/view/".len)
@@ -126,7 +147,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Client,
+                Client,
                 path["/client/view/".len..],
                 false,
             );
@@ -139,7 +160,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Client,
+                Client,
                 path["/client/edit/".len..],
                 true,
             );
@@ -148,7 +169,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
         // rates
         if (std.mem.eql(u8, path, "/rate")) {
             r.setStatus(.ok);
-            return ep.resource_list(arena, context, r, fi_json.Rate);
+            return ep.resource_list(arena, context, r, Rate);
         }
         if (std.mem.startsWith(u8, path, "/rate/view/") and
             path.len > "/rate/view/".len)
@@ -158,7 +179,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Rate,
+                Rate,
                 path["/rate/view/".len..],
                 false,
             );
@@ -171,7 +192,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Rate,
+                Rate,
                 path["/rate/edit/".len..],
                 true,
             );
@@ -180,7 +201,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
         // invoices
         if (std.mem.eql(u8, path, "/invoice")) {
             r.setStatus(.ok);
-            return ep.document_list(arena, context, r, fi_json.Invoice);
+            return ep.document_list(arena, context, r, Invoice);
         }
 
         if (std.mem.startsWith(u8, path, "/invoice/view/") and
@@ -191,7 +212,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Invoice,
+                Invoice,
                 path["/invoice/view/".len..],
             );
         }
@@ -203,7 +224,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Invoice,
+                Invoice,
                 path["/invoice/edit/".len..],
             );
         }
@@ -215,7 +236,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Invoice,
+                Invoice,
                 path["/invoice/edit/".len..],
             );
         }
@@ -227,7 +248,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Invoice,
+                Invoice,
                 path["/invoice/pdf/".len..],
             );
         }
@@ -239,7 +260,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Invoice,
+                Invoice,
                 path["/invoice/draftpdf/".len..],
             );
         }
@@ -247,7 +268,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
         // offers
         if (std.mem.eql(u8, path, "/offer")) {
             r.setStatus(.ok);
-            return ep.document_list(arena, context, r, fi_json.Offer);
+            return ep.document_list(arena, context, r, Offer);
         }
 
         if (std.mem.startsWith(u8, path, "/offer/view/") and
@@ -258,7 +279,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Offer,
+                Offer,
                 path["/offer/view/".len..],
             );
         }
@@ -270,7 +291,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Offer,
+                Offer,
                 path["/offer/edit/".len..],
             );
         }
@@ -282,7 +303,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Offer,
+                Offer,
                 path["/offer/pdf/".len..],
             );
         }
@@ -294,7 +315,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Offer,
+                Offer,
                 path["/offer/draftpdf/".len..],
             );
         }
@@ -302,7 +323,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
         // letters
         if (std.mem.eql(u8, path, "/letter")) {
             r.setStatus(.ok);
-            return ep.document_list(arena, context, r, fi_json.Letter);
+            return ep.document_list(arena, context, r, Letter);
         }
         if (std.mem.startsWith(u8, path, "/letter/view/") and
             path.len > "/letter/view/".len)
@@ -312,7 +333,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Letter,
+                Letter,
                 path["/letter/view/".len..],
             );
         }
@@ -324,7 +345,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Letter,
+                Letter,
                 path["/letter/edit/".len..],
             );
         }
@@ -336,7 +357,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Letter,
+                Letter,
                 path["/letter/pdf/".len..],
             );
         }
@@ -348,7 +369,7 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 arena,
                 context,
                 r,
-                fi_json.Letter,
+                Letter,
                 path["/letter/draftpdf/".len..],
             );
         }
@@ -368,164 +389,105 @@ fn documentIdFromName(docname: []const u8) ![]const u8 {
     return error.InvalidName;
 }
 
-fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
-    const RecentDocument = struct {
-        type: []const u8,
-        id: []const u8,
-        client: []const u8,
-        date: []const u8,
-        status: []const u8,
-        amount: []const u8,
+fn allDocsAndStats(_: *Endpoint, arena: Allocator, context: *Context, DocumentTypes: []const type) !struct { documents: []Document, stats: Stats } {
+    var doc_list = std.ArrayListUnmanaged(Document).empty;
+    var stats: Stats = .{};
 
-        pub fn lessThan(ctx: void, a: @This(), b: @This()) bool {
-            _ = ctx;
-            return std.mem.order(u8, a.date, b.date) == .lt;
+    var fi = createFi(arena, context);
+
+    inline for (DocumentTypes) |DocumentType| {
+        const Command = switch (DocumentType) {
+            Invoice => InvoiceCommand,
+            Offer => OfferCommand,
+            Letter => LetterCommand,
+            else => unreachable,
+        };
+
+        const listCommand: Command = .{
+            .positional = .{ .subcommand = .list },
+        };
+        const names = try fi.cmdListDocuments(listCommand);
+
+        for (names.list) |name| {
+            const id = try documentIdFromName(name);
+            const show_cli: Command = .{
+                .positional = .{ .subcommand = .show, .arg = id },
+            };
+            const files = try fi.cmdShowDocument(show_cli);
+            const obj = try std.json.parseFromSliceLeaky(
+                DocumentType,
+                arena,
+                files.show.json,
+                .{},
+            );
+
+            const status: []const u8 = blk: {
+                switch (DocumentType) {
+                    Invoice => {
+                        stats.num_invoices_total = @intCast(names.list.len);
+                        stats.invoiced_total_amount += obj.total orelse 0;
+                        if (obj.paid_date == null) {
+                            stats.num_invoices_open += 1;
+                            break :blk "open";
+                        } else {
+                            break :blk "paid";
+                        }
+                    },
+                    Offer => {
+                        stats.num_offers_total = @intCast(names.list.len);
+                        if (obj.accepted_date == null) {
+                            stats.num_offers_open += 1;
+                            break :blk "open";
+                        } else {
+                            break :blk "accepted";
+                        }
+                    },
+                    Letter => break :blk "",
+                    else => unreachable,
+                }
+            };
+
+            const amount = blk: {
+                if (DocumentType == Letter) {
+                    break :blk "";
+                } else {
+                    break :blk try Format.floatThousandsAlloc(
+                        arena,
+                        @as(f32, @floatFromInt(obj.total orelse 0)),
+                        .{ .comma = ',', .sep = '.' },
+                    );
+                }
+            };
+
+            const doc_type = Fi.documentTypeHumanName(DocumentType);
+
+            const document: Document = .{
+                .type = try arena.dupe(u8, doc_type),
+                .id = try arena.dupe(u8, id),
+                .client = try arena.dupe(u8, obj.client_shortname),
+                .date = try arena.dupe(u8, obj.date),
+                .sort_date = try arena.dupe(u8, obj.updated[0..10]),
+                .status = try arena.dupe(u8, status),
+                .amount = try arena.dupe(u8, amount),
+            };
+
+            try doc_list.append(arena, document);
         }
+    }
 
-        pub fn greaterThan(ctx: void, a: @This(), b: @This()) bool {
-            _ = ctx;
-            return std.mem.order(u8, a.date, b.date) == .gt;
-        }
-    };
+    return .{ .documents = try doc_list.toOwnedSlice(arena), .stats = stats };
+}
 
+fn show_dashboard(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
     var fi = createFi(arena, context);
     const year = try fi.year();
     const fi_config = try fi.loadConfigJson();
 
-    var num_invoices_open: isize = 0;
-    var num_invoices_total: isize = 0;
-    var num_offers_open: isize = 0;
-    var num_offers_total: isize = 0;
+    const docs_and_stats = try ep.allDocsAndStats(arena, context, &.{ Invoice, Offer, Letter });
+    const stats = docs_and_stats.stats;
 
-    var invoiced_total_amount: usize = 0;
-
-    var recent_document_list = std.ArrayListUnmanaged(RecentDocument).empty;
-    const recent_documents = blk: {
-
-        // 1. get all the invoices
-        const invoices_cli: Cli.InvoiceCommand = .{
-            .positional = .{ .subcommand = .list },
-        };
-        const invoice_names = try fi.cmdListDocuments(invoices_cli);
-        num_invoices_total = @intCast(invoice_names.list.len);
-        for (invoice_names.list) |invoice_name| {
-            const id = try documentIdFromName(invoice_name);
-            const show_cli: Cli.InvoiceCommand = .{
-                .positional = .{ .subcommand = .show, .arg = id },
-            };
-            const invoice_files = try fi.cmdShowDocument(show_cli);
-            const obj = try std.json.parseFromSliceLeaky(
-                fi_json.Invoice,
-                arena,
-                invoice_files.show.json,
-                .{},
-            );
-
-            invoiced_total_amount += obj.total orelse 0;
-
-            const status = status_blk: {
-                if (obj.paid_date == null) {
-                    num_invoices_open += 1;
-                    break :status_blk "open";
-                } else {
-                    break :status_blk "paid";
-                }
-            };
-            try recent_document_list.append(arena, .{
-                // we don't dup() them because of the arena
-                .type = "invoice",
-                .id = obj.id,
-                .client = obj.client_shortname,
-                .date = obj.updated[0..10],
-                .status = status,
-                .amount = try Format.floatThousandsAlloc(
-                    arena,
-                    @as(f32, @floatFromInt(obj.total orelse 0)),
-                    .{ .comma = ',', .sep = '.' },
-                ),
-            });
-        }
-
-        // 2. get all the offers
-        const offers_cli: Cli.OfferCommand = .{
-            .positional = .{ .subcommand = .list },
-        };
-        const offer_names = try fi.cmdListDocuments(offers_cli);
-        num_offers_total = @intCast(offer_names.list.len);
-        for (offer_names.list) |offer_name| {
-            const id = try documentIdFromName(offer_name);
-            const show_cli: Cli.OfferCommand = .{
-                .positional = .{ .subcommand = .show, .arg = id },
-            };
-            const offer_files = try fi.cmdShowDocument(show_cli);
-            const obj = try std.json.parseFromSliceLeaky(
-                fi_json.Offer,
-                arena,
-                offer_files.show.json,
-                .{},
-            );
-
-            const status = status_blk: {
-                if (obj.accepted_date == null) {
-                    num_offers_open += 1;
-                    break :status_blk "open";
-                } else {
-                    break :status_blk "accepted";
-                }
-            };
-            try recent_document_list.append(arena, .{
-                // we don't dup() them because of the arena
-                .type = "offer",
-                .id = obj.id,
-                .client = obj.client_shortname,
-                .date = obj.updated[0..10],
-                .status = status,
-                .amount = try Format.floatThousandsAlloc(
-                    arena,
-                    @as(f32, @floatFromInt(obj.total orelse 0)),
-                    .{ .comma = ',', .sep = '.' },
-                ),
-            });
-        }
-
-        // 3. get all the letters
-        const letters_cli: Cli.LetterCommand = .{
-            .positional = .{ .subcommand = .list },
-        };
-        const letter_names = try fi.cmdListDocuments(letters_cli);
-
-        for (letter_names.list) |letter_name| {
-            const id = try documentIdFromName(letter_name);
-            const show_cli: Cli.LetterCommand = .{
-                .positional = .{ .subcommand = .show, .arg = id },
-            };
-            const letter_files = try fi.cmdShowDocument(show_cli);
-            const obj = try std.json.parseFromSliceLeaky(
-                fi_json.Letter,
-                arena,
-                letter_files.show.json,
-                .{},
-            );
-
-            try recent_document_list.append(arena, .{
-                // we don't dup() them because of the arena
-                .type = "letter",
-                .id = obj.id,
-                .client = obj.client_shortname,
-                .date = obj.updated[0..10],
-                .status = "",
-                .amount = "",
-            });
-        }
-
-        // 5. sort them descendingly by date
-
-        const unsorted = try recent_document_list.toOwnedSlice(arena);
-        std.mem.sort(RecentDocument, unsorted, {}, RecentDocument.greaterThan);
-
-        // 6. cap them at 5
-        break :blk unsorted[0..@min(unsorted.len, 5)];
-    };
+    std.mem.sort(Document, docs_and_stats.documents, {}, Document.greaterThan);
+    const recent_documents = docs_and_stats.documents[0..@min(docs_and_stats.documents.len, 5)]; // cap at 5
 
     const git: Git = .{
         .arena = arena,
@@ -538,14 +500,14 @@ fn show_dashboard(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
     const params = .{
         .recent_docs = recent_documents,
         .currency_symbol = fi_config.CurrencySymbol,
-        .invoices_total = num_invoices_total,
-        .invoices_open = num_invoices_open,
-        .offers_total = num_offers_total,
-        .offers_open = num_offers_open,
+        .invoices_total = stats.num_invoices_total,
+        .invoices_open = stats.num_invoices_open,
+        .offers_total = stats.num_offers_total,
+        .offers_open = stats.num_offers_open,
         .git_status = git_status_alist.items,
         .invoiced_total = try Format.floatThousandsAlloc(
             arena,
-            @as(f32, @floatFromInt(invoiced_total_amount)),
+            @as(f32, @floatFromInt(stats.invoiced_total_amount)),
             .{ .comma = ',', .sep = '.' },
         ),
         .year = year,
@@ -581,8 +543,8 @@ fn resource_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     log.debug("fi_home: {s}", .{fi.fi_home.?});
 
     const type_string, const CliCommand = switch (ResourceType) {
-        fi_json.Client => .{ "client", Cli.ClientCommand },
-        fi_json.Rate => .{ "rate", Cli.RateCommand },
+        Client => .{ "client", ClientCommand },
+        Rate => .{ "rate", RateCommand },
         else => unreachable,
     };
 
@@ -631,8 +593,8 @@ fn resource_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     log.debug("fi_home: {s}", .{fi.fi_home.?});
 
     const type_string = switch (ResourceType) {
-        fi_json.Client => "client",
-        fi_json.Rate => "rate",
+        Client => "client",
+        Rate => "rate",
         else => unreachable,
     };
 
@@ -663,160 +625,18 @@ fn resource_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     }
 }
 
-fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type) !void {
-    const RecentDocument = struct {
-        type: []const u8,
-        id: []const u8,
-        client: []const u8,
-        date: []const u8,
-        status: []const u8,
-        amount: []const u8,
-
-        pub fn lessThan(ctx: void, a: @This(), b: @This()) bool {
-            _ = ctx;
-            return std.mem.order(u8, a.date, b.date) == .lt;
-        }
-
-        pub fn greaterThan(ctx: void, a: @This(), b: @This()) bool {
-            _ = ctx;
-            return std.mem.order(u8, a.date, b.date) == .gt;
-        }
-    };
-
+fn document_list(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type) !void {
     var fi = createFi(arena, context);
     const year = try fi.year();
     const fi_config = try fi.loadConfigJson();
 
-    var doc_type: []const u8 = undefined; // hack
-    const documents = blk: {
-        var recent_document_list = std.ArrayListUnmanaged(RecentDocument).empty;
-
-        switch (DocumentType) {
-            fi_json.Invoice => {
-                doc_type = "invoice";
-                const invoices_cli: Cli.InvoiceCommand = .{
-                    .positional = .{ .subcommand = .list },
-                };
-                const invoice_names = try fi.cmdListDocuments(invoices_cli);
-                for (invoice_names.list) |invoice_name| {
-                    const id = try documentIdFromName(invoice_name);
-                    const show_cli: Cli.InvoiceCommand = .{
-                        .positional = .{ .subcommand = .show, .arg = id },
-                    };
-                    const invoice_files = try fi.cmdShowDocument(show_cli);
-                    const obj = try std.json.parseFromSliceLeaky(
-                        fi_json.Invoice,
-                        arena,
-                        invoice_files.show.json,
-                        .{},
-                    );
-
-                    const status = status_blk: {
-                        if (obj.paid_date == null) {
-                            break :status_blk "open";
-                        } else {
-                            break :status_blk "paid";
-                        }
-                    };
-                    try recent_document_list.append(arena, .{
-                        // we don't dup() them because of the arena
-                        .type = "invoice",
-                        .id = obj.id,
-                        .client = obj.client_shortname,
-                        .date = obj.updated[0..10],
-                        .status = status,
-                        .amount = try Format.floatThousandsAlloc(
-                            arena,
-                            @as(f32, @floatFromInt(obj.total orelse 0)),
-                            .{ .comma = ',', .sep = '.' },
-                        ),
-                    });
-                }
-            },
-
-            fi_json.Offer => {
-                doc_type = "offer";
-                const offers_cli: Cli.OfferCommand = .{
-                    .positional = .{ .subcommand = .list },
-                };
-                const offer_names = try fi.cmdListDocuments(offers_cli);
-                for (offer_names.list) |offer_name| {
-                    const id = try documentIdFromName(offer_name);
-                    const show_cli: Cli.OfferCommand = .{
-                        .positional = .{ .subcommand = .show, .arg = id },
-                    };
-                    const offer_files = try fi.cmdShowDocument(show_cli);
-                    const obj = try std.json.parseFromSliceLeaky(
-                        fi_json.Offer,
-                        arena,
-                        offer_files.show.json,
-                        .{},
-                    );
-
-                    const status = status_blk: {
-                        if (obj.accepted_date == null) {
-                            break :status_blk "open";
-                        } else {
-                            break :status_blk "accepted";
-                        }
-                    };
-                    try recent_document_list.append(arena, .{
-                        // we don't dup() them because of the arena
-                        .type = "offer",
-                        .id = obj.id,
-                        .client = obj.client_shortname,
-                        .date = obj.updated[0..10],
-                        .status = status,
-                        .amount = try Format.floatThousandsAlloc(
-                            arena,
-                            @as(f32, @floatFromInt(obj.total orelse 0)),
-                            .{ .comma = ',', .sep = '.' },
-                        ),
-                    });
-                }
-            },
-
-            fi_json.Letter => {
-                doc_type = "letter";
-                const letters_cli: Cli.LetterCommand = .{
-                    .positional = .{ .subcommand = .list },
-                };
-                const letter_names = try fi.cmdListDocuments(letters_cli);
-                for (letter_names.list) |letter_name| {
-                    const id = try documentIdFromName(letter_name);
-                    const show_cli: Cli.LetterCommand = .{
-                        .positional = .{ .subcommand = .show, .arg = id },
-                    };
-                    const letter_files = try fi.cmdShowDocument(show_cli);
-                    const obj = try std.json.parseFromSliceLeaky(
-                        fi_json.Letter,
-                        arena,
-                        letter_files.show.json,
-                        .{},
-                    );
-
-                    try recent_document_list.append(arena, .{
-                        // we don't dup() them because of the arena
-                        .type = "letter",
-                        .id = obj.id,
-                        .client = obj.client_shortname,
-                        .date = obj.updated[0..10],
-                        .status = "",
-                        .amount = "",
-                    });
-                }
-            },
-            else => unreachable,
-        }
-
-        const sorted = try recent_document_list.toOwnedSlice(arena);
-        std.mem.sort(RecentDocument, sorted, {}, RecentDocument.greaterThan);
-        break :blk sorted;
-    };
+    const doc_type = Fi.documentTypeHumanName(DocumentType);
+    const docs_and_stats = try ep.allDocsAndStats(arena, context, &.{DocumentType});
+    std.mem.sort(Document, docs_and_stats.documents, {}, Document.greaterThan);
 
     const params = .{
         .type = doc_type,
-        .documents = documents,
+        .documents = docs_and_stats.documents,
         .currency_symbol = fi_config.CurrencySymbol,
         .year = year,
     };
@@ -831,119 +651,81 @@ fn document_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     }
 }
 
-fn document_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
-    var fi = createFi(arena, context);
-    const fi_config = try fi.loadConfigJson();
-
-    var doc_type: []const u8 = undefined; // hack
-
-    const document: Document = blk: {
+fn toDocument(_: *Endpoint, arena: Allocator, obj: anytype, files: Fi.DocumentFileContents) !Document {
+    const DocumentType = @TypeOf(obj);
+    const doc_type = Fi.documentTypeHumanName(DocumentType);
+    const status: []const u8 = blk: {
         switch (DocumentType) {
-            fi_json.Invoice => {
-                doc_type = "invoice";
-                const show_cli: Cli.InvoiceCommand = .{
-                    .positional = .{ .subcommand = .show, .arg = id },
-                };
-                const invoice_files = try fi.cmdShowDocument(show_cli);
-                const obj = try std.json.parseFromSliceLeaky(
-                    fi_json.Invoice,
-                    arena,
-                    invoice_files.show.json,
-                    .{},
-                );
-
-                const status = status_blk: {
-                    if (obj.paid_date == null) {
-                        break :status_blk "open";
-                    } else {
-                        break :status_blk "paid";
-                    }
-                };
-                break :blk .{
-                    // we don't dup() them because of the arena
-                    .type = "invoice",
-                    .id = obj.id,
-                    .client = obj.client_shortname,
-                    .date = obj.updated[0..10],
-                    .status = status,
-                    .amount = try Format.floatThousandsAlloc(
-                        arena,
-                        @as(f32, @floatFromInt(obj.total orelse 0)),
-                        .{ .comma = ',', .sep = '.' },
-                    ),
-                    .json = invoice_files.show.json,
-                    .billables = invoice_files.show.billables,
-                    .tex = invoice_files.show.tex,
-                };
+            Invoice => {
+                if (obj.paid_date == null) {
+                    break :blk "open";
+                } else {
+                    break :blk "paid";
+                }
             },
-
-            fi_json.Offer => {
-                doc_type = "offer";
-                const show_cli: Cli.OfferCommand = .{
-                    .positional = .{ .subcommand = .show, .arg = id },
-                };
-                const offer_files = try fi.cmdShowDocument(show_cli);
-                const obj = try std.json.parseFromSliceLeaky(
-                    fi_json.Offer,
-                    arena,
-                    offer_files.show.json,
-                    .{},
-                );
-
-                const status = status_blk: {
-                    if (obj.accepted_date == null) {
-                        break :status_blk "open";
-                    } else {
-                        break :status_blk "accepted";
-                    }
-                };
-                break :blk .{
-                    // we don't dup() them because of the arena
-                    .type = "offer",
-                    .id = obj.id,
-                    .client = obj.client_shortname,
-                    .date = obj.updated[0..10],
-                    .status = status,
-                    .amount = try Format.floatThousandsAlloc(
-                        arena,
-                        @as(f32, @floatFromInt(obj.total orelse 0)),
-                        .{ .comma = ',', .sep = '.' },
-                    ),
-                    .json = offer_files.show.json,
-                    .billables = offer_files.show.billables,
-                    .tex = offer_files.show.tex,
-                };
+            Offer => {
+                if (obj.accepted_date == null) {
+                    break :blk "open";
+                } else {
+                    break :blk "accepted";
+                }
             },
-
-            fi_json.Letter => {
-                doc_type = "letter";
-                const show_cli: Cli.LetterCommand = .{
-                    .positional = .{ .subcommand = .show, .arg = id },
-                };
-                const letter_files = try fi.cmdShowDocument(show_cli);
-                const obj = try std.json.parseFromSliceLeaky(
-                    fi_json.Letter,
-                    arena,
-                    letter_files.show.json,
-                    .{},
-                );
-
-                break :blk .{
-                    // we don't dup() them because of the arena
-                    .type = "letter",
-                    .id = obj.id,
-                    .client = obj.client_shortname,
-                    .date = obj.updated[0..10],
-                    .status = "",
-                    .amount = "",
-                    .json = letter_files.show.json,
-                    .billables = letter_files.show.billables,
-                    .tex = letter_files.show.tex,
-                };
-            },
+            Letter => break :blk "",
             else => unreachable,
         }
     };
+
+    const amount = blk: {
+        if (DocumentType == Letter) {
+            break :blk "";
+        } else {
+            break :blk try Format.floatThousandsAlloc(
+                arena,
+                @as(f32, @floatFromInt(obj.total orelse 0)),
+                .{ .comma = ',', .sep = '.' },
+            );
+        }
+    };
+
+    return .{
+        .type = doc_type,
+        .id = obj.id,
+        .client = obj.client_shortname,
+        .date = obj.date,
+        .sort_date = obj.updated[0..10],
+        .status = status,
+        .amount = amount,
+        .json = files.json,
+        .billables = files.billables,
+        .tex = files.tex,
+    };
+}
+fn document_view(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
+    var fi = createFi(arena, context);
+    const fi_config = try fi.loadConfigJson();
+
+    const doc_type = Fi.documentTypeHumanName(DocumentType);
+    const Command = switch (DocumentType) {
+        Invoice => InvoiceCommand,
+        Offer => OfferCommand,
+        Letter => LetterCommand,
+        else => unreachable,
+    };
+
+    const command: Command = .{
+        .positional = .{ .subcommand = .show, .arg = id },
+    };
+
+    const files = try fi.cmdShowDocument(command);
+
+    const obj = try std.json.parseFromSliceLeaky(
+        DocumentType,
+        arena,
+        files.show.json,
+        .{},
+    );
+
+    const document = try ep.toDocument(arena, obj, files.show);
 
     const params = .{
         .type = doc_type,
@@ -955,7 +737,7 @@ fn document_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         .tex = document.tex,
         .id = document.id,
         .compile = false,
-        .is_letter = DocumentType == fi_json.Letter,
+        .is_letter = DocumentType == Letter,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -976,12 +758,32 @@ const Document = struct {
     status: []const u8,
     amount: []const u8,
 
-    json: []const u8,
-    billables: []const u8,
-    tex: []const u8,
+    sort_date: []const u8,
+
+    json: []const u8 = "",
+    billables: []const u8 = "",
+    tex: []const u8 = "",
+
+    pub fn lessThan(ctx: void, a: @This(), b: @This()) bool {
+        _ = ctx;
+        return std.mem.order(u8, a.sort_date, b.sort_date) == .lt;
+    }
+
+    pub fn greaterThan(ctx: void, a: @This(), b: @This()) bool {
+        _ = ctx;
+        return std.mem.order(u8, a.sort_date, b.sort_date) == .gt;
+    }
 };
 
-fn document_edit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
+const Stats = struct {
+    num_invoices_open: isize = 0,
+    num_invoices_total: isize = 0,
+    num_offers_open: isize = 0,
+    num_offers_total: isize = 0,
+    invoiced_total_amount: usize = 0,
+};
+
+fn document_edit(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
     var fi = createFi(arena, context);
     const fi_config = try fi.loadConfigJson();
 
@@ -993,112 +795,29 @@ fn document_edit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         try std.fs.cwd().deleteTree(document_dir_path);
     }
 
-    const document: Document = blk: {
-        switch (DocumentType) {
-            fi_json.Invoice => {
-                const checkout_cli: Cli.InvoiceCommand = .{
-                    .positional = .{ .subcommand = .checkout, .arg = id },
-                };
-                const invoice_files = try fi.cmdCheckoutDocument(checkout_cli);
-                const obj = try std.json.parseFromSliceLeaky(
-                    fi_json.Invoice,
-                    arena,
-                    invoice_files.checkout.json,
-                    .{},
-                );
+    const doc_type = Fi.documentTypeHumanName(DocumentType);
 
-                const status = status_blk: {
-                    if (obj.paid_date == null) {
-                        break :status_blk "open";
-                    } else {
-                        break :status_blk "paid";
-                    }
-                };
-                break :blk .{
-                    // we don't dup() them because of the arena
-                    .type = "invoice",
-                    .id = obj.id,
-                    .client = obj.client_shortname,
-                    .date = obj.updated[0..10],
-                    .status = status,
-                    .amount = try Format.floatThousandsAlloc(
-                        arena,
-                        @as(f32, @floatFromInt(obj.total orelse 0)),
-                        .{ .comma = ',', .sep = '.' },
-                    ),
-                    .json = invoice_files.checkout.json,
-                    .billables = invoice_files.checkout.billables,
-                    .tex = invoice_files.checkout.tex,
-                };
-            },
-
-            fi_json.Offer => {
-                const checkout_cli: Cli.OfferCommand = .{
-                    .positional = .{ .subcommand = .checkout, .arg = id },
-                };
-                const offer_files = try fi.cmdCheckoutDocument(checkout_cli);
-                const obj = try std.json.parseFromSliceLeaky(
-                    fi_json.Offer,
-                    arena,
-                    offer_files.checkout.json,
-                    .{},
-                );
-
-                const status = status_blk: {
-                    if (obj.accepted_date == null) {
-                        break :status_blk "open";
-                    } else {
-                        break :status_blk "accepted";
-                    }
-                };
-                break :blk .{
-                    // we don't dup() them because of the arena
-                    .type = "offer",
-                    .id = obj.id,
-                    .client = obj.client_shortname,
-                    .date = obj.updated[0..10],
-                    .status = status,
-                    .amount = try Format.floatThousandsAlloc(
-                        arena,
-                        @as(f32, @floatFromInt(obj.total orelse 0)),
-                        .{ .comma = ',', .sep = '.' },
-                    ),
-                    .json = offer_files.checkout.json,
-                    .billables = offer_files.checkout.billables,
-                    .tex = offer_files.checkout.tex,
-                };
-            },
-
-            fi_json.Letter => {
-                const checkout_cli: Cli.LetterCommand = .{
-                    .positional = .{ .subcommand = .checkout, .arg = id },
-                };
-                const letter_files = try fi.cmdCheckoutDocument(checkout_cli);
-                const obj = try std.json.parseFromSliceLeaky(
-                    fi_json.Letter,
-                    arena,
-                    letter_files.checkout.json,
-                    .{},
-                );
-
-                break :blk .{
-                    // we don't dup() them because of the arena
-                    .type = "letter",
-                    .id = obj.id,
-                    .client = obj.client_shortname,
-                    .date = obj.updated[0..10],
-                    .status = "",
-                    .amount = "",
-                    .json = letter_files.checkout.json,
-                    .billables = letter_files.checkout.billables,
-                    .tex = letter_files.checkout.tex,
-                };
-            },
-            else => unreachable,
-        }
+    const Command = switch (DocumentType) {
+        Invoice => InvoiceCommand,
+        Offer => OfferCommand,
+        Letter => LetterCommand,
+        else => unreachable,
     };
 
-    const doc_type = Fi.documentTypeHumanName(DocumentType);
+    const command: Command = .{
+        .positional = .{ .subcommand = .checkout, .arg = id },
+    };
+
+    const files = try fi.cmdCheckoutDocument(command);
+
+    const obj = try std.json.parseFromSliceLeaky(
+        DocumentType,
+        arena,
+        files.checkout.json,
+        .{},
+    );
+
+    const document = try ep.toDocument(arena, obj, files.checkout);
 
     const params = .{
         .type = doc_type,
@@ -1110,7 +829,7 @@ fn document_edit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         .tex = document.tex,
         .id = document.id,
         .compile = true,
-        .is_letter = DocumentType == fi_json.Letter,
+        .is_letter = DocumentType == Letter,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1124,7 +843,7 @@ fn document_edit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
 }
 
 fn document_compile(
-    _: *Endpoint,
+    ep: *Endpoint,
     arena: Allocator,
     context: *Context,
     r: zap.Request,
@@ -1157,7 +876,7 @@ fn document_compile(
     };
 
     const billables = blk: {
-        if (DocumentType == fi_json.Letter) {
+        if (DocumentType == Letter) {
             break :blk "";
         }
         const fio_params = r.h.*.params;
@@ -1191,7 +910,7 @@ fn document_compile(
     defer json_file.close();
     try json_file.writeAll(json);
 
-    if (DocumentType != fi_json.Letter) {
+    if (DocumentType != Letter) {
         var billables_file = try cwd.createFile(billables_filename, .{});
         defer billables_file.close();
         try billables_file.writeAll(billables);
@@ -1202,9 +921,9 @@ fn document_compile(
     try tex_file.writeAll(tex);
 
     const CompileCommand = switch (DocumentType) {
-        fi_json.Invoice => Cli.InvoiceCommand,
-        fi_json.Offer => Cli.OfferCommand,
-        fi_json.Letter => Cli.LetterCommand,
+        Invoice => InvoiceCommand,
+        Offer => OfferCommand,
+        Letter => LetterCommand,
         else => unreachable,
     };
 
@@ -1221,50 +940,7 @@ fn document_compile(
         .{},
     );
 
-    const status: []const u8 = blk: {
-        switch (DocumentType) {
-            fi_json.Invoice => {
-                if (obj.paid_date == null) {
-                    break :blk "open";
-                } else {
-                    break :blk "paid";
-                }
-            },
-            fi_json.Offer => {
-                if (obj.accepted_date == null) {
-                    break :blk "open";
-                } else {
-                    break :blk "accepted";
-                }
-            },
-            fi_json.Letter => break :blk "",
-            else => unreachable,
-        }
-    };
-
-    const amount = blk: {
-        if (DocumentType == fi_json.Letter) {
-            break :blk "";
-        } else {
-            break :blk try Format.floatThousandsAlloc(
-                arena,
-                @as(f32, @floatFromInt(obj.total orelse 0)),
-                .{ .comma = ',', .sep = '.' },
-            );
-        }
-    };
-
-    const document: Document = .{
-        .type = doc_type,
-        .id = id,
-        .client = obj.client_shortname,
-        .date = obj.updated[0..10],
-        .status = status,
-        .amount = amount,
-        .json = files.compile.json,
-        .billables = files.compile.billables,
-        .tex = files.compile.tex,
-    };
+    const document = try ep.toDocument(arena, obj, files.compile);
 
     const params = .{
         .type = doc_type,
@@ -1276,7 +952,7 @@ fn document_compile(
         .tex = document.tex,
         .id = document.id,
         .compile = true,
-        .is_letter = DocumentType == fi_json.Letter,
+        .is_letter = DocumentType == Letter,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1290,7 +966,7 @@ fn document_compile(
 }
 
 fn document_commit(
-    _: *Endpoint,
+    ep: *Endpoint,
     arena: Allocator,
     context: *Context,
     r: zap.Request,
@@ -1323,7 +999,7 @@ fn document_commit(
     };
 
     const billables = blk: {
-        if (DocumentType == fi_json.Letter) {
+        if (DocumentType == Letter) {
             break :blk "";
         }
         const fio_params = r.h.*.params;
@@ -1357,7 +1033,7 @@ fn document_commit(
     defer json_file.close();
     try json_file.writeAll(json);
 
-    if (DocumentType != fi_json.Letter) {
+    if (DocumentType != Letter) {
         var billables_file = try cwd.createFile(billables_filename, .{});
         defer billables_file.close();
         try billables_file.writeAll(billables);
@@ -1368,9 +1044,9 @@ fn document_commit(
     try tex_file.writeAll(tex);
 
     const CommitCommand = switch (DocumentType) {
-        fi_json.Invoice => Cli.InvoiceCommand,
-        fi_json.Offer => Cli.OfferCommand,
-        fi_json.Letter => Cli.LetterCommand,
+        Invoice => InvoiceCommand,
+        Offer => OfferCommand,
+        Letter => LetterCommand,
         else => unreachable,
     };
 
@@ -1388,50 +1064,7 @@ fn document_commit(
         .{},
     );
 
-    const status: []const u8 = blk: {
-        switch (DocumentType) {
-            fi_json.Invoice => {
-                if (obj.paid_date == null) {
-                    break :blk "open";
-                } else {
-                    break :blk "paid";
-                }
-            },
-            fi_json.Offer => {
-                if (obj.accepted_date == null) {
-                    break :blk "open";
-                } else {
-                    break :blk "accepted";
-                }
-            },
-            fi_json.Letter => break :blk "",
-            else => unreachable,
-        }
-    };
-
-    const amount = blk: {
-        if (DocumentType == fi_json.Letter) {
-            break :blk "";
-        } else {
-            break :blk try Format.floatThousandsAlloc(
-                arena,
-                @as(f32, @floatFromInt(obj.total orelse 0)),
-                .{ .comma = ',', .sep = '.' },
-            );
-        }
-    };
-
-    const document: Document = .{
-        .type = doc_type,
-        .id = id,
-        .client = obj.client_shortname,
-        .date = obj.updated[0..10],
-        .status = status,
-        .amount = amount,
-        .json = files.commit.json,
-        .billables = files.commit.billables,
-        .tex = files.commit.tex,
-    };
+    const document = try ep.toDocument(arena, obj, files.commit);
 
     const params = .{
         .type = doc_type,
@@ -1443,7 +1076,7 @@ fn document_commit(
         .tex = document.tex,
         .id = document.id,
         .compile = true,
-        .is_letter = DocumentType == fi_json.Letter,
+        .is_letter = DocumentType == Letter,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1579,7 +1212,7 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 arena,
                 context,
                 r,
-                fi_json.Client,
+                Client,
                 path["/client/commit/".len..],
             );
         }
@@ -1592,7 +1225,7 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 arena,
                 context,
                 r,
-                fi_json.Rate,
+                Rate,
                 path["/rate/commit/".len..],
             );
         }
@@ -1605,7 +1238,7 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 arena,
                 context,
                 r,
-                fi_json.Invoice,
+                Invoice,
                 path["/invoice/compile/".len..],
             );
         }
@@ -1618,7 +1251,7 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 arena,
                 context,
                 r,
-                fi_json.Offer,
+                Offer,
                 path["/offer/compile/".len..],
             );
         }
@@ -1631,7 +1264,7 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 arena,
                 context,
                 r,
-                fi_json.Letter,
+                Letter,
                 path["/letter/compile/".len..],
             );
         }
@@ -1644,7 +1277,7 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 arena,
                 context,
                 r,
-                fi_json.Invoice,
+                Invoice,
                 path["/invoice/commit/".len..],
             );
         }
@@ -1657,7 +1290,7 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 arena,
                 context,
                 r,
-                fi_json.Offer,
+                Offer,
                 path["/offer/commit/".len..],
             );
         }
@@ -1670,7 +1303,7 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
                 arena,
                 context,
                 r,
-                fi_json.Letter,
+                Letter,
                 path["/letter/commit/".len..],
             );
         }
@@ -1679,52 +1312,6 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
     r.setStatus(.not_found);
     try r.sendBody(html_404_not_found);
 }
-
-fn fiobj_type(o: zap.fio.FIOBJ) []const u8 {
-    const value_type = switch (zap.fio.fiobj_type(o)) {
-        zap.fio.FIOBJ_T_NULL => "null",
-        zap.fio.FIOBJ_T_TRUE => "true",
-        zap.fio.FIOBJ_T_FALSE => "false",
-        zap.fio.FIOBJ_T_NUMBER => "number",
-        zap.fio.FIOBJ_T_FLOAT => "float",
-        zap.fio.FIOBJ_T_STRING => "string",
-        zap.fio.FIOBJ_T_ARRAY => "array",
-        zap.fio.FIOBJ_T_HASH => "hash",
-        zap.fio.FIOBJ_T_DATA => "data",
-        zap.fio.FIOBJ_T_UNKNOWN => "unknown",
-        else => "shit",
-    };
-    return value_type;
-}
-const CallbackContext_KV = struct {
-    allocator: Allocator,
-    params: *std.ArrayList(zap.Request.HttpParamKV),
-    last_error: ?anyerror = null,
-
-    pub fn callback(fiobj_value: zap.fio.FIOBJ, context_: ?*anyopaque) callconv(.C) c_int {
-        const ctx: *@This() = @as(*@This(), @ptrCast(@alignCast(context_)));
-        // this is thread-safe, guaranteed by fio
-        const fiobj_key: zap.fio.FIOBJ = zap.fio.fiobj_hash_key_in_loop();
-        log.debug("value_type = {s}", .{fiobj_type(fiobj_value)});
-        ctx.params.append(.{
-            .key = zap.util.fio2strAlloc(ctx.allocator, fiobj_key) catch |err| {
-                ctx.last_error = err;
-                return -1;
-            },
-            .value = zap.Request.fiobj2HttpParam(ctx.allocator, fiobj_value) catch |err| {
-                ctx.last_error = err;
-                return -1;
-            },
-        }) catch |err| {
-            // what to do?
-            // signal the caller that an error occured by returning -1
-            // also, set the error
-            ctx.last_error = err;
-            return -1;
-        };
-        return 0;
-    }
-};
 
 fn resource_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type, shortname: []const u8) !void {
     var fi = createFi(arena, context);
@@ -1736,17 +1323,17 @@ fn resource_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
 
     const json = blk: {
         const fio_params = r.h.*.params;
-        log.debug("type of params = {s}", .{fiobj_type(r.h.*.params)});
+        log.debug("type of params = {s}", .{util.fiobj_type(r.h.*.params)});
 
         const param_count = zap.fio.fiobj_hash_count(fio_params);
         log.debug("param_count = {d}", .{param_count});
 
         const key = zap.fio.fiobj_str_new("json", "json".len);
         const fio_json = zap.fio.fiobj_hash_get(fio_params, key);
-        log.debug("fio_json = {s}", .{fiobj_type(fio_json)});
+        log.debug("fio_json = {s}", .{util.fiobj_type(fio_json)});
 
         const elem = zap.fio.fiobj_ary_index(fio_json, 0);
-        log.debug("elem = {s}", .{fiobj_type(elem)});
+        log.debug("elem = {s}", .{util.fiobj_type(elem)});
         const json = zap.util.fio2str(elem) orelse return error.NoString;
         log.debug("json = {s}", .{json});
         break :blk json;
