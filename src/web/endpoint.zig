@@ -953,6 +953,7 @@ fn document_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         .tex = document.tex,
         .id = document.id,
         .compile = false,
+        .is_letter = DocumentType == fi_json.Letter,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1107,6 +1108,7 @@ fn document_edit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         .tex = document.tex,
         .id = document.id,
         .compile = true,
+        .is_letter = DocumentType == fi_json.Letter,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1153,6 +1155,9 @@ fn document_compile(
     };
 
     const billables = blk: {
+        if (DocumentType == fi_json.Letter) {
+            break :blk "";
+        }
         const fio_params = r.h.*.params;
         const key = zap.fio.fiobj_str_new("billables", "billables".len);
         const fio_billables = zap.fio.fiobj_hash_get(fio_params, key);
@@ -1269,6 +1274,7 @@ fn document_compile(
         .tex = document.tex,
         .id = document.id,
         .compile = true,
+        .is_letter = DocumentType == fi_json.Letter,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
