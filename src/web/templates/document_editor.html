@@ -72,21 +72,23 @@
             <textarea id="json-editor" name="json" {{^editable}}readonly{{/editable}}>{{json}}</textarea>
         </div>
 
+       {{^is_letter}}
         <div class="editor-block">
           <h3>billables.csv</h3>
           <textarea id="csv-editor" name="billables" {{^editable}}readonly{{/editable}}>{{billables}}</textarea>
         </div>
+        {{/is_letter}}
 
         <div class="editor-block">
-          <h3>invoice.tex</h3>
+          <h3>{{type}}.tex</h3>
           <textarea id="tex-editor" name="tex" {{^editable}}readonly{{/editable}}>{{tex}}</textarea>
         </div>
       </div>
 
       <div class="actions">
+        {{#editable}}
         <button type="submit" formaction="/{{type}}/compile/{{id}}">Compile PDF</button>
 
-        {{#editable}}
         <button type="submit" formaction="/{{type}}/commit/{{id}}">Commit & Finalize</button>
         {{/editable}}
       </div>
