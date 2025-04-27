@@ -514,6 +514,7 @@ fn show_dashboard(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
             .{ .comma = ',', .sep = '.' },
         ),
         .year = year,
+        .company = fi_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_dashboard);
@@ -577,9 +578,11 @@ fn resource_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         break :blk sorted;
     };
 
+    const fi_config = try fi.loadConfigJson();
     const params = .{
         .type = type_string,
         .resources = resources,
+        .company = fi_config.CompanyName,
     };
     var mustache = try zap.Mustache.fromData(html_resource_list);
     defer mustache.deinit();
@@ -611,11 +614,13 @@ fn resource_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     const writer = alist.writer(arena);
     try std.json.stringify(obj, .{ .whitespace = .indent_4 }, writer);
 
+    const fi_config = try fi.loadConfigJson();
     const params = .{
         .type = type_string,
         .shortname = id,
         .json = alist.items,
         .editable = editable,
+        .company = fi_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_resource_editor);
@@ -643,6 +648,7 @@ fn document_list(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         .currency_symbol = fi_config.CurrencySymbol,
         .year = year,
         .is_letter = DocumentType == Letter,
+        .company = fi_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_list);
@@ -742,6 +748,7 @@ fn document_view(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         .id = document.id,
         .compile = false,
         .is_letter = DocumentType == Letter,
+        .company = fi_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -834,6 +841,7 @@ fn document_edit(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         .id = document.id,
         .compile = true,
         .is_letter = DocumentType == Letter,
+        .company = fi_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -936,7 +944,10 @@ fn document_new(
         );
         var mustache = try zap.Mustache.fromData(html_error);
         defer mustache.deinit();
-        const result = mustache.build(.{ .message = message });
+        const fi_config = try fi.loadConfigJson();
+        const result = mustache.build(
+            .{ .message = message, .company = fi_config.CompanyName },
+        );
         defer result.deinit();
 
         if (result.str()) |rendered| {
@@ -973,6 +984,7 @@ fn document_new(
         .id = document.id,
         .compile = true,
         .is_letter = DocumentType == Letter,
+        .company = fi_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1095,6 +1107,7 @@ fn document_compile(
         .id = document.id,
         .compile = true,
         .is_letter = DocumentType == Letter,
+        .company = fi_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1219,6 +1232,7 @@ fn document_commit(
         .id = document.id,
         .compile = true,
         .is_letter = DocumentType == Letter,
+        .company = fi_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1293,22 +1307,22 @@ fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
         .arena = arena,
         .repo_dir = context.fi_home,
     };
-
+    var fi = createFi(arena, context);
     var alist = std.ArrayListUnmanaged(u8).empty;
     _ = try git.push(alist.writer(arena).any());
+
+    const fi_config = try fi.loadConfigJson();
 
     const params = .{
         .command = "push",
         .message = alist.items,
+        .company = fi_config.CompanyName,
     };
     var mustache = try zap.Mustache.fromData(html_git_command);
     defer mustache.deinit();
     const result = mustache.build(params);
     defer result.deinit();
 
-    if (result.str()) |rendered| {
-        try r.sendBody(rendered);
-    }
     if (result.str()) |rendered| {
         try r.sendBody(rendered);
     }
@@ -1319,25 +1333,25 @@ fn git_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request)
         .arena = arena,
         .repo_dir = context.fi_home,
     };
-
+    var fi = createFi(arena, context);
     var alist = std.ArrayListUnmanaged(u8).empty;
     const writer = alist.writer(arena).any();
     if (try git.stage(.all, writer)) {
         _ = try git.commit("Committed via web", writer);
     }
 
+    const fi_config = try fi.loadConfigJson();
+
     const params = .{
         .command = "commit",
         .message = alist.items,
+        .company = fi_config.CompanyName,
     };
     var mustache = try zap.Mustache.fromData(html_git_command);
     defer mustache.deinit();
     const result = mustache.build(params);
     defer result.deinit();
 
-    if (result.str()) |rendered| {
-        try r.sendBody(rendered);
-    }
     if (result.str()) |rendered| {
         try r.sendBody(rendered);
     }
@@ -1513,6 +1527,7 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
 
 fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type) !void {
     var fi = createFi(arena, context);
+    const fi_config = try fi.loadConfigJson();
     log.debug("fi_home: {s}", .{fi.fi_home.?});
 
     const type_string = switch (ResourceType) {
@@ -1540,9 +1555,13 @@ fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
             "Error: {s} {s} already exists!",
             .{ type_string, shortname },
         );
+
         var mustache = try zap.Mustache.fromData(html_error);
         defer mustache.deinit();
-        const result = mustache.build(.{ .message = message });
+        const result = mustache.build(.{
+            .message = message,
+            .company = fi_config.CompanyName,
+        });
         defer result.deinit();
 
         if (result.str()) |rendered| {
@@ -1580,6 +1599,7 @@ fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
         .shortname = shortname,
         .json = alist.items,
         .editable = true,
+        .company = fi_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_resource_editor);
