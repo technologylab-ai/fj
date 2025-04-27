@@ -9,6 +9,7 @@ const Format = @import("../format.zig");
 const fsutil = @import("../fsutil.zig");
 const util = @import("util.zig");
 const Fatal = @import("../fatal.zig");
+const Version = @import("../version.zig");
 
 const Allocator = std.mem.Allocator;
 const Endpoint = @This();
@@ -515,6 +516,7 @@ fn show_dashboard(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
         ),
         .year = year,
         .company = fi_config.CompanyName,
+        .version = Version.version(),
     };
 
     var mustache = try zap.Mustache.fromData(html_dashboard);

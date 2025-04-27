@@ -358,6 +358,17 @@ pub const ServeCommand = struct {
     ;
 };
 
+pub const VersionCommand = struct {
+    pub const help =
+        \\ Command: invoice
+        \\
+        \\ Usage:
+        \\
+        \\ fi version
+        \\
+    ;
+};
+
 pub const Cli = union(enum) {
     init: InitCommand,
     git: GitCommand,
@@ -367,6 +378,7 @@ pub const Cli = union(enum) {
     offer: OfferCommand,
     invoice: InvoiceCommand,
     serve: ServeCommand,
+    version: VersionCommand,
 
     pub const help =
         \\ Usage: fi [command] [options]

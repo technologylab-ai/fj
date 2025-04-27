@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const build_zig_zon = @embedFile("build.zig.zon");
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -22,6 +24,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.root_module.addImport("zli", zli.module("zli"));
+
+    // Make build.zig.zon accessible in module
+    var my_options = std.Build.Step.Options.create(b);
+    my_options.addOption([]const u8, "contents", build_zig_zon);
+    exe.root_module.addOptions("build.zig.zon", my_options);
 
     const zeit = b.dependency("zeit", .{
         .target = target,

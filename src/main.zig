@@ -4,6 +4,8 @@ const zli = @import("zli");
 const Fi = @import("fi.zig");
 const Server = @import("web/server.zig");
 const Fatal = @import("fatal.zig");
+const Version = @import("version.zig");
+const zon = @import("build.zig.zon");
 
 const assert = std.debug.assert;
 const log = std.log.scoped(.fi);
@@ -68,6 +70,9 @@ pub fn main() !void {
                     .work_dir = args.work_dir,
                 },
             );
+        },
+        .version => {
+            try std.io.getStdOut().writer().print("fi version {s}\n", .{Version.version() orelse "(unknown version)"});
         },
     }
 }
