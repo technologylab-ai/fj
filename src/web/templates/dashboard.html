@@ -9,6 +9,12 @@
     header, nav, main { padding: 1em; }
     nav a { margin-right: 1em; display: inline-block; margin-bottom: 0.5em; }
 
+    .version {
+      color: #d0d0d0;
+      background:  #fafafa;
+      margin-top: 5em;
+    }
+
     .stats {
       display: flex;
       flex-wrap: wrap;
@@ -157,6 +163,9 @@
     <hr>
     <span><b> Git Status </b> <a href="/git/commit">commit</a> <a href="/git/push">push</a></span>
     <pre>{{git_status}}</pre>
+    <center class="version">
+        <i>fi version {{version}}</i>
+    </center>
   </footer>
 
   <script>
