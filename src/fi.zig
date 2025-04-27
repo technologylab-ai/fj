@@ -147,6 +147,8 @@ pub fn loadConfigJson(self: *const Fi) !fi_json.TexDefaults {
     defer fi_config_file.close();
 
     const json_string = try fi_config_file.readToEndAlloc(self.arena, self.max_json_file_size);
+    // special case : LaTeX-ready `\&`
+    std.mem.replaceScalar(u8, json_string, '\\', ' ');
     const json_config = std.json.parseFromSliceLeaky(fi_json.TexDefaults, self.arena, json_string, .{
         .ignore_unknown_fields = true,
     }) catch |err| {
