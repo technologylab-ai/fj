@@ -75,6 +75,9 @@ fj init config.json
 
 # (optional) configure a remote to sync your document archive
 fj git remote add --repo=online --url=user@server.com:fj_archive.git
+
+# (optional) start the web server and continue working in the browser
+fj serve [--username=] [--password=] [--host=] [--port=]
 ```
 
 ---
