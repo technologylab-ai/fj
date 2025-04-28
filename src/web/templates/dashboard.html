@@ -9,6 +9,12 @@
     header, nav, main { padding: 1em; }
     nav a { margin-right: 1em; display: inline-block; margin-bottom: 0.5em; }
 
+    .fi_home {
+        display: inline-block;
+        unicode-bidi: embed;
+        font-family: monospace;
+        white-space: pre;
+    }
     .version {
       color: #d0d0d0;
       background:  #fafafa;
@@ -164,7 +170,7 @@
     <span><b> Git Status </b> <a href="/git/commit">commit</a> <a href="/git/push">push</a></span>
     <pre>{{git_status}}</pre>
     <center class="version">
-        <i>fi version {{version}}</i>
+        <i>fi version {{version}} — <span class="fi_home">{{fi_home}}</span></i>
     </center>
   </footer>
 
