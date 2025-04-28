@@ -1088,7 +1088,28 @@ fn document_compile(
         .positional = .{ .subcommand = .compile },
     };
 
-    const files = try fj.cmdCompileDocument(compileCommand);
+    const files = fj.cmdCompileDocument(compileCommand) catch |err| {
+        // show error
+        const message = try std.fmt.allocPrint(
+            arena,
+            "Error: {}\n\n{s}",
+            .{ err, Fatal.errormsg },
+        );
+
+        var mustache = try zap.Mustache.fromData(html_error);
+        defer mustache.deinit();
+        const result = mustache.build(.{
+            .message = message,
+            .company = fj_config.CompanyName,
+        });
+        defer result.deinit();
+
+        if (result.str()) |rendered| {
+            return try r.sendBody(rendered);
+        } else {
+            return;
+        }
+    };
 
     const obj = try std.json.parseFromSliceLeaky(
         DocumentType,

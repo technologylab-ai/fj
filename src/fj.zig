@@ -1956,7 +1956,7 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
                 if (startsWithIC(price_per_unit_str, "null")) {
                     if (startsWithIC(rate_name, "hour") or
                         startsWithIC(rate_name, "stunde"))
-                        break :blk rates.daily;
+                        break :blk rates.hourly;
                     if (startsWithIC(rate_name, "day") or
                         startsWithIC(rate_name, "tag"))
                         break :blk rates.daily;
