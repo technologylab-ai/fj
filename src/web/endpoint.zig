@@ -517,6 +517,7 @@ fn show_dashboard(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
         .year = year,
         .company = fi_config.CompanyName,
         .version = Version.version(),
+        .fi_home = fi.fi_home.?,
     };
 
     var mustache = try zap.Mustache.fromData(html_dashboard);
