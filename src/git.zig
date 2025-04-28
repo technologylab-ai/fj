@@ -126,15 +126,15 @@ pub fn remote(self: *const Git, opts: struct {
                 ) catch try fatal("OOM!", .{}, error.OutOfMemory);
                 return self.cmd(args.items, null);
             } else {
-                try fatal("fi git remote requires a --remote= !", .{}, error.Cli);
+                try fatal("fj git remote requires a --remote= !", .{}, error.Cli);
             }
         },
         .add => {
             if (opts.remote == null) {
-                try fatal("fi git remote add requires a --remote= !", .{}, error.Cli);
+                try fatal("fj git remote add requires a --remote= !", .{}, error.Cli);
             }
             if (opts.url == null) {
-                try fatal("fi git remote add requires a --url= !", .{}, error.Cli);
+                try fatal("fj git remote add requires a --url= !", .{}, error.Cli);
             }
             args.appendSlice(
                 self.arena,
@@ -144,7 +144,7 @@ pub fn remote(self: *const Git, opts: struct {
         },
         .delete => {
             if (opts.remote == null) {
-                try fatal("fi git remote delete requires a --remote= !", .{}, error.Cli);
+                try fatal("fj git remote delete requires a --remote= !", .{}, error.Cli);
             }
             args.appendSlice(
                 self.arena,

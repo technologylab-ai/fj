@@ -2,7 +2,7 @@ const std = @import("std");
 const zap = @import("zap");
 
 const Allocator = std.mem.Allocator;
-const Fi = @import("../fi.zig");
+const Fj = @import("../fj.zig");
 const Endpoint = @import("endpoint.zig");
 const Dir = std.fs.Dir;
 
@@ -19,17 +19,17 @@ pub const InitOpts = struct {
     work_dir: []const u8 = ".",
 };
 
-fn readLogo(allocator: Allocator, fi_home: []const u8) ![]const u8 {
-    var fi_home_dir = try std.fs.cwd().openDir(fi_home, .{});
-    defer fi_home_dir.close();
+fn readLogo(allocator: Allocator, fj_home: []const u8) ![]const u8 {
+    var fj_home_dir = try std.fs.cwd().openDir(fj_home, .{});
+    defer fj_home_dir.close();
 
-    var logo_file = try fi_home_dir.openFile("templates/logo.png", .{});
+    var logo_file = try fj_home_dir.openFile("templates/logo.png", .{});
     defer logo_file.close();
 
     return try logo_file.readToEndAlloc(allocator, 10 * 1024 * 1024);
 }
 
-pub fn start(fi_home: []const u8, opts: InitOpts) !void {
+pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     //
     // Allocator
     //
@@ -53,13 +53,13 @@ pub fn start(fi_home: []const u8, opts: InitOpts) !void {
     //
     var context: Context = .{
         .auth_lookup = .empty,
-        .fi_home = try allocator.dupe(u8, fi_home),
+        .fj_home = try allocator.dupe(u8, fj_home),
         .work_dir = opts.work_dir,
-        .logo_imgdata = readLogo(allocator, fi_home) catch |err| {
-            std.process.fatal("Unable to read logo from fi home: {}", .{err});
+        .logo_imgdata = readLogo(allocator, fj_home) catch |err| {
+            std.process.fatal("Unable to read logo from fj home: {}", .{err});
         },
     };
-    defer allocator.free(context.fi_home);
+    defer allocator.free(context.fj_home);
     defer allocator.free(context.logo_imgdata);
 
     // cd into the working directory
@@ -101,7 +101,7 @@ pub fn start(fi_home: []const u8, opts: InitOpts) !void {
         .usernameParam = "username",
         .passwordParam = "password",
         .loginPage = "/login",
-        .cookieName = "FI_SESSION",
+        .cookieName = "FJ_SESSION",
     });
     defer authenticator.deinit();
 
@@ -124,7 +124,7 @@ pub fn start(fi_home: []const u8, opts: InitOpts) !void {
     std.debug.print(
         "Serving: {s}\n\nVisit me at http://{s}:{d}\n\n",
         .{
-            context.fi_home,
+            context.fj_home,
             opts.host,
             opts.port,
         },

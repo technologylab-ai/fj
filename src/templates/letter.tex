@@ -50,17 +50,17 @@
 % Fancy header/footer config
 \pagestyle{fancy}
 \fancyhf{}
-  \lhead{\textbf{\FiDocId}}
-  \chead{\textbf{\FiCompanyName}}
+  \lhead{\textbf{\FjDocId}}
+  \chead{\textbf{\FjCompanyName}}
   \rhead{\small{Seite \thepage/\pageref{LastPage}}}
-  \cfoot{\small{\FiCompanyRegisteredAt \space  · \FiCompanyID \space · \FiUID}}
+  \cfoot{\small{\FjCompanyRegisteredAt \space  · \FjCompanyID \space · \FjUID}}
   \rfoot{}
 
 \fancypagestyle{firstpage}{
-  \lhead{\textbf{\FiDocId}}
-  \chead{\textbf{\FiCompanyName}}
+  \lhead{\textbf{\FjDocId}}
+  \chead{\textbf{\FjCompanyName}}
   \rhead{\small{Seite \thepage/\pageref{LastPage}}}
-  \cfoot{\small{\FiCompanyRegisteredAt \space · \FiCompanyID \space · \FiUID}}
+  \cfoot{\small{\FjCompanyRegisteredAt \space · \FjCompanyID \space · \FjUID}}
   \rfoot{}
 }
 
@@ -68,8 +68,8 @@
 \newcommand{\grayit}[1]{\textcolor{gray}{\scriptsize\textit{#1}}}
 
 \newcommand{\contactinfo}{%
-    \FiCompanyUrl \\
-    \FiCompanyEmail \\
+    \FjCompanyUrl \\
+    \FjCompanyEmail \\
 }
 
 \begin{document}
@@ -81,11 +81,11 @@
 \begin{minipage}[t]{0.33\textwidth}
 \raggedright
 \vspace{-2.9em}
-  \textsc{\FiClientCompany}\\[0.3ex]
-  \textbf{\FiClientCareOf}\\[0.3ex]
-  \FiClientStreet \\[0.3ex]
-  \FiClientAreaCode\space \FiClientCity\\[0.3ex]
-  \FiClientCountry \\[0.3ex]
+  \textsc{\FjClientCompany}\\[0.3ex]
+  \textbf{\FjClientCareOf}\\[0.3ex]
+  \FjClientStreet \\[0.3ex]
+  \FjClientAreaCode\space \FjClientCity\\[0.3ex]
+  \FjClientCountry \\[0.3ex]
 \end{minipage}
 \hfill
 \begin{minipage}[t]{0.65\textwidth}
@@ -96,9 +96,9 @@
   %\vspace{-2.8em}
   \vspace{-3.5em}
   \small
-  \textbf{\FiCompanyName} \\[-0.2em]
-  \FiCompanyStreet\\[-0.2ex]
-  \FiCompanyAreaCodeCity\\[1.2ex]
+  \textbf{\FjCompanyName} \\[-0.2em]
+  \FjCompanyStreet\\[-0.2ex]
+  \FjCompanyAreaCodeCity\\[1.2ex]
   \contactinfo
 \end{minipage}
 \end{tabularx}
@@ -111,10 +111,10 @@
 
 % Start of the letter
 \vspace{1.5cm}
-\null\hfill \FiLetterCityDate \space \FiDate
+\null\hfill \FjLetterCityDate \space \FjDate
 
 \vspace{1.5cm}
-\textbf{\FiSubject}
+\textbf{\FjSubject}
 \vspace{1cm}
 
 \greeting\\[2ex]
@@ -124,8 +124,8 @@ Dies ist ein Brief.
 
 
 \vspace{2em}
-\FiGoodbye \\[2ex]
-\FiMyName
+\FjGoodbye \\[2ex]
+\FjMyName
 
 \end{document}
 

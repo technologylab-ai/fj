@@ -18,7 +18,7 @@ pub const FileLock = struct {
     lock_path: []const u8,
     lock_file: ?std.fs.File = null,
 
-    /// Provide the path to the file to protect (e.g. `.fi/invoices/.id`)
+    /// Provide the path to the file to protect (e.g. `.fj/invoices/.id`)
     pub fn acquire(arena: std.mem.Allocator, id_file_path: []const u8) !FileLock {
         var self: FileLock = .{
             .lock_path = undefined,
@@ -70,7 +70,7 @@ pub const FileLockWithRloBug = struct {
     lock_path: []const u8,
     lock_file: ?std.fs.File = null,
 
-    /// Provide the path to the file to protect (e.g. `.fi/invoices/.id`)
+    /// Provide the path to the file to protect (e.g. `.fj/invoices/.id`)
     pub fn acquire(id_file_path: []const u8) !FileLock {
         var self: FileLock = .{
             .lock_path = undefined,
@@ -78,7 +78,7 @@ pub const FileLockWithRloBug = struct {
             .lock_file = null,
         };
 
-        // Construct lock file path (e.g. ".fi/invoices/.id.lock")
+        // Construct lock file path (e.g. ".fj/invoices/.id.lock")
         if (id_file_path.len + 5 >= std.fs.max_path_bytes) {
             return error.PathTooLong;
         }

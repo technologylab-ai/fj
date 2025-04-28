@@ -1,7 +1,7 @@
 const Git = @import("git.zig");
 
 pub const InitCommand = struct {
-    fi_home: ?[]const u8 = null,
+    fj_home: ?[]const u8 = null,
     generate: bool = false,
 
     positional: struct {
@@ -9,7 +9,7 @@ pub const InitCommand = struct {
     },
 
     pub const aliases = .{
-        .fi_home = "C",
+        .fj_home = "C",
         .generate = "G",
     };
 
@@ -18,7 +18,7 @@ pub const InitCommand = struct {
         \\
         \\ Usage:
         \\
-        \\ fi init [options] <init_json_file>]
+        \\ fj init [options] <init_json_file>]
         \\
         \\ Options:
         \\
@@ -26,14 +26,14 @@ pub const InitCommand = struct {
         \\
         \\ -h, --help               Displays this help message then exits.
         \\
-        \\ -C, --fi_home            The FI_HOME dir to use.
-        \\                          Default: $FI_HOME orelse ~/.fi
+        \\ -C, --fj_home            The FJ_HOME dir to use.
+        \\                          Default: $FJ_HOME orelse ~/.fj
         \\
     ;
 };
 
 pub const GitCommand = struct {
-    fi_home: ?[]const u8 = null,
+    fj_home: ?[]const u8 = null,
     remote: ?[]const u8 = null,
     url: ?[]const u8 = null,
 
@@ -43,14 +43,14 @@ pub const GitCommand = struct {
     },
 
     pub const aliases = .{
-        .fi_home = "C",
+        .fj_home = "C",
     };
     pub const help =
         \\ Command: git
         \\
         \\ Usage:
         \\
-        \\ fi git [-C, --fi_home=<path>] [subcommand] [options]
+        \\ fj git [-C, --fj_home=<path>] [subcommand] [options]
         \\
         \\ Available Subcommands:
         \\ ======================
@@ -59,10 +59,10 @@ pub const GitCommand = struct {
         \\
         \\ Configure git remote(s). Usually, one is enough.
         \\
-        \\    fi git remote add    [--repo=REMOTE]   --url=URL
-        \\    fi git remote list
-        \\    fi git remote show   [--repo=REMOTE]
-        \\    fi git remote delete [--repo=REMOTE]
+        \\    fj git remote add    [--repo=REMOTE]   --url=URL
+        \\    fj git remote list
+        \\    fj git remote show   [--repo=REMOTE]
+        \\    fj git remote delete [--repo=REMOTE]
         \\
         \\    REMOTE defaults to origin/git default
         \\ ------------------------------------------------------------
@@ -90,8 +90,8 @@ pub const GitCommand = struct {
         \\
         \\ -h, --help               Displays this help message then exits.
         \\
-        \\ -C, --fi_home            The FI_HOME dir to use.
-        \\                          Default: $FI_HOME orelse ~/.fi
+        \\ -C, --fj_home            The FJ_HOME dir to use.
+        \\                          Default: $FJ_HOME orelse ~/.fj
         \\
     ;
 };
@@ -101,7 +101,7 @@ pub const JsonResourceKind = enum { client, rate };
 
 pub fn JsonResourceCommand(comptime kind: JsonResourceKind) type {
     return struct {
-        fi_home: ?[]const u8 = null,
+        fj_home: ?[]const u8 = null,
         verbose: bool = false,
 
         positional: struct {
@@ -110,7 +110,7 @@ pub fn JsonResourceCommand(comptime kind: JsonResourceKind) type {
         },
 
         pub const aliases = .{
-            .fi_home = "C",
+            .fj_home = "C",
             .verbose = "v",
         };
 
@@ -120,23 +120,23 @@ pub fn JsonResourceCommand(comptime kind: JsonResourceKind) type {
             \\
             \\ Usage:
             \\
-            \\ fi client [new|show|checkout|commit|list] [options]
+            \\ fj client [new|show|checkout|commit|list] [options]
             \\
             \\ Available Subcommands:
             \\ ======================
             \\
-            \\ - fi client new      <shortname>   -> <shortname>.json
-            \\ - fi client show     <shortname>   -> stdout
-            \\ - fi client checkout <shortname>   -> shortname.json
-            \\ - fi client commit   <client.json> -> move into .fi/clients
-            \\ - fi client list     [--all] [-v]
+            \\ - fj client new      <shortname>   -> <shortname>.json
+            \\ - fj client show     <shortname>   -> stdout
+            \\ - fj client checkout <shortname>   -> shortname.json
+            \\ - fj client commit   <client.json> -> move into .fj/clients
+            \\ - fj client list     [--all] [-v]
             \\
             \\ Options:
             \\
             \\ -h, --help               Displays this help message then exits.
             \\
-            \\ -C, --fi_home            The FI_HOME dir to use.
-            \\                          Default: $FI_HOME orelse ~/.fi
+            \\ -C, --fj_home            The FJ_HOME dir to use.
+            \\                          Default: $FJ_HOME orelse ~/.fj
             \\
             ,
             .rate =>
@@ -144,23 +144,23 @@ pub fn JsonResourceCommand(comptime kind: JsonResourceKind) type {
             \\
             \\ Usage:
             \\
-            \\ fi rate [new|show|checkout|commit|list] [options]
+            \\ fj rate [new|show|checkout|commit|list] [options]
             \\
             \\ Available Subcommands:
             \\ ======================
             \\
-            \\ - fi rate new      <shortname>   -> <shortname>.json
-            \\ - fi rate show     <shortname>   -> stdout
-            \\ - fi rate checkout <shortname>   -> shortname.json
-            \\ - fi rate commit   <rate.json>   -> move into .fi/rates
-            \\ - fi rate list     [--all] [-v]
+            \\ - fj rate new      <shortname>   -> <shortname>.json
+            \\ - fj rate show     <shortname>   -> stdout
+            \\ - fj rate checkout <shortname>   -> shortname.json
+            \\ - fj rate commit   <rate.json>   -> move into .fj/rates
+            \\ - fj rate list     [--all] [-v]
             \\
             \\ Options:
             \\
             \\ -h, --help               Displays this help message then exits.
             \\
-            \\ -C, --fi_home            The FI_HOME dir to use.
-            \\                          Default: $FI_HOME orelse ~/.fi
+            \\ -C, --fj_home            The FJ_HOME dir to use.
+            \\                          Default: $FJ_HOME orelse ~/.fj
             \\
             ,
         };
@@ -171,7 +171,7 @@ pub const ClientCommand = JsonResourceCommand(.client);
 pub const RateCommand = JsonResourceCommand(.rate);
 
 pub const LetterCommand = struct {
-    fi_home: ?[]const u8 = null,
+    fj_home: ?[]const u8 = null,
     list_all: bool = false,
     to: ?[]const u8 = null,
 
@@ -183,7 +183,7 @@ pub const LetterCommand = struct {
     },
 
     pub const aliases = .{
-        .fi_home = "C",
+        .fj_home = "C",
     };
 
     pub const help =
@@ -191,32 +191,32 @@ pub const LetterCommand = struct {
         \\
         \\ Usage:
         \\
-        \\ fi letter [new|show|checkout|commit|list] [options]
+        \\ fj letter [new|show|checkout|commit|list] [options]
         \\
         \\ Available Subcommands:
         \\ ======================
         \\
-        \\ - fi letter new <client>           [--to=<c/o name>]
+        \\ - fj letter new <client>           [--to=<c/o name>]
         \\                                     -> <letter--YEAR-XXXX--clientshortname>/
-        \\ - fi letter show     <ID>           -> stdout
-        \\ - fi letter checkout <ID>           -> <letter--ID--clientshortname>/
-        \\ - fi letter commit                  -> move into .fi/letters
-        \\ - fi letter list     [--all] [-v]
-        \\ - fi letter open     <ID>           -> open PDF
-        \\ - fi letter compile [<ID>]          -> compile PDF in current dir or from ID
+        \\ - fj letter show     <ID>           -> stdout
+        \\ - fj letter checkout <ID>           -> <letter--ID--clientshortname>/
+        \\ - fj letter commit                  -> move into .fj/letters
+        \\ - fj letter list     [--all] [-v]
+        \\ - fj letter open     <ID>           -> open PDF
+        \\ - fj letter compile [<ID>]          -> compile PDF in current dir or from ID
         \\
         \\ Options:
         \\
         \\ -h, --help               Displays this help message then exits.
         \\
-        \\ -C, --fi_home            The FI_HOME dir to use.
-        \\                          Default: $FI_HOME orelse ~/.fi
+        \\ -C, --fj_home            The FJ_HOME dir to use.
+        \\                          Default: $FJ_HOME orelse ~/.fj
         \\
     ;
 };
 
 pub const OfferCommand = struct {
-    fi_home: ?[]const u8 = null,
+    fj_home: ?[]const u8 = null,
     project: ?[]const u8 = null,
     rates: ?[]const u8 = null,
     to: ?[]const u8 = null,
@@ -229,7 +229,7 @@ pub const OfferCommand = struct {
     },
 
     pub const aliases = .{
-        .fi_home = "C",
+        .fj_home = "C",
     };
 
     pub const help =
@@ -237,34 +237,34 @@ pub const OfferCommand = struct {
         \\
         \\ Usage:
         \\
-        \\ fi offer [new|commit|checkout|list|show|open|compile] [options]
+        \\ fj offer [new|commit|checkout|list|show|open|compile] [options]
         \\
         \\ Available Subcommands:
         \\ ======================
         \\
-        \\ - fi offer new <client> --project=<project>
+        \\ - fj offer new <client> --project=<project>
         \\                                      [--rates=<rates>]
         \\                                      [--to=<c/o name>]
         \\                                    -> <offer--YEAR-XXXX--clientshortname>/
-        \\ - fi offer commit      >           -> move into .fi/offers
-        \\ - fi offer checkout <ID>           -> <offer--ID--clientshortname>/
-        \\ - fi offer list     [--all] [-v]
-        \\ - fi offer show     <ID>           -> show metadata
-        \\ - fi offer compile [<ID>]          -> compile PDF in current dir or from ID
-        \\ - fi offer open     <ID>           -> open PDF
+        \\ - fj offer commit      >           -> move into .fj/offers
+        \\ - fj offer checkout <ID>           -> <offer--ID--clientshortname>/
+        \\ - fj offer list     [--all] [-v]
+        \\ - fj offer show     <ID>           -> show metadata
+        \\ - fj offer compile [<ID>]          -> compile PDF in current dir or from ID
+        \\ - fj offer open     <ID>           -> open PDF
         \\
         \\ Options:
         \\
         \\ -h, --help               Displays this help message then exits.
         \\
-        \\ -C, --fi_home            The FI_HOME dir to use.
-        \\                          Default: $FI_HOME orelse ~/.fi
+        \\ -C, --fj_home            The FJ_HOME dir to use.
+        \\                          Default: $FJ_HOME orelse ~/.fj
         \\
     ;
 };
 
 pub const InvoiceCommand = struct {
-    fi_home: ?[]const u8 = null,
+    fj_home: ?[]const u8 = null,
     project: ?[]const u8 = null,
     rates: ?[]const u8 = null,
     to: ?[]const u8 = null,
@@ -277,7 +277,7 @@ pub const InvoiceCommand = struct {
     },
 
     pub const aliases = .{
-        .fi_home = "C",
+        .fj_home = "C",
     };
 
     pub const help =
@@ -285,35 +285,35 @@ pub const InvoiceCommand = struct {
         \\
         \\ Usage:
         \\
-        \\ fi invoice [new|show|checkout|commit|list] [options]
+        \\ fj invoice [new|show|checkout|commit|list] [options]
         \\
         \\ Available Subcommands:
         \\ ======================
         \\
-        \\ - fi invoice new  <client> --project=<project>
+        \\ - fj invoice new  <client> --project=<project>
         \\                                          [--rates=<rates>]
         \\                                          [--to=<c/o name>]
         \\                                     -> <invoice--YEAR-XXXX--clientshortname>/
         \\
-        \\ - fi invoice checkout <ID>          -> <invoice--ID--clientshortname>/
-        \\ - fi invoice commit                 -> move into .fi/invoices and compile
-        \\ - fi invoice list     [--all] [-v]
-        \\ - fi invoice show     <ID>          -> show metadata
-        \\ - fi invoice open     <ID>          -> open PDF
-        \\ - fi invoice compile [<ID>]         -> compile PDF in current dir or from ID
+        \\ - fj invoice checkout <ID>          -> <invoice--ID--clientshortname>/
+        \\ - fj invoice commit                 -> move into .fj/invoices and compile
+        \\ - fj invoice list     [--all] [-v]
+        \\ - fj invoice show     <ID>          -> show metadata
+        \\ - fj invoice open     <ID>          -> open PDF
+        \\ - fj invoice compile [<ID>]         -> compile PDF in current dir or from ID
         \\
         \\ Options:
         \\
         \\ -h, --help               Displays this help message then exits.
         \\
-        \\ -C, --fi_home            The FI_HOME dir to use.
-        \\                          Default: $FI_HOME orelse ~/.fi
+        \\ -C, --fj_home            The FJ_HOME dir to use.
+        \\                          Default: $FJ_HOME orelse ~/.fj
         \\
     ;
 };
 
 pub const ServeCommand = struct {
-    fi_home: ?[]const u8 = null,
+    fj_home: ?[]const u8 = null,
     host: []const u8 = "0.0.0.0",
     port: usize = 3000,
     work_dir: []const u8 = ".",
@@ -326,7 +326,7 @@ pub const ServeCommand = struct {
     // },
 
     pub const aliases = .{
-        .fi_home = "C",
+        .fj_home = "C",
     };
 
     pub const help =
@@ -334,15 +334,15 @@ pub const ServeCommand = struct {
         \\
         \\ Usage:
         \\
-        \\ fi serve [options]
+        \\ fj serve [options]
         \\
         \\
         \\ Options:
         \\
         \\ -h, --help               Displays this help message then exits.
         \\
-        \\ -C, --fi_home            The FI_HOME dir to use.
-        \\                          Default: $FI_HOME orelse ~/.fi
+        \\ -C, --fj_home            The FJ_HOME dir to use.
+        \\                          Default: $FJ_HOME orelse ~/.fj
         \\ --host=                  The interface to listen on.
         \\                          Default: 0.0.0.0
         \\
@@ -364,7 +364,7 @@ pub const VersionCommand = struct {
         \\
         \\ Usage:
         \\
-        \\ fi version
+        \\ fj version
         \\
     ;
 };
@@ -381,10 +381,10 @@ pub const Cli = union(enum) {
     version: VersionCommand,
 
     pub const help =
-        \\ Usage: fi [command] [options]
+        \\ Usage: fj [command] [options]
         \\
         \\ Commands:
-        \\  init            Initialize fi
+        \\  init            Initialize fj
         \\  git             Configure git remotes, push, pull, status
         \\  client          Manage clients
         \\  rate            Manage rates
@@ -396,8 +396,8 @@ pub const Cli = union(enum) {
         \\ General Options:
         \\  -h, --help      Displays this help message then exits
         \\
-        \\  -C, --fi_home   The FI_HOME dir to use
-        \\                  Default: $FI_HOME orelse ~/.fi
+        \\  -C, --fj_home   The FJ_HOME dir to use
+        \\                  Default: $FJ_HOME orelse ~/.fj
         \\
     ;
 };
