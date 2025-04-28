@@ -1,11 +1,11 @@
-# fi — The Commandline Company
+# fj — The Commandline Company
 
 ```shell
-$ fi -h
- Usage: fi [command] [options]
+$ fj -h
+ Usage: fj [command] [options]
 
  Commands:
-  init            Initialize fi
+  init            Initialize fj
   git             Configure git remotes, push, pull, status
   client          Manage clients
   rate            Manage rates
@@ -17,33 +17,37 @@ $ fi -h
  General Options:
   -h, --help      Displays this help message then exits
 
-  -C, --fi_home   The FI_HOME dir to use
-                  Default: $FI_HOME orelse ~/.fi
+  -C, --fj_home   The FJ_HOME dir to use
+                  Default: $FJ_HOME orelse ~/.fj
 ```
 
 
 
-`fi` is what I use to create offers, invoices, and the occasional letter for my
+`fj` is what I use to create offers, invoices, and the occasional letter for my
 own company. It helps manage business documents using LaTeX and Git in a
 structured, auditable way.
+
+**About the name:** `fj` is designed for speed and comfort — just your index
+fingers on the homerow! And if you look closely, the j almost looks like an i in
+many fonts, a playful nod to “finance.”
 
 The default LaTeX templates are laid out according to conventions common in the
 German-speaking world.
 
-`fi` sets up a Git-managed directory structure (“fi home”) and guides you through
+`fj` sets up a Git-managed directory structure (“fj home”) and guides you through
 each step of the document lifecycle. You define your company details — including
 name, address, bank info, contact email, and logo — once in a JSON config file.
 Clients and rate sets are added through their own editable JSON records.
 
-When you create a new document, `fi` generates a self-contained working
+When you create a new document, `fj` generates a self-contained working
 directory containing the LaTeX template, your logo, and metadata placeholders. A
 JSON file is also created and pre-filled with client information and other
 defaults. You edit that file to customize document-specific fields — such as the
 project name, applicable rates, VAT settings, or footer options. For offers and
 invoices, you also fill in a `billables.csv` with the actual billable items.
 
-Once the details are in place, you use `fi compile` to render the PDF. When
-you’re satisfied, `fi commit` assigns a permanent ID, re-renders the PDF, and
+Once the details are in place, you use `fj compile` to render the PDF. When
+you’re satisfied, `fj commit` assigns a permanent ID, re-renders the PDF, and
 commits the entire directory to the Git-managed archive.
 
 ---
@@ -56,7 +60,7 @@ commits the entire directory to the Git-managed archive.
 - CSV-based input for billables (invoices/offers)
 - Manual editing and iterative compilation
 - Reliable ID assignment with file locking
-- Git-managed document archive ("fi home")
+- Git-managed document archive ("fj home")
 
 ---
 
@@ -65,12 +69,12 @@ commits the entire directory to the Git-managed archive.
 ### 1. Initialize your company setup
 
 ```sh
-fi init --generate=true config.json
+fj init --generate=true config.json
 # edit config.json to set company details
-fi init config.json
+fj init config.json
 
 # (optional) configure a remote to sync your document archive
-fi git remote add --repo=online --url=user@server.com:fi_archive.git
+fj git remote add --repo=online --url=user@server.com:fj_archive.git
 ```
 
 ---
@@ -78,13 +82,13 @@ fi git remote add --repo=online --url=user@server.com:fi_archive.git
 ### 2. Add a client and rate set
 
 ```sh
-fi client new acme
+fj client new acme
 # edit acme.json with client address and contact info
-fi client commit acme
+fj client commit acme
 
-fi rate new standard
+fj rate new standard
 # edit standard.json with named entries and amounts
-fi rate commit standard
+fj rate commit standard
 ```
 
 ---
@@ -92,21 +96,21 @@ fi rate commit standard
 ### 3. Create and finalize a document
 
 ```sh
-fi invoice new acme --rates=standard
+fj invoice new acme --rates=standard
 cd invoice--2025-XXX--acme/
 
 # edit billables.csv and invoice.json
-fi invoice compile
+fj invoice compile
 #          ^^^ repeat editing and compiling until satisfied
 
-fi invoice commit
+fj invoice commit
 
 # (optional) push the updated archive to your remote
-fi git push    # [--repo=online]
+fj git push    # [--repo=online]
 ```
 
 - `compile` generates a PDF using LaTeX (run twice for references)
-- `commit` assigns an ID, recompiles, and archives the result to `fi home`, then commits it to Git
+- `commit` assigns an ID, recompiles, and archives the result to `fj home`, then commits it to Git
 
 ---
 
@@ -124,13 +128,13 @@ Each type generates a directory like `offer--2025-XXX--clientname/`. Temporary I
 
 ## Philosophy
 
-`fi` is minimal and transparent. It helps generate documents with consistent
+`fj` is minimal and transparent. It helps generate documents with consistent
 structure and layout, but leaves all meaningful content — text, metadata, layout
 — under your direct control.
 
 Everything is local, version-controlled, and reproducible. You can sync your
-archive using `fi git push`, or host it behind SSH on a hardened server. Since
-everything is file-based, fi works just as well remotely or in air-gapped
+archive using `fj git push`, or host it behind SSH on a hardened server. Since
+everything is file-based, `fj` works just as well remotely or in air-gapped
 environments.
 
 ---

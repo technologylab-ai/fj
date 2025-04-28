@@ -1,7 +1,7 @@
 .{
-    .name = .fi,
-    .version = "0.0.4",
-    .fingerprint = 0x461007226960844d, // Changing this has security and trust implications.
+    .name = .fj,
+    .version = "0.0.5-devel",
+    .fingerprint = 0xdf1956986963a6e9, // Changing this has security and trust implications.
     .minimum_zig_version = "0.14.0",
     .dependencies = .{
         .zli = .{

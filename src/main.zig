@@ -1,14 +1,14 @@
 const std = @import("std");
 const Cli = @import("cli.zig");
 const zli = @import("zli");
-const Fi = @import("fi.zig");
+const Fj = @import("fj.zig");
 const Server = @import("web/server.zig");
 const Fatal = @import("fatal.zig");
 const Version = @import("version.zig");
 const zon = @import("build.zig.zon");
 
 const assert = std.debug.assert;
-const log = std.log.scoped(.fi);
+const log = std.log.scoped(.fj);
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -25,43 +25,43 @@ pub fn main() !void {
 
     const result = zli.parse(&pargs, Cli.Cli);
 
-    var fi: Fi = .{ .arena = arena };
-    defer fi.deinit();
+    var fj: Fj = .{ .arena = arena };
+    defer fj.deinit();
 
     switch (result) {
         .init => |args| {
-            try fi.setup(args.fi_home);
-            try fi.cmd_init(args);
+            try fj.setup(args.fj_home);
+            try fj.cmd_init(args);
         },
         .git => |args| {
-            try fi.setup(args.fi_home);
-            try fi.cmd_git(args);
+            try fj.setup(args.fj_home);
+            try fj.cmd_git(args);
         },
         .client => |args| {
-            try fi.setup(args.fi_home);
-            _ = try fi.cmdClient(args);
+            try fj.setup(args.fj_home);
+            _ = try fj.cmdClient(args);
         },
         .rate => |args| {
-            try fi.setup(args.fi_home);
-            _ = try fi.cmdRate(args);
+            try fj.setup(args.fj_home);
+            _ = try fj.cmdRate(args);
         },
         .letter => |args| {
-            try fi.setup(args.fi_home);
-            _ = try fi.cmdLetter(args);
+            try fj.setup(args.fj_home);
+            _ = try fj.cmdLetter(args);
         },
         .offer => |args| {
-            try fi.setup(args.fi_home);
-            _ = try fi.cmdOffer(args);
+            try fj.setup(args.fj_home);
+            _ = try fj.cmdOffer(args);
         },
         .invoice => |args| {
-            try fi.setup(args.fi_home);
-            _ = try fi.cmdInvoice(args);
+            try fj.setup(args.fj_home);
+            _ = try fj.cmdInvoice(args);
         },
         .serve => |args| {
             Fatal.mode = .server;
-            try fi.setup(args.fi_home);
+            try fj.setup(args.fj_home);
             try Server.start(
-                fi.fi_home.?,
+                fj.fj_home.?,
                 .{
                     .host = args.host,
                     .port = args.port,
@@ -72,7 +72,7 @@ pub fn main() !void {
             );
         },
         .version => {
-            try std.io.getStdOut().writer().print("fi version {s}\n", .{Version.version() orelse "(unknown version)"});
+            try std.io.getStdOut().writer().print("fj version {s}\n", .{Version.version() orelse "(unknown version)"});
         },
     }
 }

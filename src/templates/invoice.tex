@@ -54,17 +54,17 @@
 % Fancy header/footer config
 \pagestyle{fancy}
 \fancyhf{}
-  \lhead{\textbf{Rechnung} \FiDocId}
-  \chead{\textbf{\FiCompanyName}}
+  \lhead{\textbf{Rechnung} \FjDocId}
+  \chead{\textbf{\FjCompanyName}}
   \rhead{\small{Seite \thepage/\pageref{LastPage}}}
-  \cfoot{\small{\FiCompanyRegisteredAt \space  · \FiCompanyID \space · \FiUID}}
+  \cfoot{\small{\FjCompanyRegisteredAt \space  · \FjCompanyID \space · \FjUID}}
   \rfoot{}
 
 \fancypagestyle{firstpage}{
-  \lhead{\textbf{Rechnung} \FiDocId}
-  \chead{\textbf{\FiCompanyName}}
+  \lhead{\textbf{Rechnung} \FjDocId}
+  \chead{\textbf{\FjCompanyName}}
   \rhead{\small{Seite \thepage/\pageref{LastPage}}}
-  \cfoot{\small{\FiCompanyRegisteredAt \space  · \FiCompanyID \space · \FiUID}}
+  \cfoot{\small{\FjCompanyRegisteredAt \space  · \FjCompanyID \space · \FjUID}}
   \rfoot{}
 }
 
@@ -83,8 +83,8 @@
 \newcommand{\grayit}[1]{\textcolor{gray}{\scriptsize\textit{#1}}}
 
 \newcommand{\contactinfo}{%
-    \FiCompanyUrl \\
-    \FiCompanyEmail \\
+    \FjCompanyUrl \\
+    \FjCompanyEmail \\
 }
 
 \begin{document}
@@ -96,11 +96,11 @@
 \begin{minipage}[t]{0.33\textwidth}
 \raggedright
 \vspace{-2.9em}
-  \textsc{\FiClientCompany}\\[0.3ex]
-  \textbf{\FiClientCareOf}\\[0.3ex]
-  \FiClientStreet \\[0.3ex]
-  \FiClientAreaCode\space \FiClientCity\\[0.3ex]
-  \FiClientCountry \\[0.3ex]
+  \textsc{\FjClientCompany}\\[0.3ex]
+  \textbf{\FjClientCareOf}\\[0.3ex]
+  \FjClientStreet \\[0.3ex]
+  \FjClientAreaCode\space \FjClientCity\\[0.3ex]
+  \FjClientCountry \\[0.3ex]
 \end{minipage}
 \hfill
 \begin{minipage}[t]{0.65\textwidth}
@@ -111,9 +111,9 @@
   %\vspace{-2.8em}
   \vspace{-3.5em}
   \small
-  \textbf{\FiCompanyName} \\[-0.2em]
-  \FiCompanyStreet\\[-0.2ex]
-  \FiCompanyAreaCodeCity\\[1.2ex]
+  \textbf{\FjCompanyName} \\[-0.2em]
+  \FjCompanyStreet\\[-0.2ex]
+  \FjCompanyAreaCodeCity\\[1.2ex]
   \contactinfo
 \end{minipage}
 \end{tabularx}
@@ -126,11 +126,11 @@
 
 % Start of the letter
 \vspace{1.0cm}
-\null\hfill Rechnungsdatum: \FiDate
+\null\hfill Rechnungsdatum: \FjDate
 
-\section*{Rechnung \FiDocId}
+\section*{Rechnung \FjDocId}
 
-\textbf{Leistungszeitraum:} \FiInvoiceFrom \makeatletter \@ifundefined{FiInvoiceTo}{ }{\space -- \FiInvoiceTo }
+\textbf{Leistungszeitraum:} \FjInvoiceFrom \makeatletter \@ifundefined{FjInvoiceTo}{ }{\space -- \FjInvoiceTo }
 \makeatother
 \vspace{1em}
 
@@ -165,9 +165,9 @@
 \toprule
 % \input{groupsums.tex} \\
 % \midrule
-  \textit{Netto} & \textit{\FiGrandTotal \space €} \\[0.3em]
-  \textit{{+ {\FiVatPercent}\% Ust.}} & \textit{\FiVatAmount\space  €} \\[0.1em]
-\textbf{{TOTAL}} & \textbf{\FiGrandTotalPlusVat\space  €} \\[0.5em]
+  \textit{Netto} & \textit{\FjGrandTotal \space €} \\[0.3em]
+  \textit{{+ {\FjVatPercent}\% Ust.}} & \textit{\FjVatAmount\space  €} \\[0.1em]
+\textbf{{TOTAL}} & \textbf{\FjGrandTotalPlusVat\space  €} \\[0.5em]
 \bottomrule
 \bottomrule
 \end{tabularx}
@@ -179,14 +179,14 @@
 \vspace{5mm}
 \fi
 
-Zahlbar \FiTermsOfPayment \space auf unser Konto bei der \FiBankName:
+Zahlbar \FjTermsOfPayment \space auf unser Konto bei der \FjBankName:
 
 \begin{center}
   \begin{tabularx}{\textwidth}{@{}X L{2.5cm}@{}X L{6.5cm}@{}X }
 	  \toprule
 	  \textbf{Bankverbindung:} & {} & {} \\
-	  {} & IBAN & \textbf{\FiBankIBAN} \\
-	  {} & SWIFT/BIC & \textbf{\FiBankBIC} \\
+	  {} & IBAN & \textbf{\FjBankIBAN} \\
+	  {} & SWIFT/BIC & \textbf{\FjBankBIC} \\
 	  \bottomrule
 	\end{tabularx}
 \end{center}
@@ -195,7 +195,7 @@ Zahlbar \FiTermsOfPayment \space auf unser Konto bei der \FiBankName:
 \vspace{5mm}
 Es gelten unsere allgemeinen Geschäftsbedingungen (AGB),
 abrufbar unter:\\
-\url{\FiTermsOfServiceUrl}.
+\url{\FjTermsOfServiceUrl}.
 \fi
 
 \end{document}

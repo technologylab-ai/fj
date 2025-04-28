@@ -1,9 +1,9 @@
 const std = @import("std");
 const zap = @import("zap");
-const Fi = @import("../fi.zig");
+const Fj = @import("../fj.zig");
 const Cli = @import("../cli.zig");
 const Git = @import("../git.zig");
-const fi_json = @import("../json.zig");
+const fj_json = @import("../json.zig");
 const Context = @import("context.zig");
 const Format = @import("../format.zig");
 const fsutil = @import("../fsutil.zig");
@@ -53,7 +53,7 @@ const log = std.log.scoped(.endpoint);
 // POST    /<type>/compile/:id          Show editor editable=true, compile=true
 // GET     /<type>/new/:id              Show editor editable=true, compile=true
 //
-// GET     /<type>/pdf/:id              Show PDF from fi_home
+// GET     /<type>/pdf/:id              Show PDF from fj_home
 // GET     /<type>/draftpdf/:id         Show PDF from workdir
 //
 
@@ -63,11 +63,11 @@ const log = std.log.scoped(.endpoint);
 // GET     /git/commit                  Show git command result page
 // GET     /git/push                    Show git command result page
 
-const Client = fi_json.Client;
-const Rate = fi_json.Rate;
-const Letter = fi_json.Letter;
-const Offer = fi_json.Offer;
-const Invoice = fi_json.Invoice;
+const Client = fj_json.Client;
+const Rate = fj_json.Rate;
+const Letter = fj_json.Letter;
+const Offer = fj_json.Offer;
+const Invoice = fj_json.Invoice;
 
 const ClientCommand = Cli.ClientCommand;
 const RateCommand = Cli.RateCommand;
@@ -93,12 +93,12 @@ error_strategy: zap.Endpoint.ErrorStrategy = .log_to_response,
 //
 // helpers
 
-fn createFi(arena: Allocator, context: *Context) Fi {
-    const fi: Fi = .{
+fn createFj(arena: Allocator, context: *Context) Fj {
+    const fj: Fj = .{
         .arena = arena,
-        .fi_home = context.fi_home,
+        .fj_home = context.fj_home,
     };
-    return fi;
+    return fj;
 }
 
 //
@@ -397,7 +397,7 @@ fn allDocsAndStats(_: *Endpoint, arena: Allocator, context: *Context, DocumentTy
     var doc_list = std.ArrayListUnmanaged(Document).empty;
     var stats: Stats = .{};
 
-    var fi = createFi(arena, context);
+    var fj = createFj(arena, context);
 
     inline for (DocumentTypes) |DocumentType| {
         const Command = switch (DocumentType) {
@@ -410,14 +410,14 @@ fn allDocsAndStats(_: *Endpoint, arena: Allocator, context: *Context, DocumentTy
         const listCommand: Command = .{
             .positional = .{ .subcommand = .list },
         };
-        const names = try fi.cmdListDocuments(listCommand);
+        const names = try fj.cmdListDocuments(listCommand);
 
         for (names.list) |name| {
             const id = try documentIdFromName(name);
             const show_cli: Command = .{
                 .positional = .{ .subcommand = .show, .arg = id },
             };
-            const files = try fi.cmdShowDocument(show_cli);
+            const files = try fj.cmdShowDocument(show_cli);
             const obj = try std.json.parseFromSliceLeaky(
                 DocumentType,
                 arena,
@@ -463,7 +463,7 @@ fn allDocsAndStats(_: *Endpoint, arena: Allocator, context: *Context, DocumentTy
                 }
             };
 
-            const doc_type = Fi.documentTypeHumanName(DocumentType);
+            const doc_type = Fj.documentTypeHumanName(DocumentType);
 
             const document: Document = .{
                 .type = try arena.dupe(u8, doc_type),
@@ -483,9 +483,9 @@ fn allDocsAndStats(_: *Endpoint, arena: Allocator, context: *Context, DocumentTy
 }
 
 fn show_dashboard(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
-    var fi = createFi(arena, context);
-    const year = try fi.year();
-    const fi_config = try fi.loadConfigJson();
+    var fj = createFj(arena, context);
+    const year = try fj.year();
+    const fj_config = try fj.loadConfigJson();
 
     const docs_and_stats = try ep.allDocsAndStats(arena, context, &.{ Invoice, Offer, Letter });
     const stats = docs_and_stats.stats;
@@ -495,7 +495,7 @@ fn show_dashboard(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
 
     const git: Git = .{
         .arena = arena,
-        .repo_dir = context.fi_home,
+        .repo_dir = context.fj_home,
     };
 
     var git_status_alist = std.ArrayListUnmanaged(u8).empty;
@@ -503,7 +503,7 @@ fn show_dashboard(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
 
     const params = .{
         .recent_docs = recent_documents,
-        .currency_symbol = fi_config.CurrencySymbol,
+        .currency_symbol = fj_config.CurrencySymbol,
         .invoices_total = stats.num_invoices_total,
         .invoices_open = stats.num_invoices_open,
         .offers_total = stats.num_offers_total,
@@ -515,9 +515,9 @@ fn show_dashboard(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
             .{ .comma = ',', .sep = '.' },
         ),
         .year = year,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
         .version = Version.version(),
-        .fi_home = fi.fi_home.?,
+        .fj_home = fj.fj_home.?,
     };
 
     var mustache = try zap.Mustache.fromData(html_dashboard);
@@ -546,8 +546,8 @@ fn resource_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         }
     };
 
-    var fi = createFi(arena, context);
-    log.debug("fi_home: {s}", .{fi.fi_home.?});
+    var fj = createFj(arena, context);
+    log.debug("fj_home: {s}", .{fj.fj_home.?});
 
     const type_string, const CliCommand = switch (ResourceType) {
         Client => .{ "client", ClientCommand },
@@ -563,10 +563,10 @@ fn resource_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
             .positional = .{ .subcommand = .list },
         };
 
-        const names = try fi.handleRecordCommand(list_cli);
+        const names = try fj.handleRecordCommand(list_cli);
         for (names.list) |shortname| {
             log.debug("trying to load {} {s} {s}", .{ ResourceType, type_string, shortname });
-            const obj = try fi.loadRecord(ResourceType, try arena.dupe(u8, shortname), .{ .custom_path = null });
+            const obj = try fj.loadRecord(ResourceType, try arena.dupe(u8, shortname), .{ .custom_path = null });
             try list.append(arena, .{
                 // we don't dup() them because of the arena
                 .shortname = obj.shortname,
@@ -581,11 +581,11 @@ fn resource_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         break :blk sorted;
     };
 
-    const fi_config = try fi.loadConfigJson();
+    const fj_config = try fj.loadConfigJson();
     const params = .{
         .type = type_string,
         .resources = resources,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
     var mustache = try zap.Mustache.fromData(html_resource_list);
     defer mustache.deinit();
@@ -598,8 +598,8 @@ fn resource_list(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
 }
 
 fn resource_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type, id: []const u8, editable: bool) !void {
-    var fi = createFi(arena, context);
-    log.debug("fi_home: {s}", .{fi.fi_home.?});
+    var fj = createFj(arena, context);
+    log.debug("fj_home: {s}", .{fj.fj_home.?});
 
     const type_string = switch (ResourceType) {
         Client => "client",
@@ -607,7 +607,7 @@ fn resource_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
         else => unreachable,
     };
 
-    const obj = try fi.loadRecord(
+    const obj = try fj.loadRecord(
         ResourceType,
         try arena.dupe(u8, id),
         .{ .custom_path = null },
@@ -617,13 +617,13 @@ fn resource_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
     const writer = alist.writer(arena);
     try std.json.stringify(obj, .{ .whitespace = .indent_4 }, writer);
 
-    const fi_config = try fi.loadConfigJson();
+    const fj_config = try fj.loadConfigJson();
     const params = .{
         .type = type_string,
         .shortname = id,
         .json = alist.items,
         .editable = editable,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_resource_editor);
@@ -637,21 +637,21 @@ fn resource_view(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reque
 }
 
 fn document_list(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type) !void {
-    var fi = createFi(arena, context);
-    const year = try fi.year();
-    const fi_config = try fi.loadConfigJson();
+    var fj = createFj(arena, context);
+    const year = try fj.year();
+    const fj_config = try fj.loadConfigJson();
 
-    const doc_type = Fi.documentTypeHumanName(DocumentType);
+    const doc_type = Fj.documentTypeHumanName(DocumentType);
     const docs_and_stats = try ep.allDocsAndStats(arena, context, &.{DocumentType});
     std.mem.sort(Document, docs_and_stats.documents, {}, Document.greaterThan);
 
     const params = .{
         .type = doc_type,
         .documents = docs_and_stats.documents,
-        .currency_symbol = fi_config.CurrencySymbol,
+        .currency_symbol = fj_config.CurrencySymbol,
         .year = year,
         .is_letter = DocumentType == Letter,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_list);
@@ -664,9 +664,9 @@ fn document_list(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
     }
 }
 
-fn toDocument(_: *Endpoint, arena: Allocator, obj: anytype, files: Fi.DocumentFileContents) !Document {
+fn toDocument(_: *Endpoint, arena: Allocator, obj: anytype, files: Fj.DocumentFileContents) !Document {
     const DocumentType = @TypeOf(obj);
-    const doc_type = Fi.documentTypeHumanName(DocumentType);
+    const doc_type = Fj.documentTypeHumanName(DocumentType);
     const status: []const u8 = blk: {
         switch (DocumentType) {
             Invoice => {
@@ -714,10 +714,10 @@ fn toDocument(_: *Endpoint, arena: Allocator, obj: anytype, files: Fi.DocumentFi
     };
 }
 fn document_view(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
-    var fi = createFi(arena, context);
-    const fi_config = try fi.loadConfigJson();
+    var fj = createFj(arena, context);
+    const fj_config = try fj.loadConfigJson();
 
-    const doc_type = Fi.documentTypeHumanName(DocumentType);
+    const doc_type = Fj.documentTypeHumanName(DocumentType);
     const Command = switch (DocumentType) {
         Invoice => InvoiceCommand,
         Offer => OfferCommand,
@@ -729,7 +729,7 @@ fn document_view(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         .positional = .{ .subcommand = .show, .arg = id },
     };
 
-    const files = try fi.cmdShowDocument(command);
+    const files = try fj.cmdShowDocument(command);
 
     const obj = try std.json.parseFromSliceLeaky(
         DocumentType,
@@ -743,7 +743,7 @@ fn document_view(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
     const params = .{
         .type = doc_type,
         .document = document,
-        .currency_symbol = fi_config.CurrencySymbol,
+        .currency_symbol = fj_config.CurrencySymbol,
         .editable = false,
         .json = document.json,
         .billables = document.billables,
@@ -751,7 +751,7 @@ fn document_view(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         .id = document.id,
         .compile = false,
         .is_letter = DocumentType == Letter,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -798,10 +798,10 @@ const Stats = struct {
 };
 
 fn document_edit(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
-    var fi = createFi(arena, context);
-    const fi_config = try fi.loadConfigJson();
+    var fj = createFj(arena, context);
+    const fj_config = try fj.loadConfigJson();
 
-    const document_subdir_name = try fi.findDocumentById(DocumentType, id);
+    const document_subdir_name = try fj.findDocumentById(DocumentType, id);
     const document_dir_path = try std.fs.path.join(arena, &.{ context.work_dir, document_subdir_name });
     // we are in workdir
     if (fsutil.isDirPresent(document_dir_path)) {
@@ -809,7 +809,7 @@ fn document_edit(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         try std.fs.cwd().deleteTree(document_dir_path);
     }
 
-    const doc_type = Fi.documentTypeHumanName(DocumentType);
+    const doc_type = Fj.documentTypeHumanName(DocumentType);
 
     const Command = switch (DocumentType) {
         Invoice => InvoiceCommand,
@@ -822,7 +822,7 @@ fn document_edit(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         .positional = .{ .subcommand = .checkout, .arg = id },
     };
 
-    const files = try fi.cmdCheckoutDocument(command);
+    const files = try fj.cmdCheckoutDocument(command);
 
     const obj = try std.json.parseFromSliceLeaky(
         DocumentType,
@@ -836,7 +836,7 @@ fn document_edit(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
     const params = .{
         .type = doc_type,
         .document = document,
-        .currency_symbol = fi_config.CurrencySymbol,
+        .currency_symbol = fj_config.CurrencySymbol,
         .editable = true,
         .json = document.json,
         .billables = document.billables,
@@ -844,7 +844,7 @@ fn document_edit(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Requ
         .id = document.id,
         .compile = true,
         .is_letter = DocumentType == Letter,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -864,7 +864,7 @@ fn document_new(
     r: zap.Request,
     DocumentType: type,
 ) !void {
-    var fi = createFi(arena, context);
+    var fj = createFj(arena, context);
 
     // get the files passed in from the browser
     try r.parseBody();
@@ -905,12 +905,12 @@ fn document_new(
         break :blk project;
     };
 
-    const doc_type = Fi.documentTypeHumanName(DocumentType);
+    const doc_type = Fj.documentTypeHumanName(DocumentType);
 
     const expected_path = try std.fmt.allocPrint(
         arena,
         "{s}--{d}-XXX--{s}",
-        .{ doc_type, try fi.year(), client },
+        .{ doc_type, try fj.year(), client },
     );
     if (fsutil.isDirPresent(expected_path)) {
         // delete it
@@ -939,7 +939,7 @@ fn document_new(
         }
     };
 
-    const result = fi.cmdCreateNewDocument(command) catch |err| {
+    const result = fj.cmdCreateNewDocument(command) catch |err| {
         const message = try std.fmt.allocPrint(
             arena,
             "{}:\n{s}",
@@ -947,9 +947,9 @@ fn document_new(
         );
         var mustache = try zap.Mustache.fromData(html_error);
         defer mustache.deinit();
-        const fi_config = try fi.loadConfigJson();
+        const fj_config = try fj.loadConfigJson();
         const result = mustache.build(
-            .{ .message = message, .company = fi_config.CompanyName },
+            .{ .message = message, .company = fj_config.CompanyName },
         );
         defer result.deinit();
 
@@ -969,7 +969,7 @@ fn document_new(
     );
 
     const document = try ep.toDocument(arena, obj, result.new.files);
-    const fi_config = try fi.loadConfigJson();
+    const fj_config = try fj.loadConfigJson();
 
     // const document_name_instead_of_id = try std.fmt.allocPrint(
     //     arena,
@@ -979,7 +979,7 @@ fn document_new(
     const params = .{
         .type = doc_type,
         .document = document,
-        .currency_symbol = fi_config.CurrencySymbol,
+        .currency_symbol = fj_config.CurrencySymbol,
         .editable = true,
         .json = document.json,
         .billables = document.billables,
@@ -987,7 +987,7 @@ fn document_new(
         .id = document.id,
         .compile = true,
         .is_letter = DocumentType == Letter,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1008,10 +1008,10 @@ fn document_compile(
     DocumentType: type,
     id: []const u8,
 ) !void {
-    var fi = createFi(arena, context);
-    const fi_config = try fi.loadConfigJson();
-    const doc_type = Fi.documentTypeHumanName(DocumentType);
-    const document_subdir_name = try fi.findDocumentById(DocumentType, id);
+    var fj = createFj(arena, context);
+    const fj_config = try fj.loadConfigJson();
+    const doc_type = Fj.documentTypeHumanName(DocumentType);
+    const document_subdir_name = try fj.findDocumentById(DocumentType, id);
 
     // cd into the subdir
     log.debug("Current dir is {s}", .{try std.process.getCwdAlloc(arena)});
@@ -1088,7 +1088,7 @@ fn document_compile(
         .positional = .{ .subcommand = .compile },
     };
 
-    const files = try fi.cmdCompileDocument(compileCommand);
+    const files = try fj.cmdCompileDocument(compileCommand);
 
     const obj = try std.json.parseFromSliceLeaky(
         DocumentType,
@@ -1102,7 +1102,7 @@ fn document_compile(
     const params = .{
         .type = doc_type,
         .document = document,
-        .currency_symbol = fi_config.CurrencySymbol,
+        .currency_symbol = fj_config.CurrencySymbol,
         .editable = true,
         .json = document.json,
         .billables = document.billables,
@@ -1110,7 +1110,7 @@ fn document_compile(
         .id = document.id,
         .compile = true,
         .is_letter = DocumentType == Letter,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1131,9 +1131,9 @@ fn document_commit(
     DocumentType: type,
     id: []const u8,
 ) !void {
-    var fi = createFi(arena, context);
-    const fi_config = try fi.loadConfigJson();
-    const document_subdir_name = try fi.findDocumentById(DocumentType, id);
+    var fj = createFj(arena, context);
+    const fj_config = try fj.loadConfigJson();
+    const document_subdir_name = try fj.findDocumentById(DocumentType, id);
 
     // cd into the subdir
     log.debug("Current dir is {s}", .{try std.process.getCwdAlloc(arena)});
@@ -1179,7 +1179,7 @@ fn document_commit(
         break :blk tex;
     };
 
-    const doc_type = Fi.documentTypeHumanName(DocumentType);
+    const doc_type = Fj.documentTypeHumanName(DocumentType);
 
     // now save them
     var cwd = std.fs.cwd();
@@ -1213,7 +1213,7 @@ fn document_commit(
         .positional = .{ .subcommand = .commit },
     };
 
-    const files = try fi.cmdCommitDocument(commitCommand);
+    const files = try fj.cmdCommitDocument(commitCommand);
 
     const obj = try std.json.parseFromSliceLeaky(
         DocumentType,
@@ -1227,7 +1227,7 @@ fn document_commit(
     const params = .{
         .type = doc_type,
         .document = document,
-        .currency_symbol = fi_config.CurrencySymbol,
+        .currency_symbol = fj_config.CurrencySymbol,
         .editable = false,
         .json = document.json,
         .billables = document.billables,
@@ -1235,7 +1235,7 @@ fn document_commit(
         .id = document.id,
         .compile = true,
         .is_letter = DocumentType == Letter,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -1249,17 +1249,17 @@ fn document_commit(
 }
 
 fn document_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
-    var fi = createFi(arena, context);
+    var fj = createFj(arena, context);
 
-    const document_base = try fi.documentBaseDir(DocumentType);
+    const document_base = try fj.documentBaseDir(DocumentType);
 
-    const human_doctype = Fi.documentTypeHumanName(DocumentType);
+    const human_doctype = Fj.documentTypeHumanName(DocumentType);
 
     const document_dir_name = blk: {
-        if (Fi.startsWithIC(id, human_doctype)) {
+        if (Fj.startsWithIC(id, human_doctype)) {
             break :blk id;
         } else {
-            break :blk try fi.findDocumentById(DocumentType, id);
+            break :blk try fj.findDocumentById(DocumentType, id);
         }
     };
 
@@ -1279,11 +1279,11 @@ fn document_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
 }
 
 fn document_draft_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
-    var fi = createFi(arena, context);
+    var fj = createFj(arena, context);
 
     log.debug("document_draft_pdf called with id {s}", .{id});
 
-    const document_subdir_name = try fi.findDocumentById(DocumentType, id);
+    const document_subdir_name = try fj.findDocumentById(DocumentType, id);
 
     // Linux XDG_OPEN || macos open || windows: explorer.exe?
     const pdf_filename = try std.fmt.allocPrint(
@@ -1308,18 +1308,18 @@ fn document_draft_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.
 fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
     const git: Git = .{
         .arena = arena,
-        .repo_dir = context.fi_home,
+        .repo_dir = context.fj_home,
     };
-    var fi = createFi(arena, context);
+    var fj = createFj(arena, context);
     var alist = std.ArrayListUnmanaged(u8).empty;
     _ = try git.push(alist.writer(arena).any());
 
-    const fi_config = try fi.loadConfigJson();
+    const fj_config = try fj.loadConfigJson();
 
     const params = .{
         .command = "push",
         .message = alist.items,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
     var mustache = try zap.Mustache.fromData(html_git_command);
     defer mustache.deinit();
@@ -1334,21 +1334,21 @@ fn git_push(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
 fn git_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
     const git: Git = .{
         .arena = arena,
-        .repo_dir = context.fi_home,
+        .repo_dir = context.fj_home,
     };
-    var fi = createFi(arena, context);
+    var fj = createFj(arena, context);
     var alist = std.ArrayListUnmanaged(u8).empty;
     const writer = alist.writer(arena).any();
     if (try git.stage(.all, writer)) {
         _ = try git.commit("Committed via web", writer);
     }
 
-    const fi_config = try fi.loadConfigJson();
+    const fj_config = try fj.loadConfigJson();
 
     const params = .{
         .command = "commit",
         .message = alist.items,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
     var mustache = try zap.Mustache.fromData(html_git_command);
     defer mustache.deinit();
@@ -1529,9 +1529,9 @@ pub fn post(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) 
 }
 
 fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type) !void {
-    var fi = createFi(arena, context);
-    const fi_config = try fi.loadConfigJson();
-    log.debug("fi_home: {s}", .{fi.fi_home.?});
+    var fj = createFj(arena, context);
+    const fj_config = try fj.loadConfigJson();
+    log.debug("fj_home: {s}", .{fj.fj_home.?});
 
     const type_string = switch (ResourceType) {
         Client => "client",
@@ -1563,7 +1563,7 @@ fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
         defer mustache.deinit();
         const result = mustache.build(.{
             .message = message,
-            .company = fi_config.CompanyName,
+            .company = fj_config.CompanyName,
         });
         defer result.deinit();
 
@@ -1585,9 +1585,9 @@ fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
         .positional = .{ .subcommand = .new, .arg = shortname },
     };
 
-    _ = try fi.handleRecordCommand(command);
+    _ = try fj.handleRecordCommand(command);
 
-    const obj = try fi.loadRecord(
+    const obj = try fj.loadRecord(
         ResourceType,
         try arena.dupe(u8, shortname),
         .{ .custom_path = "." },
@@ -1602,7 +1602,7 @@ fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
         .shortname = shortname,
         .json = alist.items,
         .editable = true,
-        .company = fi_config.CompanyName,
+        .company = fj_config.CompanyName,
     };
 
     var mustache = try zap.Mustache.fromData(html_resource_editor);
@@ -1616,7 +1616,7 @@ fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
 }
 
 fn resource_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, ResourceType: type, shortname: []const u8) !void {
-    var fi = createFi(arena, context);
+    var fj = createFj(arena, context);
 
     try r.parseBody();
     if (r.body) |body| {
@@ -1641,11 +1641,11 @@ fn resource_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
         break :blk json;
     };
 
-    var path_buf: [Fi.max_path_bytes]u8 = undefined;
+    var path_buf: [Fj.max_path_bytes]u8 = undefined;
     const new_revision = blk: {
-        const json_path = try fi.recordPath(ResourceType, shortname, null, &path_buf);
+        const json_path = try fj.recordPath(ResourceType, shortname, null, &path_buf);
         if (fsutil.fileExists(json_path)) {
-            const existing = try fi.loadRecord(ResourceType, shortname, .{});
+            const existing = try fj.loadRecord(ResourceType, shortname, .{});
             break :blk existing.revision + 1;
         } else {
             break :blk 0;
@@ -1655,10 +1655,10 @@ fn resource_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
     // now parse the specified one
     var obj = try std.json.parseFromSliceLeaky(ResourceType, arena, json, .{});
     obj.revision = new_revision;
-    obj.updated = try fi.isoTime();
+    obj.updated = try fj.isoTime();
 
-    // and write it into fi_home
-    _ = try fi.writeRecord(shortname, obj, .{ .allow_overwrite = true });
+    // and write it into fj_home
+    _ = try fj.writeRecord(shortname, obj, .{ .allow_overwrite = true });
     try r.redirectTo("/", null);
 }
 
