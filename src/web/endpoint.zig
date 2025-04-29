@@ -440,9 +440,17 @@ fn allDocsAndStats(_: *Endpoint, arena: Allocator, context: *Context, DocumentTy
                     Offer => {
                         stats.num_offers_total = @intCast(names.list.len);
                         if (obj.accepted_date == null) {
+
+                            // check if it's pending or declined
+                            if (obj.declined_date != null) {
+                                break :blk "declined";
+                            }
+
                             stats.num_offers_open += 1;
+                            stats.offers_pending_amount += obj.total orelse 0;
                             break :blk "open";
                         } else {
+                            stats.offers_accepted_amount += obj.total orelse 0;
                             break :blk "accepted";
                         }
                     },
@@ -512,6 +520,16 @@ fn show_dashboard(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
         .invoiced_total = try Format.floatThousandsAlloc(
             arena,
             @as(f32, @floatFromInt(stats.invoiced_total_amount)),
+            .{ .comma = ',', .sep = '.' },
+        ),
+        .offers_accepted_amount = try Format.floatThousandsAlloc(
+            arena,
+            @as(f32, @floatFromInt(stats.offers_accepted_amount)),
+            .{ .comma = ',', .sep = '.' },
+        ),
+        .offers_pending_amount = try Format.floatThousandsAlloc(
+            arena,
+            @as(f32, @floatFromInt(stats.offers_pending_amount)),
             .{ .comma = ',', .sep = '.' },
         ),
         .year = year,
@@ -795,6 +813,8 @@ const Stats = struct {
     num_offers_open: isize = 0,
     num_offers_total: isize = 0,
     invoiced_total_amount: usize = 0,
+    offers_pending_amount: usize = 0,
+    offers_accepted_amount: usize = 0,
 };
 
 fn document_edit(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {

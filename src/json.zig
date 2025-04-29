@@ -74,6 +74,7 @@ pub const Offer = struct {
     id: []const u8 = "",
 
     accepted_date: ?[]const u8 = null,
+    declined_date: ?[]const u8 = null,
     client_shortname: []const u8,
     date: []const u8 = "HEUTE",
     project_name: []const u8 = "",
