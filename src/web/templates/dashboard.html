@@ -121,8 +121,12 @@
         <span id="invoice-count">{{invoices_total}} total / {{invoices_open}} open</span>
       </div>
       <div class="stat-card">
+          <strong>Offered Total ({{year}})</strong><br />
+        <span id="offer-count">{{ currency_symbol }} {{offers_accepted_amount}} accepted / {{offers_pending_amount}} pending</span>
+      </div>
+      <div class="stat-card">
         <strong>Offers</strong><br />
-        <span id="offer-count">{{offers_total}} total / {{offers_open}} open</span>
+        <span id="offer-count">{{offers_total}} total / {{offers_open}} pending</span>
       </div>
     </div>
 
