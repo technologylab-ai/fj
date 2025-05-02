@@ -889,40 +889,19 @@ fn document_new(
     // get the files passed in from the browser
     try r.parseBody();
 
-    const client = blk: {
-        const fio_params = r.h.*.params;
-        const key = zap.fio.fiobj_str_new("client", "client".len);
-        const fio_client = zap.fio.fiobj_hash_get(fio_params, key);
-
-        const elem = zap.fio.fiobj_ary_index(fio_client, 0);
-        const client = zap.util.fio2str(elem) orelse return error.NoString;
-        break :blk client;
-    };
-
+    const client = try getBodyStrParam(r, "client");
     const rates = blk: {
         if (DocumentType == Letter) {
             break :blk "";
         }
-        const fio_params = r.h.*.params;
-        const key = zap.fio.fiobj_str_new("rates", "rates".len);
-        const fio_rates = zap.fio.fiobj_hash_get(fio_params, key);
-
-        const elem = zap.fio.fiobj_ary_index(fio_rates, 0);
-        const rates = zap.util.fio2str(elem) orelse return error.NoString;
-        break :blk rates;
+        break :blk try getBodyStrParam(r, "rates");
     };
 
     const project = blk: {
         if (DocumentType == Letter) {
             break :blk "";
         }
-        const fio_params = r.h.*.params;
-        const key = zap.fio.fiobj_str_new("project", "project".len);
-        const fio_project = zap.fio.fiobj_hash_get(fio_params, key);
-
-        const elem = zap.fio.fiobj_ary_index(fio_project, 0);
-        const project = zap.util.fio2str(elem) orelse return error.NoString;
-        break :blk project;
+        break :blk try getBodyStrParam(r, "project");
     };
 
     const doc_type = Fj.documentTypeHumanName(DocumentType);
@@ -1044,38 +1023,15 @@ fn document_compile(
     // get the files passed in from the browser
     try r.parseBody();
 
-    const json = blk: {
-        const fio_params = r.h.*.params;
-        const key = zap.fio.fiobj_str_new("json", "json".len);
-        const fio_json = zap.fio.fiobj_hash_get(fio_params, key);
-
-        const elem = zap.fio.fiobj_ary_index(fio_json, 0);
-        const json = zap.util.fio2str(elem) orelse return error.NoString;
-        break :blk json;
-    };
-
+    const json = try getBodyStrParam(r, "json");
     const billables = blk: {
         if (DocumentType == Letter) {
             break :blk "";
         }
-        const fio_params = r.h.*.params;
-        const key = zap.fio.fiobj_str_new("billables", "billables".len);
-        const fio_billables = zap.fio.fiobj_hash_get(fio_params, key);
-
-        const elem = zap.fio.fiobj_ary_index(fio_billables, 0);
-        const billables = zap.util.fio2str(elem) orelse return error.NoString;
-        break :blk billables;
+        break :blk try getBodyStrParam(r, "billables");
     };
 
-    const tex = blk: {
-        const fio_params = r.h.*.params;
-        const key = zap.fio.fiobj_str_new("tex", "tex".len);
-        const fio_tex = zap.fio.fiobj_hash_get(fio_params, key);
-
-        const elem = zap.fio.fiobj_ary_index(fio_tex, 0);
-        const tex = zap.util.fio2str(elem) orelse return error.NoString;
-        break :blk tex;
-    };
+    const tex = try getBodyStrParam(r, "tex");
 
     // now save them
     var cwd = std.fs.cwd();
@@ -1187,38 +1143,15 @@ fn document_commit(
     // get the files passed in from the browser
     try r.parseBody();
 
-    const json = blk: {
-        const fio_params = r.h.*.params;
-        const key = zap.fio.fiobj_str_new("json", "json".len);
-        const fio_json = zap.fio.fiobj_hash_get(fio_params, key);
-
-        const elem = zap.fio.fiobj_ary_index(fio_json, 0);
-        const json = zap.util.fio2str(elem) orelse return error.NoString;
-        break :blk json;
-    };
-
+    const json = try getBodyStrParam(r, "json");
     const billables = blk: {
         if (DocumentType == Letter) {
             break :blk "";
         }
-        const fio_params = r.h.*.params;
-        const key = zap.fio.fiobj_str_new("billables", "billables".len);
-        const fio_billables = zap.fio.fiobj_hash_get(fio_params, key);
-
-        const elem = zap.fio.fiobj_ary_index(fio_billables, 0);
-        const billables = zap.util.fio2str(elem) orelse return error.NoString;
-        break :blk billables;
+        break :blk try getBodyStrParam(r, "billables");
     };
 
-    const tex = blk: {
-        const fio_params = r.h.*.params;
-        const key = zap.fio.fiobj_str_new("tex", "tex".len);
-        const fio_tex = zap.fio.fiobj_hash_get(fio_params, key);
-
-        const elem = zap.fio.fiobj_ary_index(fio_tex, 0);
-        const tex = zap.util.fio2str(elem) orelse return error.NoString;
-        break :blk tex;
-    };
+    const tex = try getBodyStrParam(r, "tex");
 
     const doc_type = Fj.documentTypeHumanName(DocumentType);
 
@@ -1582,16 +1515,7 @@ fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
 
     try r.parseBody();
 
-    const shortname = blk: {
-        const fio_params = r.h.*.params;
-        const key = zap.fio.fiobj_str_new("shortname", "shortname".len);
-        const fio_shortname = zap.fio.fiobj_hash_get(fio_params, key);
-
-        const elem = zap.fio.fiobj_ary_index(fio_shortname, 0);
-        const shortname = zap.util.fio2str(elem) orelse return error.NoString;
-        break :blk shortname;
-    };
-
+    const shortname = try getBodyStrParam(r, "shortname");
     const expected_filename = try std.fmt.allocPrint(arena, "{s}.json", .{shortname});
     if (fsutil.fileExists(expected_filename)) {
         const message = try std.fmt.allocPrint(
@@ -1664,23 +1588,12 @@ fn resource_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
         log.debug("BODY: `{s}`", .{body});
     }
 
-    const json = blk: {
-        const fio_params = r.h.*.params;
-        log.debug("type of params = {s}", .{util.fiobj_type(r.h.*.params)});
+    const json = try getBodyStrParam(r, "json");
+    // const fio_params = r.h.*.params;
+    // log.debug("type of params = {s}", .{util.fiobj_type(r.h.*.params)});
 
-        const param_count = zap.fio.fiobj_hash_count(fio_params);
-        log.debug("param_count = {d}", .{param_count});
-
-        const key = zap.fio.fiobj_str_new("json", "json".len);
-        const fio_json = zap.fio.fiobj_hash_get(fio_params, key);
-        log.debug("fio_json = {s}", .{util.fiobj_type(fio_json)});
-
-        const elem = zap.fio.fiobj_ary_index(fio_json, 0);
-        log.debug("elem = {s}", .{util.fiobj_type(elem)});
-        const json = zap.util.fio2str(elem) orelse return error.NoString;
-        log.debug("json = {s}", .{json});
-        break :blk json;
-    };
+    // const param_count = zap.fio.fiobj_hash_count(fio_params);
+    // log.debug("param_count = {d}", .{param_count});
 
     var path_buf: [Fj.max_path_bytes]u8 = undefined;
     const new_revision = blk: {
@@ -1709,6 +1622,20 @@ pub fn unauthorized(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.R
     _ = arena;
     _ = context;
     try r.redirectTo("/login", .unauthorized);
+}
+
+fn getBodyStrParam(r: zap.Request, param_name: [:0]const u8) ![]const u8 {
+    const fio_params = r.h.*.params;
+    const key = zap.fio.fiobj_str_new(param_name, param_name.len);
+    const fio_value = zap.fio.fiobj_hash_get(fio_params, key);
+
+    // this prevents further fiobj_ary_index calls from crashing the server
+    // if the param is not present
+    if (fio_value == 0) return error.NotFound;
+
+    const elem = zap.fio.fiobj_ary_index(fio_value, 0);
+    const string = zap.util.fio2str(elem) orelse return error.NoString;
+    return string;
 }
 
 pub fn put(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
