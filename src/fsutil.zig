@@ -13,6 +13,7 @@ pub fn isDirPresent(dirname: []const u8) bool {
     }
     return false;
 }
+
 pub const FileLock = struct {
     const log = std.log.scoped(.FileLock);
     lock_path: []const u8,

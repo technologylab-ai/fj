@@ -5,7 +5,6 @@ const Fj = @import("fj.zig");
 const Server = @import("web/server.zig");
 const Fatal = @import("fatal.zig");
 const Version = @import("version.zig");
-const zon = @import("build.zig.zon");
 
 const assert = std.debug.assert;
 const log = std.log.scoped(.fj);
