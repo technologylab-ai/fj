@@ -2,6 +2,7 @@
 **/*.log
 **/*.out
 **/*.pdf
+**/*.DS_Store
 docs/
 zig-out/
 .zig-cache/
