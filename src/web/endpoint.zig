@@ -889,19 +889,19 @@ fn document_new(
     // get the files passed in from the browser
     try r.parseBody();
 
-    const client = try getBodyStrParam(r, "client");
+    const client = try getBodyStrParam(arena, r, "client");
     const rates = blk: {
         if (DocumentType == Letter) {
             break :blk "";
         }
-        break :blk try getBodyStrParam(r, "rates");
+        break :blk try getBodyStrParam(arena, r, "rates");
     };
 
     const project = blk: {
         if (DocumentType == Letter) {
             break :blk "";
         }
-        break :blk try getBodyStrParam(r, "project");
+        break :blk try getBodyStrParam(arena, r, "project");
     };
 
     const doc_type = Fj.documentTypeHumanName(DocumentType);
@@ -1023,15 +1023,15 @@ fn document_compile(
     // get the files passed in from the browser
     try r.parseBody();
 
-    const json = try getBodyStrParam(r, "json");
+    const json = try getBodyStrParam(arena, r, "json");
     const billables = blk: {
         if (DocumentType == Letter) {
             break :blk "";
         }
-        break :blk try getBodyStrParam(r, "billables");
+        break :blk try getBodyStrParam(arena, r, "billables");
     };
 
-    const tex = try getBodyStrParam(r, "tex");
+    const tex = try getBodyStrParam(arena, r, "tex");
 
     // now save them
     var cwd = std.fs.cwd();
@@ -1143,15 +1143,15 @@ fn document_commit(
     // get the files passed in from the browser
     try r.parseBody();
 
-    const json = try getBodyStrParam(r, "json");
+    const json = try getBodyStrParam(arena, r, "json");
     const billables = blk: {
         if (DocumentType == Letter) {
             break :blk "";
         }
-        break :blk try getBodyStrParam(r, "billables");
+        break :blk try getBodyStrParam(arena, r, "billables");
     };
 
-    const tex = try getBodyStrParam(r, "tex");
+    const tex = try getBodyStrParam(arena, r, "tex");
 
     const doc_type = Fj.documentTypeHumanName(DocumentType);
 
@@ -1515,7 +1515,7 @@ fn resource_new(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
 
     try r.parseBody();
 
-    const shortname = try getBodyStrParam(r, "shortname");
+    const shortname = try getBodyStrParam(arena, r, "shortname");
     const expected_filename = try std.fmt.allocPrint(arena, "{s}.json", .{shortname});
     if (fsutil.fileExists(expected_filename)) {
         const message = try std.fmt.allocPrint(
@@ -1588,7 +1588,7 @@ fn resource_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
         log.debug("BODY: `{s}`", .{body});
     }
 
-    const json = try getBodyStrParam(r, "json");
+    const json = try getBodyStrParam(arena, r, "json");
     // const fio_params = r.h.*.params;
     // log.debug("type of params = {s}", .{util.fiobj_type(r.h.*.params)});
 
@@ -1624,7 +1624,7 @@ pub fn unauthorized(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.R
     try r.redirectTo("/login", .unauthorized);
 }
 
-fn getBodyStrParam(r: zap.Request, param_name: [:0]const u8) ![]const u8 {
+fn getBodyStrParam(alloc: Allocator, r: zap.Request, param_name: [:0]const u8) ![]const u8 {
     const fio_params = r.h.*.params;
     const key = zap.fio.fiobj_str_new(param_name, param_name.len);
     const fio_value = zap.fio.fiobj_hash_get(fio_params, key);
@@ -1635,7 +1635,7 @@ fn getBodyStrParam(r: zap.Request, param_name: [:0]const u8) ![]const u8 {
 
     const elem = zap.fio.fiobj_ary_index(fio_value, 0);
     const string = zap.util.fio2str(elem) orelse return error.NoString;
-    return string;
+    return alloc.dupe(u8, string);
 }
 
 pub fn put(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
