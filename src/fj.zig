@@ -360,7 +360,6 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
             \\ \def\FjCompanyAreaCodeCity{{{s}}}
             \\ \def\FjCompanyUrl{{\url{{{s}}}}}
             \\ \def\FjCompanyEmail{{\url{{{s}}}}}
-            \\ \def\FjCompanyUID{{{s}}}
             \\
             \\ \def\FjCompanyRegisteredAt{{{s}}}
             \\
