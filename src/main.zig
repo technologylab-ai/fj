@@ -9,6 +9,15 @@ const Version = @import("version.zig");
 const assert = std.debug.assert;
 const log = std.log.scoped(.fj);
 
+const zeitlog = @import("zeitlog.zig");
+pub const std_options: std.Options = .{
+    .log_level = .debug,
+    .log_scope_levels = &[_]std.log.ScopeLevel{
+        .{ .scope = .zap, .level = .debug },
+    },
+    .logFn = zeitlog.log,
+};
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer assert(gpa.deinit() == .ok);
@@ -16,6 +25,10 @@ pub fn main() !void {
     const allocator = gpa.allocator();
     var cmd_arena = std.heap.ArenaAllocator.init(allocator);
     defer cmd_arena.deinit();
+
+    // init logging with correct timezone
+    try zeitlog.init(allocator);
+    defer zeitlog.deinit();
 
     const arena = cmd_arena.allocator();
 
