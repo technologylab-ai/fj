@@ -360,6 +360,7 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
             \\ \def\FjCompanyAreaCodeCity{{{s}}}
             \\ \def\FjCompanyUrl{{\url{{{s}}}}}
             \\ \def\FjCompanyEmail{{\url{{{s}}}}}
+            \\ \def\FjCompanyUID{{{s}}}
             \\
             \\ \def\FjCompanyRegisteredAt{{{s}}}
             \\
@@ -382,6 +383,7 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
             json_config.CompanyAreaCodeCity,
             json_config.CompanyUrl,
             json_config.CompanyEmail,
+            json_config.CompanyVatUID,
             json_config.CompanyRegisteredAt,
             json_config.CurrencySymbol,
             json_config.YourName,
@@ -1760,7 +1762,6 @@ fn generateTexConfig(self: *const Fj, file: File, id: []const u8, opts: anytype)
                 \\ \def\FjClientAreaCode{{{s}}}
                 \\ \def\FjClientCity{{{s}}}
                 \\ \def\FjClientCountry{{{s}}}
-                \\
                 \\ \def\FjVatPercent{{{d}}}
                 \\ \ShowNoVat{}
                 \\
@@ -1817,6 +1818,7 @@ fn generateTexConfig(self: *const Fj, file: File, id: []const u8, opts: anytype)
                 \\ \def\FjClientAreaCode{{{s}}}
                 \\ \def\FjClientCity{{{s}}}
                 \\ \def\FjClientCountry{{{s}}}
+                \\ \def\FjClientUID{{{s}}}
                 \\
                 \\ \def\FjVatPercent{{{d}}}
                 \\ \ShowNoVat{}
@@ -1835,6 +1837,7 @@ fn generateTexConfig(self: *const Fj, file: File, id: []const u8, opts: anytype)
                 if (client.areacode.len > 0) client.areacode else "\\hspace{1em}",
                 if (client.city.len > 0) client.city else "\\hspace{1em}",
                 if (client.country.len > 0) client.country else "\\hspace{1em}",
+                client.tax_uid,
                 opts.vat.percent,
                 opts.vat.show_exempt_notice,
                 opts.leistungszeitraum,
