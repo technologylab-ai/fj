@@ -382,7 +382,6 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
             json_config.CompanyAreaCodeCity,
             json_config.CompanyUrl,
             json_config.CompanyEmail,
-            json_config.CompanyVatUID,
             json_config.CompanyRegisteredAt,
             json_config.CurrencySymbol,
             json_config.YourName,
