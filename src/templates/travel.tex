@@ -1,0 +1,105 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel} % For German language rules
+\usepackage{geometry}
+\geometry{a4paper, margin=1in} % Set page margins
+\usepackage{enumitem} % For custom list formatting (to control indents)
+\usepackage{xurl} % For better line breaks in URLs/paths (like long filenames)
+
+\usepackage{config-defaults}
+% Load (and override defaults)
+\IfFileExists{config.tex}{%
+  \input{config.tex}%
+}{%
+  % Silent fallback if file doesn't exist — nothing to do
+}
+
+% Remove page numbers for a clean look
+\pagestyle{empty}
+
+% Disable paragraph indentation globally
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1em} % Add space between paragraphs
+
+\begin{document}
+
+\section*{\centering Reiseprotokoll \FjCompanyName} % Centered heading
+\subsection*{\centering Reisender: [Ihr vollständiger Name, z.B. Max Mustermann]} % Centered subheading
+
+\noindent\rule{\textwidth}{0.4pt} % Horizontal line
+
+\vspace{10pt} % Add some vertical space below the line
+
+\textbf{Reiseziel:}
+Name der Stadt/Region, Land, z.B. \textit{"Wien, Österreich"} oder \textit{"München, Deutschland"}
+
+\vspace{1em} % Space between sections
+
+\textbf{Reisezeitraum:}
+\begin{itemize}[nosep, leftmargin=1.5em, itemsep=0.2em] % Custom leftmargin for clean look
+    \item \textbf{Beginn:} TT.MM.JJJJ, HH:MM Uhr, z.B. \textit{01.07.2025, 08:00 Uhr}
+    \item \textbf{Ende:} TT.MM.JJJJ, HH:MM Uhr, z.B. \textit{03.07.2025, 17:30 Uhr}
+\end{itemize}
+
+\vspace{1em}
+
+\textbf{Reisezweck:}
+Beschreiben Sie hier den genauen, betrieblichen Anlass der Reise. \textbf{Das ist entscheidend für die steuerliche Anerkennung!}
+\begin{itemize}[nosep, leftmargin=1.5em, itemsep=0.2em]
+    \item Kundengespräch bei Mustermann GmbH bezüglich Projekt X zur Einführung neuer Softwarelösungen
+    \item Teilnahme an der Fachmesse 'Digital Solutions 2025' zur Marktanalyse und Netzwerkpflege mit potenziellen Partnern
+    \item Weiterbildung 'SEO für Fortgeschrittene' bei der Academy GmbH zur Verbesserung der Online-Sichtbarkeit der eigenen GmbH
+    \item Besuch des Lieferanten ABC in XYZ zur Qualitätssicherung und Verhandlung neuer Lieferkonditionen
+\end{itemize}
+
+\vspace{1em}
+
+\textbf{Transportmittel:}
+\begin{itemize}[nosep, leftmargin=1.5em, itemsep=0.2em]
+    \item z.B. \textit{"ÖBB Bahn"}, \textit{"Lufthansa Flug"}, \textit{"Privat-PKW"}, \textit{"Mietwagen"}
+    \item \textbf{Bei Nutzung Privat-PKW (für Kilometergeld):}
+    \begin{itemize}[nosep, leftmargin=2em, itemsep=0.2em] % Slightly deeper indent for sub-list
+        \item Startadresse: Ihre Startadresse, z.B. \textit{Musterstr. 1, 1010 Wien}
+        \item Zieladresse(n): Genaue Adresse(n) des Geschäftspartners/Veranstaltungsortes, z.B. \textit{Konferenzzentrum, Messeplatz 1, 8010 Graz}
+        \item Gefahrene Kilometer (gesamt Hin- \& Rückfahrt): Zahl km, z.B. \textit{400 km}
+    \end{itemize}
+\end{itemize}
+
+\vspace{1em}
+
+\textbf{Übernachtung:}
+\begin{itemize}[nosep, leftmargin=1.5em, itemsep=0.2em]
+    \item z.B. \textit{"Hotel Musterblick, Wien"} oder \textit{"Keine Übernachtung erforderlich"} (wenn Sie am selben Tag zurückfahren)
+\end{itemize}
+
+\vspace{1em}
+
+\textbf{Liste der zugehörigen Belege (hochgeladen in BMD.COM, im Ordner "Eingangsrechnungen"):}
+\small % Make this section slightly smaller to save space and look cleaner
+Bitte hier die \textbf{Dateinamen} der gescannten Belege auflisten, die zu dieser spezifischen Reise gehören. Achten Sie auf die einheitliche Benennung mit Präfix (z.B. Datum\_Ziel\_Beschreibung)!
+\begin{itemize}[nosep, leftmargin=1.5em, itemsep=0.2em]
+    \item \texttt{JJJJ-MM-TT\_Reiseziel\_Reiseprotokoll.pdf} (dieses Dokument)
+    \item \texttt{JJJJ-MM-TT\_Reiseziel\_Hotel\_Musterblick.pdf} \textit{(Beispiel: \texttt{2025-07-01\_Wien\_Hotel\_Musterblick.pdf})}
+    \item \texttt{JJJJ-MM-TT\_Reiseziel\_OEBB\_Ticket.pdf}
+    \item \texttt{JJJJ-MM-TT\_Reiseziel\_Taxibeleg\_Flughafen.pdf}
+    \item \texttt{JJJJ-MM-TT\_Reiseziel\_Geschaeftsessen\_Restaurant\_X.pdf} (nur, falls Sie dieses Essen nicht über die Tagesgeldpauschale abrechnen, sondern separat belegen wollen)
+    \item \texttt{JJJJ-MM-TT\_Reiseziel\_Parkgebuehr\_Bahnhof.pdf}
+\end{itemize}
+
+\normalsize % Reset font size
+
+\vspace{1em}
+
+\textbf{Anmerkungen (optional):}
+Hier können Sie zusätzliche Informationen festhalten, die für die Buchhaltung relevant sein könnten, z.B.:
+\begin{itemize}[nosep, leftmargin=1.5em, itemsep=0.2em]
+    \item Mittagessen am \textit{02.07.2025} wurde vom Kunden bezahlt. (Wichtig, da dies die Tagesgeldpauschale kürzen kann)
+    \item Hotelkosten wurden bereits direkt über Firmenkreditkarte bezahlt.
+    \item Grund für höhere Kosten: Kurzfristige Buchung aufgrund dringendem Termin.
+    \item Beleg für Fahrt von Hotel zu Meeting vom \textit{02.07.2025} (Taxi) fehlt leider, da Quittung verloren.
+\end{itemize}
+
+\noindent\rule{\textwidth}{0.4pt} % Horizontal line
+
+\end{document}

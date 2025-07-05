@@ -97,7 +97,7 @@ pub const GitCommand = struct {
 };
 
 pub const JsonResourceSubCommand = enum { new, show, checkout, commit, list };
-pub const JsonResourceKind = enum { client, rate };
+pub const JsonResourceKind = enum { client, rate, travel };
 
 pub fn JsonResourceCommand(comptime kind: JsonResourceKind) type {
     return struct {
@@ -154,6 +154,30 @@ pub fn JsonResourceCommand(comptime kind: JsonResourceKind) type {
             \\ - fj rate checkout <shortname>   -> shortname.json
             \\ - fj rate commit   <rate.json>   -> move into .fj/rates
             \\ - fj rate list     [--all] [-v]
+            \\
+            \\ Options:
+            \\
+            \\ -h, --help               Displays this help message then exits.
+            \\
+            \\ -C, --fj_home            The FJ_HOME dir to use.
+            \\                          Default: $FJ_HOME orelse ~/.fj
+            \\
+            ,
+            .travel =>
+            \\ Command: travel
+            \\
+            \\ Usage:
+            \\
+            \\ fj travel [new|show|checkout|commit|list] [options]
+            \\
+            \\ Available Subcommands:
+            \\ ======================
+            \\
+            \\ - fj travel new      <shortname>   -> <shortname>.json
+            \\ - fj travel show     <shortname>   -> stdout
+            \\ - fj travel checkout <shortname>   -> shortname.json
+            \\ - fj travel commit   <travel.json> -> move into .fj/travels
+            \\ - fj travel list     [--all] [-v]
             \\
             \\ Options:
             \\

@@ -12,6 +12,13 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    exe_mod.addCSourceFile(.{ .file = b.path("src/pdf/pdfgen.c") });
+    exe_mod.addCSourceFile(.{ .file = b.path("src/stb/stb_image.c") });
+    exe_mod.addCSourceFile(.{ .file = b.path("src/stb/stb_image_resize.c") });
+    exe_mod.addCSourceFile(.{ .file = b.path("src/stb/stb_image_write.c") });
+    exe_mod.addIncludePath(b.path("src/pdf"));
+    exe_mod.addIncludePath(b.path("src/stb"));
+
     const exe = b.addExecutable(.{
         .name = "fj",
         .root_module = exe_mod,
