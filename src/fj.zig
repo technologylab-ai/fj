@@ -42,6 +42,7 @@ const SubDirs = enum {
     letters,
     offers,
     invoices,
+    travels,
     templates,
 };
 
@@ -244,6 +245,7 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
             try path.join(self.arena, &[_][]const u8{ @tagName(SubDirs.letters), "generated" }),
             try path.join(self.arena, &[_][]const u8{ @tagName(SubDirs.offers), "generated" }),
             try path.join(self.arena, &[_][]const u8{ @tagName(SubDirs.invoices), "generated" }),
+            try path.join(self.arena, &[_][]const u8{ @tagName(SubDirs.travels), "generated" }),
             @tagName(SubDirs.templates),
         };
 
@@ -287,6 +289,7 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
             @tagName(SubDirs.letters),
             @tagName(SubDirs.offers),
             @tagName(SubDirs.invoices),
+            @tagName(SubDirs.travels),
         };
 
         for (dirs) |dir| {
