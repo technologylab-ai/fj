@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reisekosten erfassen</title>
+    <style>
+      /* style.css */
+      body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background-color: #f4f7f6;
+          margin: 0;
+          display: flex;
+        flex-direction: column;
+          justify-content: center;
+          align-items: flex-start; /* Align to top instead of center */
+          min-height: 100vh;
+      }
+
+    body { font-family: sans-serif; margin: 0; }
+    header, nav, main { padding: 1em; }
+    nav a { margin-right: 1em; display: inline-block; margin-bottom: 0.5em; }
+
+
+      main {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background-color: #f4f7f6;
+          margin: 0;
+          padding: 20px;
+          display: flex;
+        flex-direction: row;
+          justify-content: center;
+          align-items: flex-start; /* Align to top instead of center */
+          min-height: 100vh;
+        width: 100%;
+      }
+
+
+      .container {
+          background-color: #ffffff;
+          padding: 30px 40px;
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          width: 100%;
+          max-width: 800px;
+          box-sizing: border-box;
+      }
+
+      h1 {
+          color: #333;
+          text-align: center;
+          margin-bottom: 30px;
+          font-size: 2em;
+          font-weight: 600;
+      }
+
+      h2 {
+          color: #555;
+          border-bottom: 2px solid #eee;
+          padding-bottom: 10px;
+          margin-top: 30px;
+          margin-bottom: 20px;
+          font-size: 1.5em;
+      }
+
+      h3 {
+          color: #666;
+          margin-top: 20px;
+          margin-bottom: 15px;
+          font-size: 1.2em;
+      }
+
+      .form-section {
+          margin-bottom: 30px;
+          padding: 15px;
+          border: 1px solid #e0e0e0;
+          border-radius: 8px;
+          background-color: #fcfcfc;
+      }
+
+      .form-group {
+          margin-bottom: 18px;
+      }
+
+      .form-group label {
+          display: block;
+          margin-bottom: 8px;
+          color: #444;
+          font-weight: 500;
+      }
+
+      .form-group input[type="text"],
+      .form-group input[type="datetime-local"],
+      .form-group textarea {
+          width: calc(100% - 20px);
+          padding: 12px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+          font-size: 1em;
+          box-sizing: border-box;
+          transition: border-color 0.3s, box-shadow 0.3s;
+      }
+
+      .form-group input[type="text"]:focus,
+      .form-group input[type="datetime-local"]:focus,
+      .form-group textarea:focus {
+          border-color: #007bff;
+          box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+          outline: none;
+      }
+
+      .form-group textarea {
+          resize: vertical;
+          min-height: 80px;
+      }
+
+      .date-time-group {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 15px;
+          align-items: center;
+      }
+
+      .date-input-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+      }
+
+      .date-input-wrapper span {
+          color: #555;
+          font-weight: 500;
+      }
+
+      /* Tabellen-Styling */
+      .travel-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+      }
+
+      .travel-table th,
+      .travel-table td {
+          border: 1px solid #ddd;
+          padding: 10px;
+          text-align: left;
+      }
+
+      .travel-table th {
+          background-color: #f8f8f8;
+          color: #444;
+          font-weight: 600;
+      }
+
+      .travel-table td input[type="text"],
+      .travel-table td input[type="file"] {
+          width: calc(100% - 10px);
+          padding: 8px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 0.95em;
+          box-sizing: border-box;
+      }
+
+      .travel-table td button {
+          background-color: #dc3545; /* Rot für Löschen */
+          color: white;
+          border: none;
+          padding: 8px 12px;
+          border-radius: 5px;
+          cursor: pointer;
+          font-size: 0.9em;
+          transition: background-color 0.2s;
+          display: block; /* Für volle Breite in Zelle */
+          width: 100%;
+      }
+
+      .travel-table td button:hover {
+          background-color: #c82333;
+      }
+
+      .add-row-button {
+          background-color: #28a745; /* Grün für Hinzufügen */
+          color: white;
+          border: none;
+          padding: 10px 15px;
+          border-radius: 5px;
+          cursor: pointer;
+          font-size: 1em;
+          margin-top: 15px;
+          display: inline-block;
+          transition: background-color 0.2s;
+      }
+
+      .add-row-button:hover {
+          background-color: #218838;
+      }
+
+      /* Dateiauswahl-Styling */
+      .receipt-item {
+          display: flex;       /* Nutzt Flexbox für nebeneinanderliegende Elemente */
+          align-items: center; /* Zentriert Elemente vertikal */
+          gap: 10px;           /* Abstand zwischen den Elementen */
+          margin-bottom: 10px;
+          flex-wrap: wrap;     /* Erlaubt Zeilenumbruch auf kleineren Bildschirmen */
+          padding: 8px;        /* Leichter Innenabstand für visuelle Trennung */
+          border: 1px solid #e0e0e0; /* Leichter Rand um jedes Beleg-Item */
+          border-radius: 6px;
+          background-color: #ffffff; /* Weißer Hintergrund */
+      }
+
+      .receipt-item input[type="file"] {
+          flex-grow: 1; /* Erlaubt dem Dateifeld zu wachsen */
+          min-width: 150px; /* Mindestbreite, damit es nicht zu klein wird */
+          padding: 8px; /* Konsistentes Padding */
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          font-size: 0.95em;
+          box-sizing: border-box;
+      }
+
+      .receipt-item input[type="text"] {
+          flex-grow: 2; /* Erlaubt dem Textfeld, mehr Platz einzunehmen (doppelt so viel wie File) */
+          min-width: 180px; /* Mindestbreite */
+          padding: 8px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          font-size: 0.95em;
+          box-sizing: border-box;
+          transition: border-color 0.3s, box-shadow 0.3s; /* Für Fokus-Effekt */
+      }
+
+      .receipt-item input[type="text"]:focus {
+          border-color: #007bff;
+          box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+          outline: none;
+      }
+
+      .receipt-item button.remove-receipt-button { /* Spezifischer Selector für Löschen-Button */
+          background-color: #dc3545;
+          color: white;
+          border: none;
+          padding: 8px 12px;
+          border-radius: 5px;
+          cursor: pointer;
+          font-size: 0.9em;
+          transition: background-color 0.2s;
+          flex-shrink: 0; /* Verhindert, dass der Button schrumpft */
+      }
+      .receipt-item button.remove-receipt-button:hover {
+          background-color: #c82333;
+      }
+
+      /* Submit Button */
+      .submit-button {
+          display: block;
+          width: 100%;
+          padding: 15px;
+          background-color: #007bff;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 1.2em;
+          cursor: pointer;
+          margin-top: 30px;
+          transition: background-color 0.3s;
+      }
+
+      .submit-button:hover {
+          background-color: #0056b3;
+      }
+
+      /* Responsive Anpassungen */
+      @media (max-width: 768px) {
+          .container {
+              padding: 20px 25px;
+          }
+          .date-time-group {
+              flex-direction: column;
+              align-items: flex-start;
+              gap: 10px;
+          }
+          .date-input-wrapper {
+              width: 100%;
+          }
+          .date-input-wrapper input {
+              width: calc(100% - 70px); /* Adjust for span width */
+          }
+      }
+    </style>
+  </head>
+<body>
+    <header>
+      <strong>fj — The Commandline Company — <i>{{company}}</i></strong>
+      <nav>
+        <a href="/">Dashboard</a>
+        <a href="/client">Clients</a>
+        <a href="/rate">Rate Sets</a>
+        <a href="/offer">Offers</a>
+        <a href="/invoice">Invoices</a>
+        <a href="/letter">Letters</a>
+        <a href="/travel">Travel Expenses</a>
+      </nav>
+    </header>
+
+  <main>
+    <div class="container">
+        <h1>Travel Expenses</h1>
+
+        <form id="travelExpenseForm" method="post" action="/submit-travel" enctype="multipart/form-data">
+            <section class="form-section">
+                <h2>About</h2>
+                <div class="form-group">
+                    <label for="travelerName">Travellee:</label>
+                    <input type="text" id="travelerName" name="travelerName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="travelDestination">Destination:</label>
+                    <input type="text" id="travelDestination" name="travelDestination" placeholder="z.B. Berlin, Deutschland" required>
+                </div>
+
+                <div class="form-group date-time-group">
+                    <label for="travelPeriodFrom">Travel Period:</label>
+                    <div class="date-input-wrapper">
+                        <span>von:</span>
+                        <input type="datetime-local" id="travelPeriodFrom" name="travelPeriodFrom" required>
+                    </div>
+                    <div class="date-input-wrapper">
+                        <span>bis:</span>
+                        <input type="datetime-local" id="travelPeriodTo" name="travelPeriodTo" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="travelPurpose">Purpose of the trip:</label>
+                    <textarea id="travelPurpose" name="travelPurpose" rows="4" placeholder="Kurze Beschreibung des Reisezwecks, z.B. Kundengespräche, Messebesuch..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="travelComments">Comments:</label>
+                    <textarea id="travelComments" name="travelComments" rows="4" placeholder="..." required></textarea>
+                </div>
+            </section>
+
+            <section class="form-section">
+                <h2>Transport</h2>
+                <div class="transport-table-container">
+                    <h3>Outbound Journey</h3>
+                    <table id="outboundTravelTable" class="travel-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%;">Transport Method</th>
+                                <th style="width: 60%;">Description</th>
+                                <th style="width: 10%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                    <button type="button" class="add-row-button" data-table="outboundTravelTable">
+                        + add transport
+                    </button>
+                </div>
+
+                <div class="transport-table-container">
+                    <h3>Return Journey</h3>
+                    <table id="returnTravelTable" class="travel-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%;">Transport Method</th>
+                                <th style="width: 60%;">Description</th>
+                                <th style="width: 10%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                    <button type="button" class="add-row-button" data-table="returnTravelTable">
+                        + add transport
+                    </button>
+                </div>
+            </section>
+
+            <section class="form-section">
+                <h2>Upload Receipts</h2>
+                <div class="receipt-upload-container">
+                    <div id="receiptsList">
+                        </div>
+                    <button type="button" id="addReceiptButton" class="add-row-button">
+                        + add receipt
+                    </button>
+                </div>
+            </section>
+
+            <button type="submit" class="submit-button">Generate Documents</button>
+        </form>
+    </div>
+  </main>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+      // --- Transportmittel-Tabellen-Funktionalität ---
+      const addTravelRow = (tableId) => {
+          const tableBody = document.getElementById(tableId).querySelector('tbody');
+          const newRow = document.createElement('tr');
+          const rowCount = tableBody.rows.length; // Für eindeutige Namen
+
+          newRow.innerHTML = `
+              <td>
+                  <input type="text" name="${tableId}Type_${rowCount}" placeholder="z.B. Taxi, Flugzeug, Bahn" required>
+              </td>
+              <td>
+                  <input type="text" name="${tableId}Description_${rowCount}" placeholder="Beschreibung der Fahrt" required>
+              </td>
+              <td>
+                  <button type="button" class="remove-row-button">-</button>
+              </td>
+          `;
+          tableBody.appendChild(newRow);
+
+          // Event Listener für den neuen Löschen-Button
+          newRow.querySelector('.remove-row-button').addEventListener('click', (event) => {
+              event.target.closest('tr').remove();
+              updateRowNames(tableId); // Namen nach dem Löschen aktualisieren
+          });
+      };
+
+      // Helferfunktion, um input names nach dem Löschen zu aktualisieren (wichtig für Backend)
+      const updateRowNames = (tableId) => {
+          const tableBody = document.getElementById(tableId).querySelector('tbody');
+          Array.from(tableBody.rows).forEach((row, index) => {
+              row.querySelector('input[name^="' + tableId + 'Type"]').name = `${tableId}Type_${index}`;
+              row.querySelector('input[name^="' + tableId + 'Description"]').name = `${tableId}Description_${index}`;
+          });
+      };
+
+      // Event Listener für "Transportmittel hinzufügen"-Buttons
+      document.querySelectorAll('.add-row-button[data-table]').forEach(button => {
+          button.addEventListener('click', () => {
+              addTravelRow(button.dataset.table);
+          });
+      });
+
+      // Beim Laden der Seite eine Startzeile für jede Tabelle hinzufügen
+      addTravelRow('outboundTravelTable');
+      addTravelRow('returnTravelTable');
+
+
+      // --- Belege hochladen Funktionalität ---
+      let receiptCounter = 0; // Zähler für eindeutige Namen
+
+      const addReceiptField = () => {
+        const receiptsList = document.getElementById('receiptsList');
+        const newReceiptItem = document.createElement('div');
+        newReceiptItem.classList.add('receipt-item');
+
+        // WICHTIG: name-Attribute anpassen und Textfeld hinzufügen
+        newReceiptItem.innerHTML = `
+            <input type="file" name="receiptFile_${receiptCounter}" accept="image/*,.pdf" required>
+            <input type="text" name="receiptName_${receiptCounter}" placeholder="Dateiname (z.B. Hinfahrt_Taxi)" required>
+            <button type="button" class="remove-receipt-button">-</button>
+        `;
+        receiptsList.appendChild(newReceiptItem);
+
+        // Event Listener für den neuen Löschen-Button
+        newReceiptItem.querySelector('.remove-receipt-button').addEventListener('click', (event) => {
+            event.target.closest('.receipt-item').remove();
+            // Hier ist keine Namensaktualisierung der Indizes nötig, da jedes Paar eindeutig bleibt
+            // und das Backend nach den vorhandenen Nummern suchen kann.
+        });
+        receiptCounter++; // Zähler für das nächste Feld erhöhen
+    };
+      // Event Listener für "Beleg hinzufügen"-Button
+      document.getElementById('addReceiptButton').addEventListener('click', addReceiptField);
+
+      // Beim Laden der Seite ein Startfeld für Belege hinzufügen
+      addReceiptField();
+
+
+      // --- Formular-Validierung / Submission (optional, aber empfohlen) ---
+      const travelExpenseForm = document.getElementById('travelExpenseForm');
+      travelExpenseForm.addEventListener('submit', (event) => {
+          // Hier könnten Sie zusätzliche JavaScript-Validierungen durchführen,
+          // bevor das Formular an das Backend gesendet wird.
+          // z.B. prüfen, ob mindestens ein Transportmittel eingegeben wurde.
+
+          // Standard-HTML5-Validierung (required-Attribute) läuft automatisch.
+          // event.preventDefault(); // Bei eigener Validierung nötig, um Standard-Submission zu verhindern
+      });
+    });
+  </script>
+  </body>
+</html>
+

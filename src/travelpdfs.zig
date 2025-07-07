@@ -1,4 +1,6 @@
 const std = @import("std");
+const StyleParser = @import("styleparser.zig");
+
 const C = @cImport({
     @cInclude("stb_image.h");
     @cInclude("stb_image_resize.h");
@@ -23,7 +25,8 @@ const USABLE_PAGE_WIDTH_PX: f32 = A4_WIDTH_PX - (2 * MARGIN_PX);
 const USABLE_PAGE_HEIGHT_PX: f32 = A4_HEIGHT_PX - (2 * MARGIN_PX);
 
 pub fn generateReceiptPdf(
-    input_image_path: [*c]const u8,
+    input_image_name: []const u8,
+    input_image: []const u8,
     output_pdf_path: [*c]const u8,
     allocator: std.mem.Allocator,
 ) !void {
@@ -34,24 +37,29 @@ pub fn generateReceiptPdf(
     var img_height: c_int = 0;
     var img_channels: c_int = 0;
 
-    const image_data = C.stbi_load(
-        input_image_path,
+    const image_data = C.stbi_load_from_memory(
+        @ptrCast(input_image.ptr),
+        @intCast(input_image.len),
         &img_width,
         &img_height,
         &img_channels,
         3, // we force to 3 channels
     );
     if (image_data == null) {
-        log.err(
-            "Error: Failed to load image '{s}'. Image data is null.",
-            .{input_image_path},
-        );
+        log.err("Error: Failed to load image '{s}'. Image data is null.", .{input_image_name});
         return error.ImageLoadFailed;
     }
     defer C.stbi_image_free(image_data);
 
-    std.debug.assert(img_width > 0 and img_height > 0);
-    std.debug.assert(img_channels == 3);
+    if (img_width <= 0 or img_height <= 0) {
+        log.err("IMAGE {s} HAS NEGATIVE DIMENSIONS ({d}x{d})", .{ input_image_name, img_width, img_height });
+        return error.ImageInvalidDimensions;
+    }
+
+    if (img_channels != 3) {
+        log.err("IMAGE {s} HAS {d} CHANNELS, expected 3", .{ input_image_name, img_channels });
+        return error.InvalidImageChannels;
+    }
 
     log.info(
         "Original Image: {d}x{d}px with {d} channels",
@@ -183,6 +191,14 @@ fn stbi_write_func_zig_wrapper_impl(
     jpg_output_alist.appendSlice(data_slice) catch unreachable;
 }
 
+fn pdf_get_text_width(pdf: ?*C.struct_pdf_doc, font_name: [*c]const u8, text: [*c]const u8, size: f32) !f32 {
+    var ret: f32 = undefined;
+    if (C.pdf_get_font_text_width(pdf, font_name, text, size, &ret) < 0) {
+        return error.PdfGetTextWidth;
+    }
+    return ret;
+}
+
 pub fn generateProtocolPdf(
     arena: std.mem.Allocator,
     filename: []const u8,
@@ -199,34 +215,52 @@ pub fn generateProtocolPdf(
     defer C.pdf_destroy(protocol_pdf_doc);
 
     const page_protocol = C.pdf_append_page(protocol_pdf_doc);
-    if (C.pdf_set_font(protocol_pdf_doc, "Helvetica") < 0) {
-        return error.PdfFont;
-    }
 
     // font size and y pos need to be adjusted according to the page output dpi
-    const font_size_base: f32 = 10.0; // base font size
-    const font_size_scaled = font_size_base * (PDF_PAGE_OUTPUT_DPI / 72.0);
-    var current_y = A4_HEIGHT_PX - MARGIN_PX - font_size_scaled;
+    const font_size_base: f32 = 12.0; // base font size
+    var font_size_scaled = font_size_base * (PDF_PAGE_OUTPUT_DPI / 72.0);
+    var current_y = A4_HEIGHT_PX - MARGIN_PX - 5 * font_size_scaled;
 
-    var lines = std.mem.tokenizeScalar(u8, protocol_content, '\n');
+    var lines = std.mem.splitScalar(u8, protocol_content, '\n');
     while (lines.next()) |line| {
-        if (line.len == 0) {
-            current_y -= font_size_scaled * 1.2;
-            continue;
+        font_size_scaled = font_size_base * (PDF_PAGE_OUTPUT_DPI / 72.0);
+        var current_x = MARGIN_PX;
+
+        for (try StyleParser.parse(arena, line)) |span| {
+            const text, const font: [*]const u8 = blk: {
+                switch (span) {
+                    .heading => |s| {
+                        font_size_scaled *= 1.5;
+                        break :blk .{ s, "Helvetica-Bold" };
+                    },
+                    .bold => |s| {
+                        break :blk .{ s, "Helvetica-Bold" };
+                    },
+                    .normal => |s| {
+                        break :blk .{ s, "Helvetica" };
+                    },
+                }
+            };
+
+            if (C.pdf_set_font(protocol_pdf_doc, font) < 0) {
+                return error.PdfFont;
+            }
+            const c_text_ptr = try arena.dupeZ(u8, text);
+            const text_width = try pdf_get_text_width(protocol_pdf_doc, font, c_text_ptr, font_size_scaled);
+            if (C.pdf_add_text(
+                protocol_pdf_doc,
+                page_protocol,
+                c_text_ptr,
+                font_size_scaled,
+                current_x,
+                current_y,
+                0,
+            ) < 0) return error.PdfText;
+            std.debug.print(">>> `{s}`\n", .{text});
+            current_x += text_width; // X-Position für den nächsten Text
         }
-        const c_line_ptr = try arena.dupeZ(u8, line);
-        if (C.pdf_add_text(
-            protocol_pdf_doc,
-            page_protocol,
-            c_line_ptr,
-            font_size_scaled,
-            MARGIN_PX,
-            current_y,
-            0,
-        ) < 0) {
-            return error.PdfText;
-        }
-        current_y -= font_size_scaled * 1.2;
+
+        current_y -= font_size_scaled * 1.3;
     }
 
     const filn = try arena.dupeZ(u8, filename);
