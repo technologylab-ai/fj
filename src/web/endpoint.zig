@@ -712,7 +712,7 @@ fn submit_travel_form(_: *Endpoint, arena: Allocator, context: *Context, r: zap.
 
     // convert images to resized JPEGS and then to PDF in output dir
     //
-    const TMP = "/tmp";
+    const TMP = context.work_dir;
     const pre_prefix = try std.fmt.allocPrint(arena, "Reise_{s}", .{travelPeriodFrom[0.."2025-07-04".len]});
     const temp_dir_name = try std.fmt.allocPrint(arena, "{s}/{s}", .{ TMP, pre_prefix });
     try std.fs.cwd().makePath(temp_dir_name);
@@ -816,6 +816,9 @@ fn submit_travel_form(_: *Endpoint, arena: Allocator, context: *Context, r: zap.
         .work_dir = TMP,
     });
 
+    // remove zipped dir
+    try std.fs.cwd().deleteTree(temp_dir_name);
+
     // output HTML
     //
     const params = .{
@@ -835,9 +838,8 @@ fn submit_travel_form(_: *Endpoint, arena: Allocator, context: *Context, r: zap.
 
 pub fn downloadZip(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
     _ = ep;
-    _ = context;
-    const TMP = "/tmp";
-    const zip_basename = r.getParamSlice("zip") orelse return error.NoZip;
+    const TMP = context.work_dir;
+    const zip_basename = r.getParamSlice("zip") orelse return error.NoZipParam;
     r.setStatus(.ok);
     try r.setHeader("Cache-Control", "no-store");
     const full_zip_path = try std.fmt.allocPrint(arena, "{s}/{s}", .{ TMP, zip_basename });
@@ -1369,14 +1371,8 @@ fn document_compile(
     const fj_config = try fj.loadConfigJson();
     const doc_type = Fj.documentTypeHumanName(DocumentType);
     const document_subdir_name = try fj.findDocumentById(DocumentType, id);
-
-    // cd into the subdir
-    log.debug("Current dir is {s}", .{try std.process.getCwdAlloc(arena)});
-    log.debug("Trying to change into {s}", .{document_subdir_name});
-    try std.process.changeCurDir(document_subdir_name);
-    defer {
-        std.process.changeCurDir(context.work_dir) catch |err| std.process.fatal("Cannot change to work_dir {s}: {}!!!", .{ context.work_dir, err });
-    }
+    var cwd = try std.fs.cwd().openDir(document_subdir_name, .{});
+    defer cwd.close();
 
     // get the files passed in from the browser
     try r.parseBody();
@@ -1392,14 +1388,16 @@ fn document_compile(
     const tex = try getBodyStrParam(arena, r, "tex");
 
     // now save them
-    var cwd = std.fs.cwd();
     const json_filename = try std.fmt.allocPrint(arena, "{s}.json", .{doc_type});
     const billables_filename = "billables.csv";
     const tex_filename = try std.fmt.allocPrint(arena, "{s}.tex", .{doc_type});
 
     var json_file = try cwd.createFile(json_filename, .{});
-    defer json_file.close();
-    try json_file.writeAll(json);
+    {
+        // block scope for immediate defer
+        defer json_file.close();
+        try json_file.writeAll(json);
+    }
 
     if (DocumentType != Letter) {
         var billables_file = try cwd.createFile(billables_filename, .{});
@@ -1408,8 +1406,10 @@ fn document_compile(
     }
 
     var tex_file = try cwd.createFile(tex_filename, .{});
-    defer tex_file.close();
-    try tex_file.writeAll(tex);
+    {
+        defer tex_file.close();
+        try tex_file.writeAll(tex);
+    }
 
     const CompileCommand = switch (DocumentType) {
         Invoice => InvoiceCommand,
@@ -1419,10 +1419,10 @@ fn document_compile(
     };
 
     const compileCommand: CompileCommand = .{
-        .positional = .{ .subcommand = .compile },
+        .positional = .{ .subcommand = .compile, .arg = document_subdir_name },
     };
 
-    const files = fj.cmdCompileDocument(compileCommand) catch |err| {
+    const files = fj.cmdCompileDocument(compileCommand, document_subdir_name) catch |err| {
         // show error
         const message = try std.fmt.allocPrint(
             arena,
@@ -1488,15 +1488,11 @@ fn document_commit(
 ) !void {
     var fj = createFj(arena, context);
     const fj_config = try fj.loadConfigJson();
-    const document_subdir_name = try fj.findDocumentById(DocumentType, id);
+    // we need to find the subdir of the checked out invoice
+    const document_subdir_name = std.fs.path.basename(try fj.findDocumentById(DocumentType, id));
 
-    // cd into the subdir
-    log.debug("Current dir is {s}", .{try std.process.getCwdAlloc(arena)});
-    log.debug("Trying to change into {s}", .{document_subdir_name});
-    try std.process.changeCurDir(document_subdir_name);
-    defer {
-        std.process.changeCurDir(context.work_dir) catch |err| std.process.fatal("Cannot change to work_dir {s}: {}!!!", .{ context.work_dir, err });
-    }
+    var cwd = try std.fs.cwd().openDir(document_subdir_name, .{});
+    defer cwd.close();
 
     // get the files passed in from the browser
     try r.parseBody();
@@ -1514,14 +1510,16 @@ fn document_commit(
     const doc_type = Fj.documentTypeHumanName(DocumentType);
 
     // now save them
-    var cwd = std.fs.cwd();
     const json_filename = try std.fmt.allocPrint(arena, "{s}.json", .{doc_type});
     const billables_filename = "billables.csv";
     const tex_filename = try std.fmt.allocPrint(arena, "{s}.tex", .{doc_type});
 
     var json_file = try cwd.createFile(json_filename, .{});
-    defer json_file.close();
-    try json_file.writeAll(json);
+    {
+        // block scope so file is closed immediately
+        defer json_file.close();
+        try json_file.writeAll(json);
+    }
 
     if (DocumentType != Letter) {
         var billables_file = try cwd.createFile(billables_filename, .{});
@@ -1530,8 +1528,10 @@ fn document_commit(
     }
 
     var tex_file = try cwd.createFile(tex_filename, .{});
-    defer tex_file.close();
-    try tex_file.writeAll(tex);
+    {
+        defer tex_file.close();
+        try tex_file.writeAll(tex);
+    }
 
     const CommitCommand = switch (DocumentType) {
         Invoice => InvoiceCommand,
@@ -1542,10 +1542,10 @@ fn document_commit(
 
     const commitCommand: CommitCommand = .{
         .force = true,
-        .positional = .{ .subcommand = .commit },
+        .positional = .{ .subcommand = .commit, .arg = document_subdir_name },
     };
 
-    const files = try fj.cmdCommitDocument(commitCommand);
+    const files = try fj.cmdCommitDocument(commitCommand, document_subdir_name);
 
     const obj = try std.json.parseFromSliceLeaky(
         DocumentType,

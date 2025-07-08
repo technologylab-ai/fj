@@ -924,11 +924,11 @@ pub fn handleDocumentCommand(
         },
         .compile => {
             // Generic compile logic (LaTeX, CSV parsing, etc.)
-            return try self.cmdCompileDocument(args);
+            return try self.cmdCompileDocument(args, null);
         },
         .commit => {
             // Generic commit logic (ID increment, archive, move)
-            return try self.cmdCommitDocument(args);
+            return try self.cmdCommitDocument(args, null);
         },
         .show => {
             return try self.cmdShowDocument(args);
@@ -1879,18 +1879,33 @@ fn documentDir(self: *const Fj, DocumentType: type, doc_dir_: ?[]const u8, dir_o
         if (doc_dir_) |doc_dir| {
             // if user specified . by habit, let them have it
             if (doc_dir.len == 1 and doc_dir[0] == '.') break :blk ".";
-            break :blk std.fmt.bufPrint(dir_out, "{s}/{s}/{s}", .{
-                self.fj_home.?,
-                subdir,
-                doc_dir,
-            }) catch |err| {
-                log.err("Document path for {s} > {d} bytes! -> {}", .{
+
+            if (std.ascii.indexOfIgnoreCase(doc_dir, "-XXX--")) |_| {
+                // we are still working on it (probably via web)
+                break :blk std.fmt.bufPrint(dir_out, "{s}", .{
                     doc_dir,
-                    max_path_bytes,
-                    err,
-                });
-                try fatal("Aborting", .{}, error.OutOfMemory);
-            };
+                }) catch |err| {
+                    log.err("Document path for {s} > {d} bytes! -> {}", .{
+                        doc_dir,
+                        max_path_bytes,
+                        err,
+                    });
+                    try fatal("Aborting", .{}, error.OutOfMemory);
+                };
+            } else {
+                break :blk std.fmt.bufPrint(dir_out, "{s}/{s}/{s}", .{
+                    self.fj_home.?,
+                    subdir,
+                    doc_dir,
+                }) catch |err| {
+                    log.err("Document path for {s} > {d} bytes! -> {}", .{
+                        doc_dir,
+                        max_path_bytes,
+                        err,
+                    });
+                    try fatal("Aborting", .{}, error.OutOfMemory);
+                };
+            }
         } else {
             break :blk ".";
         }
@@ -2111,7 +2126,7 @@ fn replaceSection(self: *const Fj, input: []const u8, section: []const u8, repla
     return alist.items;
 }
 
-pub fn cmdCompileDocument(self: *const Fj, args: anytype) !HandleDocumentCommandResult {
+pub fn cmdCompileDocument(self: *const Fj, args: anytype, work_dir: ?[]const u8) !HandleDocumentCommandResult {
     const DocumentType = switch (@TypeOf(args)) {
         Cli.LetterCommand => fj_json.Letter,
         Cli.OfferCommand => fj_json.Offer,
@@ -2123,12 +2138,16 @@ pub fn cmdCompileDocument(self: *const Fj, args: anytype) !HandleDocumentCommand
 
     // check if we need to operate in current directory or if we got an id
     const subdir_name = blk: {
+        if (work_dir) |override_workdir| {
+            break :blk override_workdir;
+        }
         if (args.positional.arg) |id_str| {
             break :blk try self.documentDir(DocumentType, id_str, &docdir_buf);
         } else {
             break :blk try self.documentDir(DocumentType, null, &docdir_buf);
         }
     };
+
     if (!fsutil.isDirPresent(subdir_name)) {
         try fatal("Directory `{s}` does not exist!", .{subdir_name}, error.NotFound);
     }
@@ -2211,7 +2230,7 @@ pub fn cmdCompileDocument(self: *const Fj, args: anytype) !HandleDocumentCommand
     return .{ .compile = try self.readDocumentFiles(DocumentType, subdir_spec) };
 }
 
-pub fn cmdCommitDocument(self: *Fj, args: anytype) !HandleDocumentCommandResult {
+pub fn cmdCommitDocument(self: *Fj, args: anytype, work_dir: ?[]const u8) !HandleDocumentCommandResult {
     // validate it
     // update it
     // compile it
@@ -2224,7 +2243,22 @@ pub fn cmdCommitDocument(self: *Fj, args: anytype) !HandleDocumentCommandResult 
     };
     const human_doctype = documentTypeHumanName(DocumentType);
 
-    const subdir_name = ".";
+    // check if we need to operate in current directory or if we got an id
+    var docdir_buf: [max_path_bytes]u8 = undefined;
+    const subdir_name = blk: {
+        if (work_dir) |override_workdir| {
+            break :blk override_workdir;
+        }
+        if (args.positional.arg) |id_str| {
+            break :blk try self.documentDir(DocumentType, id_str, &docdir_buf);
+        } else {
+            break :blk try self.documentDir(DocumentType, null, &docdir_buf);
+        }
+    };
+
+    if (!fsutil.isDirPresent(subdir_name)) {
+        try fatal("Directory `{s}` does not exist!", .{subdir_name}, error.NotFound);
+    }
     const subdir = cwd().openDir(subdir_name, .{ .iterate = true }) catch |err| {
         try fatal("Unable to enter directory `{s}`: {}", .{ subdir_name, err }, err);
     };
@@ -2250,9 +2284,9 @@ pub fn cmdCommitDocument(self: *Fj, args: anytype) !HandleDocumentCommandResult 
             else => unreachable,
         };
         const compile_args: CliType = .{
-            .positional = .{ .subcommand = .compile },
+            .positional = .{ .subcommand = .compile, .arg = subdir_name },
         };
-        _ = try self.cmdCompileDocument(compile_args);
+        _ = try self.cmdCompileDocument(compile_args, work_dir);
         break :blk compile_args;
     };
 
@@ -2281,7 +2315,7 @@ pub fn cmdCommitDocument(self: *Fj, args: anytype) !HandleDocumentCommandResult 
     }
 
     // now that the ID has been updated, compile again!
-    _ = try self.cmdCompileDocument(compile_args);
+    _ = try self.cmdCompileDocument(compile_args, work_dir);
 
     var dest_path_buf: [max_path_bytes]u8 = undefined;
     // delete the .pdf with the temp id XXX
