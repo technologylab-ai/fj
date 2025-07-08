@@ -769,6 +769,11 @@ fn submit_travel_form(_: *Endpoint, arena: Allocator, context: *Context, r: zap.
         \\
         \\**Anmerkungen:** {{{travelComments}}}
     ;
+
+    const ts_from = try arena.dupe(u8, travelPeriodFrom);
+    std.mem.replaceScalar(u8, ts_from, 'T', ' ');
+    const ts_to = try arena.dupe(u8, travelPeriodTo);
+    std.mem.replaceScalar(u8, ts_to, 'T', ' ');
     const protocol_text = blk: {
         var mustache = try zap.Mustache.fromData(protocol_mustache);
         defer mustache.deinit();
@@ -776,8 +781,8 @@ fn submit_travel_form(_: *Endpoint, arena: Allocator, context: *Context, r: zap.
             .companyName = fj_config.CompanyName,
             .travelerName = travelerName,
             .travelDestination = travelDestination,
-            .travelPeriodFrom = travelPeriodFrom,
-            .travelPeriodTo = travelPeriodTo,
+            .travelPeriodFrom = ts_from,
+            .travelPeriodTo = ts_to,
             .travelPurpose = travelPurpose,
             .outbound_transports = outbound_transports.items,
             .return_transports = return_transports.items,
