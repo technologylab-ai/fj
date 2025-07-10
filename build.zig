@@ -18,6 +18,10 @@ pub fn build(b: *std.Build) void {
     exe_mod.addCSourceFile(.{ .file = b.path("src/stb/stb_image_write.c") });
     exe_mod.addIncludePath(b.path("src/pdf"));
     exe_mod.addIncludePath(b.path("src/stb"));
+    exe_mod.addIncludePath(b.path("src/miniz"));
+
+    // Add miniz as a C source file (no extra flags needed)
+    exe_mod.addCSourceFile(.{ .file = b.path("src/miniz/miniz.c") });
 
     const exe = b.addExecutable(.{
         .name = "fj",

@@ -1,5 +1,6 @@
 const std = @import("std");
 const log = std.log.scoped(.zip);
+const c = @cImport(@cInclude("miniz.h")); // This works after adding miniz.c to the build
 
 pub const ZipArgs = struct {
     zip_name: []const u8,
@@ -7,69 +8,66 @@ pub const ZipArgs = struct {
     work_dir: ?[]const u8 = null,
 };
 
-pub fn zip(arena: std.mem.Allocator, args: ZipArgs) !bool {
-    if (args.filenames.len == 0) return false;
-    var arg_list = std.ArrayListUnmanaged([]const u8).empty;
-    try arg_list.appendSlice(arena, &.{
-        "zip",
-        args.zip_name,
-    });
-    try arg_list.appendSlice(arena, args.filenames);
-
-    const args_str = std.mem.join(arena, " ", arg_list.items) catch {
-        return false;
+pub fn zip(arena: std.mem.Allocator, args: ZipArgs) !void {
+    const archive_name = blk: {
+        if (args.work_dir) |wd| {
+            break :blk try std.fmt.allocPrint(arena, "{s}/{s}", .{ wd, args.zip_name });
+        } else {
+            break :blk args.zip_name;
+        }
     };
 
-    var stderr = std.io.getStdErr();
-    stderr.writeAll("\n" ++ "-" ** 80 ++ "\n") catch unreachable;
-    defer stderr.writeAll("-" ** 80 ++ "\n") catch unreachable;
-
-    const result = std.process.Child.run(.{
-        .allocator = arena,
-        .argv = arg_list.items,
-        .cwd = args.work_dir,
-        // .max_output_bytes = max_output_bytes,
-        .expand_arg0 = .expand,
-    }) catch |err| {
-        log.err("Could not launch `{s}`: {}", .{ args_str, err });
-        return err;
-    };
-    switch (result.term) {
-        .Exited => |exit_code| {
-            if (exit_code != 0) {
-                log.err("`{s}` returned exit code {d}.", .{ args_str, exit_code });
-                showResultMessages(result);
-                return false;
+    var file_entries = std.ArrayListUnmanaged(FileEntry).empty;
+    for (args.filenames) |filn| {
+        const source_filn = blk: {
+            if (args.work_dir) |wd| {
+                break :blk try std.fmt.allocPrint(arena, "{s}/{s}", .{ wd, filn });
+            } else {
+                break :blk filn;
             }
-            log.info("{s} OK:", .{args_str});
-            showResultMessages(result);
-            return true;
-        },
-        .Signal => |signal| {
-            // show stdout, stderr
-            log.err("`{s}` received signal: {d}!", .{ args_str, signal });
-            showResultMessages(result);
-            return false;
-        },
-        .Stopped => |stopped| {
-            // show stdout, stderr
-            log.err("`{s}` was stopped with code: {d}!", .{ args_str, stopped });
-            showResultMessages(result);
-            return false;
-        },
-        .Unknown => |unk| {
-            // show stdout, stderr
-            log.err("`{s}` caused unknown code: {d}!", .{ args_str, unk });
-            showResultMessages(result);
-            return false;
-        },
+        };
+        try file_entries.append(
+            arena,
+            .{ .source_path = source_filn, .archive_path = std.fs.path.basename(filn) },
+        );
     }
+
+    try createZip(arena, archive_name, file_entries.items);
 }
 
-fn showResultMessages(result: std.process.Child.RunResult) void {
-    var stdout = std.io.getStdOut();
-    var stderr = std.io.getStdErr();
-    stdout.writeAll(result.stdout) catch {};
-    // stderr.writeAll("\n") catch unreachable;
-    stderr.writeAll(result.stderr) catch {};
+pub const FileEntry = struct {
+    source_path: []const u8,
+    archive_path: []const u8,
+};
+
+pub fn createZip(allocator: std.mem.Allocator, archive_name: []const u8, files: []const FileEntry) !void {
+    // Allocate null-terminated strings for C compatibility
+    const archive_name_z = try allocator.dupeZ(u8, archive_name);
+    defer allocator.free(archive_name_z);
+
+    var zip_archive: c.mz_zip_archive = std.mem.zeroes(c.mz_zip_archive);
+
+    // Initialize the ZIP writer for a file
+    if (c.mz_zip_writer_init_file(&zip_archive, archive_name_z.ptr, 0) == c.MZ_FALSE) {
+        return error.ZipInitFailed;
+    }
+    defer _ = c.mz_zip_writer_end(&zip_archive); // Clean up on exit
+
+    for (files) |file| {
+        const source_path_z = try allocator.dupeZ(u8, file.source_path);
+        defer allocator.free(source_path_z);
+
+        const archive_path_z = try allocator.dupeZ(u8, file.archive_path);
+        defer allocator.free(archive_path_z);
+
+        // Add file from disk with the specified archive path (directories via '/')
+        if (c.mz_zip_writer_add_file(&zip_archive, archive_path_z.ptr, source_path_z.ptr, null, 0, c.MZ_DEFAULT_LEVEL) == c.MZ_FALSE) {
+            return error.ZipAddFileFailed;
+        }
+    }
+
+    // Finalize the archive
+    if (c.mz_zip_writer_finalize_archive(&zip_archive) == c.MZ_FALSE) {
+        return error.ZipFinalizeFailed;
+    }
 }

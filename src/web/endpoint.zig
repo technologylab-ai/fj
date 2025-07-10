@@ -815,7 +815,7 @@ fn submit_travel_form(_: *Endpoint, arena: Allocator, context: *Context, r: zap.
     }
 
     const zip_basename = try std.fmt.allocPrint(arena, "{s}.zip", .{pre_prefix});
-    _ = try zip.zip(arena, .{
+    try zip.zip(arena, .{
         .zip_name = zip_basename,
         .filenames = zip_pdf_path_list.items,
         .work_dir = TMP,
