@@ -61,6 +61,9 @@ commits the entire directory to the Git-managed archive.
 - Manual editing and iterative compilation
 - Reliable ID assignment with file locking
 - Git-managed document archive ("fj home")
+- Web UI mode (`fj serve`)
+- Travel Expenses tool (web only): upload receipts, enter details -> download a
+  zip with all receipts converted to PDF, and a travel log PDF.
 
 ---
 
