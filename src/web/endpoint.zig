@@ -261,6 +261,18 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 path["/invoice/pdf/".len..],
             );
         }
+        if (std.mem.startsWith(u8, path, "/invoice/download/") and
+            path.len > "/invoice/download/".len)
+        {
+            r.setStatus(.ok);
+            return ep.download_pdf(
+                arena,
+                context,
+                r,
+                Invoice,
+                path["/invoice/download/".len..],
+            );
+        }
         if (std.mem.startsWith(u8, path, "/invoice/draftpdf/") and
             path.len > "/invoice/draftpdf/".len)
         {
@@ -316,6 +328,18 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 path["/offer/pdf/".len..],
             );
         }
+        if (std.mem.startsWith(u8, path, "/offer/download/") and
+            path.len > "/offer/download/".len)
+        {
+            r.setStatus(.ok);
+            return ep.download_pdf(
+                arena,
+                context,
+                r,
+                Offer,
+                path["/offer/download/".len..],
+            );
+        }
         if (std.mem.startsWith(u8, path, "/offer/draftpdf/") and
             path.len > "/offer/draftpdf/".len)
         {
@@ -368,6 +392,18 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
                 r,
                 Letter,
                 path["/letter/pdf/".len..],
+            );
+        }
+        if (std.mem.startsWith(u8, path, "/letter/download/") and
+            path.len > "/letter/download/".len)
+        {
+            r.setStatus(.ok);
+            return ep.download_pdf(
+                arena,
+                context,
+                r,
+                Letter,
+                path["/letter/download/".len..],
             );
         }
         if (std.mem.startsWith(u8, path, "/letter/draftpdf/") and
@@ -1612,6 +1648,48 @@ fn document_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Reques
     log.info("Opening {s}", .{pdf_path});
 
     try r.setHeader("Cache-Control", "no-store");
+    try r.setContentTypeFromFilename(pdf_filename);
+    try r.sendFile(pdf_path);
+}
+
+fn download_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, DocumentType: type, id: []const u8) !void {
+    var fj = createFj(arena, context);
+    const client = r.getParamSlice("client") orelse return error.NoClient;
+
+    const document_base = try fj.documentBaseDir(DocumentType);
+
+    const human_doctype = Fj.documentTypeHumanName(DocumentType);
+
+    const document_dir_name = blk: {
+        if (Fj.startsWithIC(id, human_doctype)) {
+            break :blk id;
+        } else {
+            break :blk try fj.findDocumentById(DocumentType, id);
+        }
+    };
+
+    // note: this equals document_dir_name
+    const human_pdf_filename = try std.fmt.allocPrint(
+        arena,
+        "{s}--{s}--{s}.pdf",
+        .{ human_doctype, id, client },
+    );
+
+    const pdf_filename = try std.fmt.allocPrint(
+        arena,
+        "{s}.pdf",
+        .{document_dir_name},
+    );
+    const pdf_path = try std.fs.path.join(
+        arena,
+        &[_][]const u8{ document_base, document_dir_name, pdf_filename },
+    );
+    log.info("Downloading {s} as {s}", .{ pdf_path, human_pdf_filename });
+
+    try r.setHeader("Cache-Control", "no-store");
+    try r.setContentTypeFromFilename(human_pdf_filename);
+    const content_disposition = try std.fmt.allocPrint(arena, "attachment; filename=\"{s}\"", .{human_pdf_filename});
+    try r.setHeader("Content-Disposition", content_disposition);
     try r.sendFile(pdf_path);
 }
 
