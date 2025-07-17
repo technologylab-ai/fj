@@ -7,6 +7,7 @@ const Endpoint = @import("endpoint.zig");
 const Dir = std.fs.Dir;
 
 const Context = @import("context.zig");
+const Version = @import("../version.zig");
 const Server = @This();
 
 const log = std.log.scoped(.server);
@@ -40,6 +41,7 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     defer std.debug.print("\n\nLeaks detected: {}\n\n", .{gpa.deinit() != .ok});
     const allocator = gpa.allocator();
 
+    log.info("fj version {s} is starting", .{Version.version() orelse "<unknown>"});
     //
     // Endpoint
     //
