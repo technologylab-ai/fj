@@ -1200,6 +1200,9 @@ pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentComma
                 .revision = 0,
 
                 .client_shortname = client_name,
+                .project_name = args.project orelse {
+                    try fatal("--project=<project name> missing!", .{}, error.Cli);
+                },
                 .year = try self.year(),
 
                 .coverletter = .{},
@@ -1813,6 +1816,7 @@ fn generateTexConfig(self: *const Fj, file: File, id: []const u8, opts: anytype)
                 \\ \def\FjDocType{{{s}}}
                 \\ \def\FjDocId{{{s}}}
                 \\ \def\FjDate{{{s}}}
+                \\ \def\FjProjectName{{{s}}}
                 \\ \def\FjClientCompany{{{s}}}
                 \\ \def\FjClientCareOf{{{s}}}
                 \\ \def\FjClientStreet{{{s}}}
@@ -1832,6 +1836,7 @@ fn generateTexConfig(self: *const Fj, file: File, id: []const u8, opts: anytype)
                 "Rechnung",
                 id,
                 opts.date,
+                opts.project_name,
                 client.@"company-name",
                 client.@"c/o-name" orelse "\\hspace{1em}",
                 if (client.street.len > 0) client.street else "\\hspace{1em}",
