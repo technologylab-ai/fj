@@ -526,6 +526,7 @@ fn allDocsAndStats(_: *Endpoint, arena: Allocator, context: *Context, DocumentTy
                 .type = try arena.dupe(u8, doc_type),
                 .id = try arena.dupe(u8, id),
                 .client = try arena.dupe(u8, obj.client_shortname),
+                .project = try arena.dupe(u8, obj.project_name),
                 .date = try arena.dupe(u8, obj.date),
                 .sort_date = try arena.dupe(u8, obj.updated),
                 .status = try arena.dupe(u8, status),
@@ -900,7 +901,7 @@ fn show_dashboard(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Req
     const stats = docs_and_stats.stats;
 
     std.mem.sort(Document, docs_and_stats.documents, {}, Document.greaterThan);
-    const recent_documents = docs_and_stats.documents[0..@min(docs_and_stats.documents.len, 5)]; // cap at 5
+    const recent_documents = docs_and_stats.documents[0..@min(docs_and_stats.documents.len, 8)]; // cap at 5
 
     const git: Git = .{
         .arena = arena,
@@ -1123,6 +1124,7 @@ fn toDocument(_: *Endpoint, arena: Allocator, obj: anytype, files: Fj.DocumentFi
         .type = doc_type,
         .id = obj.id,
         .client = obj.client_shortname,
+        .project = obj.project_name,
         .date = obj.date,
         .sort_date = obj.updated,
         .status = status,
@@ -1187,6 +1189,7 @@ const Document = struct {
     type: []const u8,
     id: []const u8,
     client: []const u8,
+    project: []const u8,
     date: []const u8,
     status: []const u8,
     amount: []const u8,
