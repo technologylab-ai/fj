@@ -3,12 +3,26 @@ const zap = @import("zap");
 
 const Allocator = std.mem.Allocator;
 const Fj = @import("../fj.zig");
-const Endpoint = @import("endpoint.zig");
+
 const Dir = std.fs.Dir;
 
 const Context = @import("context.zig");
 const Version = @import("../version.zig");
 const Server = @This();
+
+const fj_json = @import("../json.zig");
+const Client = fj_json.Client;
+const Rate = fj_json.Rate;
+const Letter = fj_json.Letter;
+const Offer = fj_json.Offer;
+const Invoice = fj_json.Invoice;
+
+const EpLogin = @import("ep_login.zig");
+const EpDashboard = @import("ep_dashboard.zig");
+const EpGit = @import("ep_git.zig");
+const EpResource = @import("ep_resource.zig");
+const EpDocument = @import("ep_document.zig");
+const EpTravel = @import("ep_travel.zig");
 
 const log = std.log.scoped(.server);
 
@@ -27,7 +41,7 @@ fn readLogo(allocator: Allocator, fj_home: []const u8) ![]const u8 {
     var logo_file = try fj_home_dir.openFile("templates/logo.png", .{});
     defer logo_file.close();
 
-    return try logo_file.readToEndAlloc(allocator, 10 * 1024 * 1024);
+    return logo_file.readToEndAlloc(allocator, 10 * 1024 * 1024);
 }
 
 pub fn start(fj_home: []const u8, opts: InitOpts) !void {
@@ -42,13 +56,6 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     const allocator = gpa.allocator();
 
     log.info("fj version {s} is starting", .{Version.version() orelse "<unknown>"});
-    //
-    // Endpoint
-    //
-    var endpoint: Endpoint = .{
-        .path = "/",
-        .error_strategy = .log_to_response,
-    };
 
     //
     // Context
@@ -107,10 +114,60 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     });
     defer authenticator.deinit();
 
-    const AuthEndpoint = App.Endpoint.Authenticating(Endpoint, Authenticator);
-    var auth_endpoint = AuthEndpoint.init(&endpoint, &authenticator);
+    //
+    // Endpoints
+    //
 
-    try app.register(&auth_endpoint);
+    var ep_dashboard: EpDashboard = .{};
+    const AuthDashboard = App.Endpoint.Authenticating(EpDashboard, Authenticator);
+    var auth_dashboard = AuthDashboard.init(&ep_dashboard, &authenticator);
+
+    var ep_login: EpLogin = .{ .main_page = ep_dashboard.path };
+    const AuthLogin = App.Endpoint.Authenticating(EpLogin, Authenticator);
+    var auth_login = AuthLogin.init(&ep_login, &authenticator);
+
+    var ep_git: EpGit = .{};
+    const AuthGit = App.Endpoint.Authenticating(EpGit, Authenticator);
+    var auth_git = AuthGit.init(&ep_git, &authenticator);
+
+    const EpClient = EpResource.create(Client);
+    var ep_client: EpClient = .{};
+    const AuthClient = App.Endpoint.Authenticating(EpClient, Authenticator);
+    var auth_client = AuthClient.init(&ep_client, &authenticator);
+
+    const EpRate = EpResource.create(Rate);
+    var ep_rate: EpRate = .{};
+    const AuthRate = App.Endpoint.Authenticating(EpRate, Authenticator);
+    var auth_rate = AuthRate.init(&ep_rate, &authenticator);
+
+    const EpInvoice = EpDocument.create(Invoice);
+    var ep_invoice: EpInvoice = .{};
+    const AuthInvoice = App.Endpoint.Authenticating(EpInvoice, Authenticator);
+    var auth_invoice = AuthInvoice.init(&ep_invoice, &authenticator);
+
+    const EpOffer = EpDocument.create(Offer);
+    var ep_offer: EpOffer = .{};
+    const AuthOffer = App.Endpoint.Authenticating(EpOffer, Authenticator);
+    var auth_offer = AuthOffer.init(&ep_offer, &authenticator);
+
+    const EpLetter = EpDocument.create(Letter);
+    var ep_letter: EpLetter = .{};
+    const AuthLetter = App.Endpoint.Authenticating(EpLetter, Authenticator);
+    var auth_letter = AuthLetter.init(&ep_letter, &authenticator);
+
+    var ep_travel: EpTravel = .{};
+    const AuthTravel = App.Endpoint.Authenticating(EpTravel, Authenticator);
+    var auth_travel = AuthTravel.init(&ep_travel, &authenticator);
+
+    try app.register(&auth_login);
+    try app.register(&auth_dashboard);
+    try app.register(&auth_git);
+    try app.register(&auth_client);
+    try app.register(&auth_rate);
+    try app.register(&auth_invoice);
+    try app.register(&auth_offer);
+    try app.register(&auth_letter);
+    try app.register(&auth_travel);
 
     //
     // zap
