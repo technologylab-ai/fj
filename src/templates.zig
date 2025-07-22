@@ -21,5 +21,5 @@ pub fn all(alloc: std.mem.Allocator) ![]File {
             .{ .filename = decl.name, .content = @field(Files, decl.name) },
         );
     }
-    return try l.toOwnedSlice(alloc);
+    return l.toOwnedSlice(alloc);
 }

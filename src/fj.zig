@@ -916,28 +916,28 @@ pub fn handleDocumentCommand(
     switch (args.positional.subcommand) {
         .new => {
             // Generic logic for creating new dir + initial JSON files
-            return try self.cmdCreateNewDocument(args);
+            return self.cmdCreateNewDocument(args);
         },
         .checkout => {
             // Generic checkout logic
-            return try self.cmdCheckoutDocument(args);
+            return self.cmdCheckoutDocument(args);
         },
         .compile => {
             // Generic compile logic (LaTeX, CSV parsing, etc.)
-            return try self.cmdCompileDocument(args, null);
+            return self.cmdCompileDocument(args, null);
         },
         .commit => {
             // Generic commit logic (ID increment, archive, move)
-            return try self.cmdCommitDocument(args, null);
+            return self.cmdCommitDocument(args, null);
         },
         .show => {
-            return try self.cmdShowDocument(args);
+            return self.cmdShowDocument(args);
         },
         .open => {
-            return try self.cmdOpenDocument(args);
+            return self.cmdOpenDocument(args);
         },
         .list => {
-            return try self.cmdListDocuments(args);
+            return self.cmdListDocuments(args);
         },
     }
 }
@@ -1407,7 +1407,7 @@ pub fn findDocumentById(self: *const Fj, DocumentType: type, id: []const u8) ![]
     while (try it.next()) |entry| {
         if (startsWithIC(entry.name, pattern)) {
             log.debug("Found {s} in {s}", .{ entry.name, base_dir_name });
-            return try self.arena.dupe(u8, entry.name);
+            return self.arena.dupe(u8, entry.name);
         }
     } else {
         return error.NotFound;
