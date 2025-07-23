@@ -9,7 +9,7 @@ fj_home: []const u8,
 work_dir: []const u8,
 logo_imgdata: []const u8,
 
-pub fn unhandled(_: *@This(), _: std.mem.Allocator, r: zap.Request) anyerror!void {
+pub fn unhandledRequest(_: *@This(), _: std.mem.Allocator, r: zap.Request) anyerror!void {
     log.info("UNHANDLED: {s}", .{r.path orelse ""});
     try r.redirectTo("/dashboard", null);
 }

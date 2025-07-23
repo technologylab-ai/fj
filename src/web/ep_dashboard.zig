@@ -86,10 +86,3 @@ pub fn get(_: *Dashboard, arena: Allocator, context: *Context, r: zap.Request) !
 pub fn post(ep: *Dashboard, _: Allocator, _: *Context, r: zap.Request) !void {
     try r.redirectTo(ep.path, .see_other);
 }
-
-pub fn unauthorized(_: *Dashboard, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn put(_: *Dashboard, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn delete(_: *Dashboard, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn patch(_: *Dashboard, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn options(_: *Dashboard, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn head(_: *Dashboard, _: Allocator, _: *Context, _: zap.Request) !void {}

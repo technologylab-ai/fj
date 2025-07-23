@@ -394,10 +394,3 @@ pub fn downloadZip(ep: *Travel, arena: Allocator, context: *Context, r: zap.Requ
     try r.setHeader("Content-Disposition", content_disposition);
     try r.sendFile(full_zip_path);
 }
-
-pub fn unauthorized(_: *Travel, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn put(_: *Travel, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn delete(_: *Travel, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn patch(_: *Travel, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn options(_: *Travel, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn head(_: *Travel, _: Allocator, _: *Context, _: zap.Request) !void {}

@@ -776,11 +776,5 @@ pub fn create(DocumentType: type) type {
                 try r.sendBody(try std.fmt.allocPrint(arena, "{s} not found", .{pdf_path}));
             }
         }
-        pub fn unauthorized(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-        pub fn put(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-        pub fn delete(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-        pub fn patch(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-        pub fn options(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-        pub fn head(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
     };
 }
