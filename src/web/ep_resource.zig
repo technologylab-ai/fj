@@ -309,12 +309,5 @@ pub fn create(ResourceType: type) type {
             _ = try fj.writeRecord(shortname, obj, .{ .allow_overwrite = true });
             try r.redirectTo("/dashboard", null);
         }
-
-        pub fn unauthorized(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-        pub fn put(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-        pub fn delete(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-        pub fn patch(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-        pub fn options(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-        pub fn head(_: *Endpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
     };
 }

@@ -88,12 +88,3 @@ fn git_commit(_: *GitEndpoint, arena: Allocator, context: *Context, r: zap.Reque
     }
     return error.Mustache;
 }
-
-pub fn unauthorized(_: *GitEndpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-
-pub fn post(_: *GitEndpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn put(_: *GitEndpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn delete(_: *GitEndpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn patch(_: *GitEndpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn options(_: *GitEndpoint, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn head(_: *GitEndpoint, _: Allocator, _: *Context, _: zap.Request) !void {}

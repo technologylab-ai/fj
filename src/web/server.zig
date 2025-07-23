@@ -99,8 +99,8 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     // App
     //
     const App = zap.App.Create(Context);
-    var app = try App.init(allocator, &context, .{});
-    defer app.deinit();
+    try App.init(allocator, &context, .{});
+    defer App.deinit();
 
     //
     // Authentication
@@ -159,15 +159,15 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     const AuthTravel = App.Endpoint.Authenticating(EpTravel, Authenticator);
     var auth_travel = AuthTravel.init(&ep_travel, &authenticator);
 
-    try app.register(&auth_login);
-    try app.register(&auth_dashboard);
-    try app.register(&auth_git);
-    try app.register(&auth_client);
-    try app.register(&auth_rate);
-    try app.register(&auth_invoice);
-    try app.register(&auth_offer);
-    try app.register(&auth_letter);
-    try app.register(&auth_travel);
+    try App.register(&auth_login);
+    try App.register(&auth_dashboard);
+    try App.register(&auth_git);
+    try App.register(&auth_client);
+    try App.register(&auth_rate);
+    try App.register(&auth_invoice);
+    try App.register(&auth_offer);
+    try App.register(&auth_letter);
+    try App.register(&auth_travel);
 
     //
     // zap
@@ -175,7 +175,7 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     const interface = try std.fmt.allocPrintZ(allocator, "{s}", .{opts.host});
     defer allocator.free(interface);
 
-    try app.listen(.{
+    try App.listen(.{
         .interface = interface,
         .port = opts.port,
     });

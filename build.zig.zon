@@ -13,8 +13,8 @@
             .hash = "zeit-0.0.0-5I6bk_pZAgB03N1p1GmVOZ--gOFwwQSRKj1UXb5tnaKS",
         },
         .zap = .{
-            .url = "git+https://github.com/zigzap/zap?ref=v0.10.1#8d187310c7ee4f86faa7ef0ecdac0bf747216dea",
-            .hash = "zap-0.9.1-GoeB84M8JACjZKDNq2LA5hB24Z-ZrZ_HUKRXd8qxL2JW",
+            .url = "git+https://github.com/zigzap/zap?ref=v0.10.3#e768c85001c8ef1ff3619ade4e69b48fef091ce8",
+            .hash = "zap-0.10.3-GoeB88p9JABOAB9FnbFZtwnGI_HduEfX-O8PAU9lz0n9",
         },
     },
     .paths = .{

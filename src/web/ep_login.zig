@@ -46,12 +46,3 @@ pub fn get(ep: *Login, arena: Allocator, context: *Context, r: zap.Request) !voi
 
 // unauthorized login attempts go to login page: this happens inside the
 // zap.Endpoint.Authenticating !!!
-// Note: this function is "unreachable" by the /login mechanics: everything starting with /login is passed-through orelse we wouldn't be able to serve the logo etc
-pub fn unauthorized(_: *Login, _: Allocator, _: *Context, _: zap.Request) !void {}
-
-pub fn post(_: *Login, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn put(_: *Login, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn delete(_: *Login, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn patch(_: *Login, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn options(_: *Login, _: Allocator, _: *Context, _: zap.Request) !void {}
-pub fn head(_: *Login, _: Allocator, _: *Context, _: zap.Request) !void {}
