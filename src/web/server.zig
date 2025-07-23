@@ -23,6 +23,7 @@ const EpGit = @import("ep_git.zig");
 const EpResource = @import("ep_resource.zig");
 const EpDocument = @import("ep_document.zig");
 const EpTravel = @import("ep_travel.zig");
+const EpInit = @import("ep_init.zig");
 
 const log = std.log.scoped(.server);
 
@@ -61,11 +62,15 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     // Context
     //
     var context: Context = .{
+        .gpa = allocator,
         .auth_lookup = .empty,
         .fj_home = try allocator.dupe(u8, fj_home),
         .work_dir = opts.work_dir,
-        .logo_imgdata = readLogo(allocator, fj_home) catch |err| {
-            std.process.fatal("Unable to read logo from fj home: {}", .{err});
+        .logo_imgdata = blk: {
+            break :blk readLogo(allocator, fj_home) catch |err| {
+                log.warn("Unable to read logo from fj home: {}", .{err});
+                break :blk try allocator.dupe(u8, "empty");
+            };
         },
     };
     defer allocator.free(context.fj_home);
@@ -159,6 +164,8 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     const AuthTravel = App.Endpoint.Authenticating(EpTravel, Authenticator);
     var auth_travel = AuthTravel.init(&ep_travel, &authenticator);
 
+    var ep_init: EpInit = .{};
+
     try App.register(&auth_login);
     try App.register(&auth_dashboard);
     try App.register(&auth_git);
@@ -168,6 +175,7 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     try App.register(&auth_offer);
     try App.register(&auth_letter);
     try App.register(&auth_travel);
+    try App.register(&ep_init);
 
     //
     // zap

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-    <title>Edit {{type}} {{shortname}} — fj</title>
+    <title>init — fj</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { font-family: sans-serif; margin: 0; }
@@ -11,13 +11,14 @@
 
     textarea {
       width: 100%;
-      height: 18em;
+      height: 25em;
       font-family: monospace;
       margin-top: 0.5em;
     }
 
     .main-grid {
       display: flex;
+      flex-direction: column;
       gap: 2em;
       margin-bottom: 2em;
     }
@@ -43,14 +44,14 @@
       .main-grid {
         flex-direction: column;
       }
-      textarea { height: 14em; }
+      textarea { height: 25em; }
       iframe { height: 30em; }
     }
   </style>
 </head>
 <body>
   <header>
-    <strong>fj — The Commandline Company — <i>{{company}}</i></strong>
+    <strong>fj — The Commandline Company</strong>
     <nav>
       <a href="/dashboard">Dashboard</a>
       <a href="/client">Clients</a>
@@ -63,26 +64,26 @@
   </header>
 
   <main>
-    <form action="/{{type}}/commit/{{shortname}}" method="post">
+    <form action="/init" method="post" enctype="multipart/form-data">
       <div class="main-grid">
         <div class="editor-block">
-          <h3>{{type}} {{shortname}}.json</h3>
-          <textarea id="json-editor" name="json" {{^editable}}readonly{{/editable}}>{{json}}</textarea>
+          <h3>init.json</h3>
+          <textarea id="json-editor" name="json">{{json}}</textarea>
         </div>
 
+        <div class="editor-block">
+          <h3>logo.png</h3>
+          <input type="file" name="logo" accept="image/png" required>
+      </div>
+
       <div class="actions">
-              {{#editable}}
         <input type="submit" value="commit">
-              {{/editable}}
-              {{^editable}}
-        <a href="/{{type}}/edit/{{shortname}}">edit</button>
-              {{/editable}}
       </div>
     </form>
   </main>
 
   <script>
-    // JS logic here (fetch, save, compile, commit)
   </script>
 </body>
 </html>
+
