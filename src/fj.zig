@@ -121,15 +121,15 @@ fn fjHomeTest(self: *Fj, from_args: ?[]const u8) ![]const u8 {
     return fj_home;
 }
 
-fn generateTexDefaultsTemplate(self: *Fj) ![]const u8 {
+pub fn generateTexDefaultsTemplate(arena: Allocator) ![]const u8 {
     var alist = std.ArrayListUnmanaged(u8).empty;
-    const writer = alist.writer(self.arena);
+    const writer = alist.writer(arena);
     const defaults: fj_json.TexDefaults = .{};
     std.json.stringify(defaults, .{ .whitespace = .indent_4 }, writer) catch |err| {
         try fatal("Error generating Tex defaults: {}", .{err}, err);
     };
 
-    return self.arena.dupe(u8, alist.items) catch |err| {
+    return arena.dupe(u8, alist.items) catch |err| {
         try fatal("OOM returning Tex defaults: {}", .{err}, err);
     };
 }
@@ -168,7 +168,7 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
 
     if (args.generate) {
         if (args.positional.init_json_file) |output_filename| {
-            const default_json = try self.generateTexDefaultsTemplate();
+            const default_json = try generateTexDefaultsTemplate(self.arena);
             var ofile = cwd().createFile(output_filename, .{ .exclusive = true }) catch |err| {
                 try fatal("Unable to create {s}: {}", .{ output_filename, err }, err);
             };
