@@ -1,6 +1,6 @@
 .{
     .name = .fj,
-    .version = "0.2.4-dev",
+    .version = "0.2.4",
     .fingerprint = 0xdf1956986963a6e9, // Changing this has security and trust implications.
     .minimum_zig_version = "0.14.0",
     .dependencies = .{
@@ -13,8 +13,8 @@
             .hash = "zeit-0.0.0-5I6bk_pZAgB03N1p1GmVOZ--gOFwwQSRKj1UXb5tnaKS",
         },
         .zap = .{
-            .url = "git+https://github.com/zigzap/zap?ref=v0.10.4#87415e1686bfa5eaa568d46d4829b58d53343053",
-            .hash = "zap-0.10.4-GoeB88p9JAC1N4hqzAzToQC_QngPAvAlcKlgQS9qD9JZ",
+            .url = "git+https://github.com/zigzap/zap?ref=v0.10.5#e67b67297775d70b29afe3f81c459fa94d052ca2",
+            .hash = "zap-0.10.5-GoeB83KAJADxq1b-SgGgccN9aGVF02WTW9wYs8pQnbzR",
         },
     },
     .paths = .{
