@@ -1,4 +1,6 @@
-#  ![logo](./src/web/assets/favicon-32x32.png)  The Commandline Company
+![](src/web/assets/android-chrome-192x192.png)
+
+#  fj — The Commandline Company
 
 ```shell
 $ fj -h
