@@ -22,6 +22,7 @@ pub fn get(ep: *Login, arena: Allocator, context: *Context, r: zap.Request) !voi
         // login
         if (std.mem.eql(u8, path, "/login/logo.png")) {
             r.setStatus(.ok);
+            try r.setContentTypeFromFilename("logo.png");
             return r.sendBody(context.logo_imgdata);
         }
         if (std.mem.startsWith(u8, path, "/login")) {
@@ -36,7 +37,7 @@ pub fn get(ep: *Login, arena: Allocator, context: *Context, r: zap.Request) !voi
             defer result.deinit();
 
             if (result.str()) |rendered| {
-                return r.sendBody(rendered);
+                return ep_utils.sendBody(arena, rendered, r);
             }
             return error.Mustache;
         }

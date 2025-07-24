@@ -164,7 +164,7 @@ pub fn create(ResourceType: type) type {
             defer result.deinit();
 
             if (result.str()) |rendered| {
-                return r.sendBody(rendered);
+                return ep_utils.sendBody(arena, rendered, r);
             }
             return error.Mustache;
         }
@@ -198,7 +198,7 @@ pub fn create(ResourceType: type) type {
             defer result.deinit();
 
             if (result.str()) |rendered| {
-                return r.sendBody(rendered);
+                return ep_utils.sendBody(arena, rendered, r);
             }
             return error.Mustache;
         }
@@ -228,7 +228,7 @@ pub fn create(ResourceType: type) type {
                 defer result.deinit();
 
                 if (result.str()) |rendered| {
-                    return r.sendBody(rendered);
+                    return ep_utils.sendBody(arena, rendered, r);
                 }
                 return error.Mustache;
             }
@@ -269,7 +269,7 @@ pub fn create(ResourceType: type) type {
             defer result.deinit();
 
             if (result.str()) |rendered| {
-                return r.sendBody(rendered);
+                return ep_utils.sendBody(arena, rendered, r);
             }
             return error.Mustache;
         }
