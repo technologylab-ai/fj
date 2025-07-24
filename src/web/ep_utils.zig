@@ -17,6 +17,26 @@ const InvoiceCommand = Cli.InvoiceCommand;
 const GitCommand = Cli.GitCommand;
 
 const html_404_not_found = @embedFile("templates/404.html");
+const html_head = @embedFile("templates/html_head.html");
+
+pub fn sendBody(arena: Allocator, s: []const u8, r: zap.Request) !void {
+    const params = .{
+        .head_block = html_head,
+    };
+
+    const new_body_1 = try std.mem.replaceOwned(u8, arena, s, "<<<", "{{{");
+    const new_body_2 = try std.mem.replaceOwned(u8, arena, new_body_1, ">>>", "}}}");
+
+    var mustache = try zap.Mustache.fromData(new_body_2);
+    defer mustache.deinit();
+    const result = mustache.build(params);
+    defer result.deinit();
+
+    if (result.str()) |rendered| {
+        return r.sendBody(rendered);
+    }
+    return error.Mustache;
+}
 
 pub const Document = struct {
     type: []const u8,
@@ -66,7 +86,7 @@ pub fn show_404(arena: Allocator, context: *Context, r: zap.Request) !void {
 
     r.setStatus(.not_found);
     if (result.str()) |rendered| {
-        return r.sendBody(rendered);
+        return sendBody(arena, rendered, r);
     }
     return error.Mustache;
 }

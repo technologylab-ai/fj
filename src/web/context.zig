@@ -27,6 +27,7 @@ pub fn unhandledRequest(self: *@This(), _: std.mem.Allocator, r: zap.Request) an
         for (webmanifest_tuples) |*tuple| {
             if (std.mem.eql(u8, path, tuple[0])) {
                 log.info("GET {s}", .{path});
+                try r.setContentTypeFromFilename(tuple[0]);
                 return r.sendBody(tuple[1]);
             }
         }
