@@ -24,6 +24,7 @@ const EpResource = @import("ep_resource.zig");
 const EpDocument = @import("ep_document.zig");
 const EpTravel = @import("ep_travel.zig");
 const EpInit = @import("ep_init.zig");
+const EpPreRoute = @import("ep_preroute.zig");
 
 const log = std.log.scoped(.server);
 
@@ -123,58 +124,70 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     // Endpoints
     //
 
+    // The Pre-Router redirects all requests to /init if FJ is not initialized
+    const PreRouter: EpPreRoute = .{ .App = App, .init_route = "/init" };
+
     var ep_dashboard: EpDashboard = .{};
     const AuthDashboard = App.Endpoint.Authenticating(EpDashboard, Authenticator);
     var auth_dashboard = AuthDashboard.init(&ep_dashboard, &authenticator);
+    var pre_auth_dashboard = PreRouter.Create(AuthDashboard).init(&auth_dashboard);
 
     var ep_login: EpLogin = .{ .main_page = ep_dashboard.path };
     const AuthLogin = App.Endpoint.Authenticating(EpLogin, Authenticator);
     var auth_login = AuthLogin.init(&ep_login, &authenticator);
+    var pre_auth_login = PreRouter.Create(AuthLogin).init(&auth_login);
 
     var ep_git: EpGit = .{};
     const AuthGit = App.Endpoint.Authenticating(EpGit, Authenticator);
     var auth_git = AuthGit.init(&ep_git, &authenticator);
+    var pre_auth_git = PreRouter.Create(AuthGit).init(&auth_git);
 
     const EpClient = EpResource.create(Client);
     var ep_client: EpClient = .{};
     const AuthClient = App.Endpoint.Authenticating(EpClient, Authenticator);
     var auth_client = AuthClient.init(&ep_client, &authenticator);
+    var pre_auth_client = PreRouter.Create(AuthClient).init(&auth_client);
 
     const EpRate = EpResource.create(Rate);
     var ep_rate: EpRate = .{};
     const AuthRate = App.Endpoint.Authenticating(EpRate, Authenticator);
     var auth_rate = AuthRate.init(&ep_rate, &authenticator);
+    var pre_auth_rate = PreRouter.Create(AuthRate).init(&auth_rate);
 
     const EpInvoice = EpDocument.create(Invoice);
     var ep_invoice: EpInvoice = .{};
     const AuthInvoice = App.Endpoint.Authenticating(EpInvoice, Authenticator);
     var auth_invoice = AuthInvoice.init(&ep_invoice, &authenticator);
+    var pre_auth_invoice = PreRouter.Create(AuthInvoice).init(&auth_invoice);
 
     const EpOffer = EpDocument.create(Offer);
     var ep_offer: EpOffer = .{};
     const AuthOffer = App.Endpoint.Authenticating(EpOffer, Authenticator);
     var auth_offer = AuthOffer.init(&ep_offer, &authenticator);
+    var pre_auth_offer = PreRouter.Create(AuthOffer).init(&auth_offer);
 
     const EpLetter = EpDocument.create(Letter);
     var ep_letter: EpLetter = .{};
     const AuthLetter = App.Endpoint.Authenticating(EpLetter, Authenticator);
     var auth_letter = AuthLetter.init(&ep_letter, &authenticator);
+    var pre_auth_letter = PreRouter.Create(AuthLetter).init(&auth_letter);
 
     var ep_travel: EpTravel = .{};
     const AuthTravel = App.Endpoint.Authenticating(EpTravel, Authenticator);
     var auth_travel = AuthTravel.init(&ep_travel, &authenticator);
+    var pre_auth_travel = PreRouter.Create(AuthTravel).init(&auth_travel);
 
     var ep_init: EpInit = .{};
 
-    try App.register(&auth_login);
-    try App.register(&auth_dashboard);
-    try App.register(&auth_git);
-    try App.register(&auth_client);
-    try App.register(&auth_rate);
-    try App.register(&auth_invoice);
-    try App.register(&auth_offer);
-    try App.register(&auth_letter);
-    try App.register(&auth_travel);
+    try App.register(&pre_auth_login);
+    try App.register(&pre_auth_dashboard);
+    try App.register(&pre_auth_git);
+    try App.register(&pre_auth_client);
+    try App.register(&pre_auth_rate);
+    try App.register(&pre_auth_invoice);
+    try App.register(&pre_auth_offer);
+    try App.register(&pre_auth_letter);
+    try App.register(&pre_auth_travel);
     try App.register(&ep_init);
 
     //
