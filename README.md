@@ -1,4 +1,4 @@
-# fj — The Commandline Company
+#  ![logo](./src/web/assets/favicon-32x32.png)  The Commandline Company
 
 ```shell
 $ fj -h
