@@ -50,7 +50,7 @@
       h1 {
           color: #333;
           text-align: center;
-          margin-bottom: 30px;
+          margin-bottom: 10px;
           font-size: 1.9em;
           font-weight: 600;
       }
@@ -59,15 +59,15 @@
           color: #555;
           border-bottom: 2px solid #eee;
           padding-bottom: 10px;
-          margin-top: 30px;
+          margin-top: 10px;
           margin-bottom: 20px;
-          font-size: 1.5em;
+          font-size: 1.4em;
       }
 
       h3 {
           color: #666;
-          margin-top: 20px;
-          margin-bottom: 15px;
+          margin-top: 30px;
+          margin-bottom: 10px;
           font-size: 1.2em;
       }
 
@@ -94,7 +94,7 @@
       .form-group input[type="datetime-local"],
       .form-group textarea {
           width: calc(100% - 20px);
-          padding: 12px;
+          padding: 6px;
           border: 1px solid #ccc;
           border-radius: 6px;
           font-size: 1em;
@@ -156,7 +156,7 @@
       .travel-table td input[type="text"],
       .travel-table td input[type="file"] {
           width: calc(100% - 10px);
-          padding: 8px;
+          padding: 6px;
           border: 1px solid #ddd;
           border-radius: 4px;
           font-size: 0.95em;
@@ -184,11 +184,11 @@
           background-color: #28a745; /* Grün für Hinzufügen */
           color: white;
           border: none;
-          padding: 10px 15px;
+          padding: 5px 10px;
           border-radius: 5px;
           cursor: pointer;
-          font-size: 1em;
-          margin-top: 15px;
+          font-size: 0.9em;
+          margin-top: 10px;
           display: inline-block;
           transition: background-color 0.2s;
       }
@@ -213,7 +213,7 @@
       .receipt-item input[type="file"] {
           flex-grow: 1; /* Erlaubt dem Dateifeld zu wachsen */
           min-width: 150px; /* Mindestbreite, damit es nicht zu klein wird */
-          padding: 8px; /* Konsistentes Padding */
+          padding: 6px; /* Konsistentes Padding */
           border: 1px solid #ccc;
           border-radius: 4px;
           font-size: 0.95em;
@@ -223,7 +223,7 @@
       .receipt-item input[type="text"] {
           flex-grow: 2; /* Erlaubt dem Textfeld, mehr Platz einzunehmen (doppelt so viel wie File) */
           min-width: 180px; /* Mindestbreite */
-          padding: 8px;
+          padding: 6px;
           border: 1px solid #ccc;
           border-radius: 4px;
           font-size: 0.95em;
@@ -288,6 +288,13 @@
               width: calc(100% - 70px); /* Adjust for span width */
           }
       }
+
+      .plusbutton-container {
+          display: flex;
+          flex-direction: row;
+          justify-content: flex-start;
+          margin-left: 5rem;
+      }
     </style>
   </head>
 <body>
@@ -310,7 +317,7 @@
 
         <form id="travelExpenseForm" method="post" action="/submit-travel" enctype="multipart/form-data">
             <section class="form-section">
-                <h2>About</h2>
+                <h2>About the Trip</h2>
                 <div class="form-group">
                     <label for="travelerName">Travellee:</label>
                     <input type="text" id="travelerName" name="travelerName" required>
@@ -358,9 +365,11 @@
                         <tbody>
                             </tbody>
                     </table>
-                    <button type="button" class="add-row-button" data-table="outboundTravelTable">
-                        + add transport
-                    </button>
+                    <div class="plusbutton-container">
+                        <button type="button" class="add-row-button" data-table="outboundTravelTable">
+                            +
+                        </button>
+                    </div>
                 </div>
 
                 <div class="transport-table-container">
@@ -376,9 +385,11 @@
                         <tbody>
                             </tbody>
                     </table>
-                    <button type="button" class="add-row-button" data-table="returnTravelTable">
-                        + add transport
-                    </button>
+                    <div class="plusbutton-container">
+                        <button type="button" class="add-row-button" data-table="returnTravelTable">
+                            +
+                        </button>
+                    </div>
                 </div>
             </section>
 
@@ -387,9 +398,11 @@
                 <div class="receipt-upload-container">
                     <div id="receiptsList">
                         </div>
-                    <button type="button" id="addReceiptButton" class="add-row-button">
-                        + add receipt
+                    <div class="plusbutton-container">
+                        <button type="button" id="addReceiptButton" class="add-row-button">
+                            +
                     </button>
+                    </div>
                 </div>
             </section>
 
