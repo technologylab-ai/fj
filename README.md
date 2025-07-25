@@ -23,8 +23,6 @@ $ fj -h
                   Default: $FJ_HOME orelse ~/.fj
 ```
 
-
-
 `fj` is what I use to create offers, invoices, and the occasional letter for my
 own company. It helps manage business documents using LaTeX and Git in a
 structured, auditable way.
@@ -131,6 +129,20 @@ fj git push    # [--repo=online]
 | Letter   | JSON metadata, direct LaTeX edit  | No        | Freeform content           |
 
 Each type generates a directory like `offer--2025-XXX--clientname/`. Temporary IDs (`XXX`) become permanent on commit.
+
+---
+
+## fj serve
+
+For extra convenience, you can run all of the above, and more, in a local webserver via the `fj serve` command:
+
+![](assets/screenshot1.png)
+
+The dashboard, obviously, is unique to the web view.
+
+As an extra `fj serve` bonus, the web interface also provides a travel expense form where you can describe your journey in a structured way and upload receipts. It will generate a summary PDF describing the journey and the receipts, convert all receipts to PDF, and name all generated files with a common prefix unique to the journey. After that, it lets you download a zip archive of all generated files. I use this feature to generate grouped travel expense documents, ready for upload to my tax advisor's server.
+
+One day, if time permits, I'll also add a CLI command for this feature, to stay true to the commandline ethos 🤠.
 
 ---
 
