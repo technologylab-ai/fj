@@ -1,47 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <<<head_block>>>
   <meta charset="UTF-8" />
-  <title>Git {{command}} — fj</title>
+  <title>Error — fj</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Configure Tailwind to use Inter font and extend default theme if needed -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Custom styles for specific overrides -->
   <style>
-    body { font-family: sans-serif; margin: 0; }
-    header, nav, main { padding: 1em; }
-    nav a { margin-right: 1em; display: inline-block; margin-bottom: 0.5em; }
-
-    footer {
-      width: inherit;
-      margin-left: 1em;
-      margin-right: 1em;
-      margin-top: 5em;
-      font-size: 0.8em;
-    }
-
-
-    @media (max-width: 768px) {
-    }
+    /* Ensure Inter font is loaded for better appearance */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
   </style>
 </head>
-<body>
-  <header>
-    <strong>fj — The Commandline Company — <i>{{company}}</i></strong>
-    <nav>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/client">Clients</a>
-      <a href="/rate">Rate Sets</a>
-      <a href="/offer">Offers</a>
-      <a href="/invoice">Invoices</a>
-      <a href="/letter">Letters</a>
-      <a href="/travel">Travel Expenses</a>
-    </nav>
+<body class="font-sans bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+  <!-- Header Section -->
+  <header class="bg-white shadow-sm p-4 border-b border-gray-200">
+    <div class="container mx-auto flex flex-col md:flex-row items-start md:items-center justify-between">
+      <strong class="text-xl font-semibold text-gray-900 mb-2 md:mb-0">
+        fj — The Commandline Company — <i class="font-normal text-gray-600">{{company}}</i>
+      </strong>
+      <nav class="flex flex-wrap gap-x-4 gap-y-2 text-sm md:text-base">
+        <a href="/dashboard" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Dashboard</a>
+        <a href="/client" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Clients</a>
+        <a href="/rate" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Rate Sets</a>
+        <a href="/offer" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Offers</a>
+        <a href="/invoice" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Invoices</a>
+        <a href="/letter" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Letters</a>
+        <a href="/travel" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Travel Expenses</a>
+      </nav>
+    </div>
   </header>
 
-  <main>
-    <h2>Error</h2>
-    <pre>{{message}}</pre>
+  <!-- Main Content Section -->
+  <main class="container mx-auto p-4 flex-grow">
+    <div class="w-full max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-xl border border-gray-200 text-center">
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">Error</h2>
+      <pre class="bg-gray-100 p-4 rounded-md text-sm text-gray-800 overflow-auto text-left">{{message}}</pre>
+    </div>
   </main>
 
 </body>
 </html>
+
 

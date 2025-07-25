@@ -1,105 +1,56 @@
-<html>
-  <head>
-    <<<head_block>>>
-<style>
-/* Bordered form */
-form {
-  border: 3px solid #f1f1f1;
-}
-
-/* Full-width inputs */
-input[type=text], input[type=password] {
-  width: 100%;
-  padding: 12px 20px;
-  margin: 8px 0;
-  display: inline-block;
-  border: 1px solid #ccc;
-  box-sizing: border-box;
-}
-
-label {
-  margin-right: 1em;
-}
-
-/* Set a style for all buttons */
-button {
-  background-color: #2020BD;
-  color: white;
-  padding: 14px 20px;
-  margin: 8px 0;
-  border: none;
-  cursor: pointer;
-  width: 100%;
-  max-width: 256px;
-}
-
-/* Add a hover effect for buttons */
-button:hover {
-  opacity: 0.8;
-}
-
-/* Extra style for the cancel button (red) */
-.cancelbtn {
-  width: auto;
-  padding: 10px 18px;
-  background-color: #f44336;
-}
-
-/* Center the logo image inside this container */
-.imgcontainer {
-  text-align: center;
-  margin: 24px 0 12px 0;
-}
-
-/* Logo image */
-img.logo {
-  width: 40%;
-  max-width: 256px;
-  border-radius: 50%;
-}
-
-/* Add padding to containers */
-.container {
-  padding: 16px;
-  text-align: center;
-}
-
-input {
-  max-width: 256px;
-}
-
-
-/* Change styles for span and cancel button on extra small screens */
-@media screen and (max-width: 300px) {
-  span.psw {
-    display: block;
-    float: none;
-  }
-  .cancelbtn {
-    width: 100%;
-  }
-}
-</style>
-  </head>
-  <body>
-    <form action="{{{main_page}}}" method="post"> <!-- we post directly to the page we want to display if login is successful-->
-      <div class="imgcontainer">
-        <img src="{{{login_page}}}/logo.png" alt="Logo" class="logo">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login — fj</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Configure Tailwind to use Inter font and extend default theme if needed -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Custom styles for specific overrides (if any are truly needed after Tailwind) -->
+  <style>
+    /* Ensure Inter font is loaded for better appearance */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  </style>
+</head>
+<body class="font-sans bg-gray-50 text-gray-800 min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-md bg-white p-8 rounded-lg shadow-xl border border-gray-200">
+    <form action="{{{main_page}}}" method="post">
+      <div class="text-center mb-8">
+        <img src="{{{login_page}}}/logo.png" alt="Logo" class="logo w-32 h-32 mx-auto rounded-full object-cover shadow-md mb-4">
+        <h2 class="text-2xl font-bold text-gray-900">Welcome to fj</h2>
+        <p class="text-gray-600">Please log in to continue</p>
       </div>
 
-      <div class="container">
-        <div>
-        <label for="username"><b>Username</b></label>
-        <input type="text" placeholder="Enter Username" name="username" required>
-        </div>
-
-        <div>
-        <label for="password"><b>Password</b></label>
-        <input type="password" placeholder="Enter Password" name="password" required>
-        </div>
-
-        <button type="submit">Login</button>
+      <div class="mb-4">
+        <label for="username" class="block text-left text-sm font-medium text-gray-700 mb-1">Username</label>
+        <input type="text" placeholder="Enter Username" name="username" required
+               class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
       </div>
+
+      <div class="mb-6">
+        <label for="password" class="block text-left text-sm font-medium text-gray-700 mb-1">Password</label>
+        <input type="password" placeholder="Enter Password" name="password" required
+               class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+      </div>
+
+      <button type="submit"
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-md shadow-md cursor-pointer transition-colors duration-200">
+        Login
+      </button>
     </form>
-  </body>
+  </div>
+</body>
 </html>
+
