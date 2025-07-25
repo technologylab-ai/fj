@@ -53,7 +53,7 @@
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">ID</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-2/12">Client</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Date</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-2/12">Project</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-3/12">Project</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Status</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Amount</th>
             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-3/12">Actions</th>
@@ -82,7 +82,12 @@
                 <a href="/{{type}}/view/{{id}}" class="text-blue-600 hover:text-blue-900 transition-colors duration-200 text-xs sm:text-sm">View</a>
                 <a href="/{{type}}/edit/{{id}}" class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200 text-xs sm:text-sm">Edit</a>
                 <a href="/{{type}}/pdf/{{id}}" target="_blank" class="text-purple-600 hover:text-purple-900 transition-colors duration-200 text-xs sm:text-sm">PDF</a>
-                <a href="/{{type}}/download/{{id}}?client={{client}}" class="text-green-600 hover:text-green-900 transition-colors duration-200 text-sm"> ⬇ </a>
+                <a href="/{{type}}/download/{{id}}?client={{client}}" class="">
+                  <button class="text-sky-500 font-normal px-1 py-2 rounded inline-flex items-center">
+                    <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13 8V2H7v6H2l8 8 8-8h-5zM0 18h20v2H0v-2z"/></svg>
+                    <span>Download</span>
+                  </button>
+                </a>
               </div>
             </td>
           </tr>
