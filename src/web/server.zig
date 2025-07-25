@@ -6,6 +6,10 @@ const Fj = @import("../fj.zig");
 
 const Dir = std.fs.Dir;
 
+const auth_types = @import("auth_types.zig");
+const Authenticator = auth_types.Authenticator;
+const AuthLookup = auth_types.AuthLookup;
+
 const Context = @import("context.zig");
 const Version = @import("../version.zig");
 const Server = @This();
@@ -25,6 +29,7 @@ const EpDocument = @import("ep_document.zig");
 const EpTravel = @import("ep_travel.zig");
 const EpInit = @import("ep_init.zig");
 const EpPreRoute = @import("ep_preroute.zig");
+const EpLogout = @import("ep_logout.zig");
 
 const log = std.log.scoped(.server);
 
@@ -60,11 +65,24 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     log.info("fj version {s} is starting", .{Version.version() orelse "<unknown>"});
 
     //
+    // Authentication
+    //
+    var auth_lookup: AuthLookup = .empty;
+    var authenticator = try Authenticator.init(allocator, &auth_lookup, .{
+        .usernameParam = "username",
+        .passwordParam = "password",
+        .loginPage = "/login",
+        .cookieName = "FJ_SESSION",
+    });
+    defer authenticator.deinit();
+
+    //
     // Context
     //
     var context: Context = .{
         .gpa = allocator,
-        .auth_lookup = .empty,
+        .auth_lookup = &auth_lookup,
+        .authenticator = &authenticator,
         .fj_home = try allocator.dupe(u8, fj_home),
         .work_dir = opts.work_dir,
         .logo_imgdata = blk: {
@@ -107,18 +125,6 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     const App = zap.App.Create(Context);
     try App.init(allocator, &context, .{});
     defer App.deinit();
-
-    //
-    // Authentication
-    //
-    const Authenticator = zap.Auth.UserPassSession(@TypeOf(context.auth_lookup), false);
-    var authenticator = try Authenticator.init(allocator, &context.auth_lookup, .{
-        .usernameParam = "username",
-        .passwordParam = "password",
-        .loginPage = "/login",
-        .cookieName = "FJ_SESSION",
-    });
-    defer authenticator.deinit();
 
     //
     // Endpoints
@@ -179,6 +185,11 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
 
     var ep_init: EpInit = .{};
 
+    var ep_logout: EpLogout = .{ .redirect_to = "/login" };
+    const AuthLogout = App.Endpoint.Authenticating(EpLogout, Authenticator);
+    var auth_logout = AuthLogout.init(&ep_logout, &authenticator);
+    var pre_auth_logout = PreRouter.Create(AuthLogout).init(&auth_logout);
+
     try App.register(&pre_auth_login);
     try App.register(&pre_auth_dashboard);
     try App.register(&pre_auth_git);
@@ -189,6 +200,7 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     try App.register(&pre_auth_letter);
     try App.register(&pre_auth_travel);
     try App.register(&ep_init);
+    try App.register(&pre_auth_logout);
 
     //
     // zap

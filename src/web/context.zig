@@ -2,6 +2,10 @@ const std = @import("std");
 const Fj = @import("../fj.zig");
 const zap = @import("zap");
 
+const auth_types = @import("auth_types.zig");
+const Authenticator = auth_types.Authenticator;
+const AuthLookup = auth_types.AuthLookup;
+
 const log = std.log.scoped(.context);
 const fsutil = @import("../fsutil.zig");
 
@@ -16,7 +20,8 @@ const webmanifest_tuples = &[_][2][]const u8{
 };
 
 gpa: std.mem.Allocator,
-auth_lookup: std.StringHashMapUnmanaged([]const u8),
+auth_lookup: *AuthLookup,
+authenticator: *Authenticator,
 fj_home: []const u8,
 work_dir: []const u8,
 logo_imgdata: []const u8,
