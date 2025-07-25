@@ -1,508 +1,299 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
-    <<<head_block>>>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Travel Expenses — fj</title>
-    <style>
-      /* style.css */
-      body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          background-color: #f4f7f6;
-          margin: 0;
-          display: flex;
-        flex-direction: column;
-          justify-content: center;
-          align-items: flex-start; /* Align to top instead of center */
-          min-height: 100vh;
+  <meta charset="UTF-8" />
+  <title>Travel Expenses — fj</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Configure Tailwind to use Inter font and extend default theme if needed -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
       }
+    }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Custom styles for specific overrides, especially for responsive tables -->
+  <style>
+    /* Ensure Inter font is loaded for better appearance */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    body { font-family: sans-serif; margin: 0; }
-    header, nav, main { padding: 1em; }
-    nav a { margin-right: 1em; display: inline-block; margin-bottom: 0.5em; }
+    /* Specific style for fj_home, not directly covered by Tailwind */
+    .fj_home {
+        display: inline-block;
+        unicode-bidi: embed;
+        font-family: monospace;
+        white-space: pre;
+    }
 
-
-      main {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          background-color: #f4f7f6;
-          margin: 0;
-          padding: 20px;
-          display: flex;
-        flex-direction: row;
-          justify-content: center;
-          align-items: flex-start; /* Align to top instead of center */
-          min-height: 100vh;
-        width: 100%;
+    /* Custom CSS to ensure text wraps and columns shrink on smaller screens for tables */
+    @media (max-width: 767px) {
+      .travel-table td, .travel-table th {
+        white-space: normal; /* Allow text to wrap within cells */
+        padding-left: 0.5rem; /* px-2 */
+        padding-right: 0.5rem; /* px-2 */
       }
-
-
-      .container {
-          background-color: #ffffff;
-          padding: 30px 40px;
-          border-radius: 12px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-          width: 100%;
-          max-width: 800px;
-          box-sizing: border-box;
-      }
-
-      h1 {
-          color: #333;
-          text-align: center;
-          margin-bottom: 10px;
-          font-size: 1.9em;
-          font-weight: 600;
-      }
-
-      h2 {
-          color: #555;
-          border-bottom: 2px solid #eee;
-          padding-bottom: 10px;
-          margin-top: 10px;
-          margin-bottom: 20px;
-          font-size: 1.4em;
-      }
-
-      h3 {
-          color: #666;
-          margin-top: 30px;
-          margin-bottom: 10px;
-          font-size: 1.2em;
-      }
-
-      .form-section {
-          margin-bottom: 30px;
-          padding: 15px;
-          border: 1px solid #e0e0e0;
-          border-radius: 8px;
-          background-color: #fcfcfc;
-      }
-
-      .form-group {
-          margin-bottom: 18px;
-      }
-
-      .form-group label {
-          display: block;
-          margin-bottom: 8px;
-          color: #444;
-          font-weight: 500;
-      }
-
-      .form-group input[type="text"],
-      .form-group input[type="datetime-local"],
-      .form-group textarea {
-          width: calc(100% - 20px);
-          padding: 6px;
-          border: 1px solid #ccc;
-          border-radius: 6px;
-          font-size: 1em;
-          box-sizing: border-box;
-          transition: border-color 0.3s, box-shadow 0.3s;
-      }
-
-      .form-group input[type="text"]:focus,
-      .form-group input[type="datetime-local"]:focus,
-      .form-group textarea:focus {
-          border-color: #007bff;
-          box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-          outline: none;
-      }
-
-      .form-group textarea {
-          resize: vertical;
-          min-height: 80px;
-      }
-
-      .date-time-group {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 15px;
-          align-items: center;
-      }
-
-      .date-input-wrapper {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-      }
-
-      .date-input-wrapper span {
-          color: #555;
-          font-weight: 500;
-      }
-
-      /* Tabellen-Styling */
-      .travel-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 15px;
-      }
-
-      .travel-table th,
-      .travel-table td {
-          border: 1px solid #ddd;
-          padding: 10px;
-          text-align: left;
-      }
-
-      .travel-table th {
-          background-color: #f8f8f8;
-          color: #444;
-          font-weight: 600;
-      }
-
-      .travel-table td input[type="text"],
-      .travel-table td input[type="file"] {
-          width: calc(100% - 10px);
-          padding: 6px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-size: 0.95em;
-          box-sizing: border-box;
-      }
-
+      /* Adjust action button size in table cells for small screens */
       .travel-table td button {
-          background-color: #dc3545; /* Rot für Löschen */
-          color: white;
-          border: none;
-          padding: 8px 12px;
-          border-radius: 5px;
-          cursor: pointer;
-          font-size: 0.9em;
-          transition: background-color 0.2s;
-          display: block; /* Für volle Breite in Zelle */
-          width: 100%;
+        font-size: 0.75rem; /* text-xs */
+        padding: 0.25rem 0.5rem; /* py-1 px-2 */
       }
-
-      .travel-table td button:hover {
-          background-color: #c82333;
-      }
-
-      .add-row-button {
-          background-color: #28a745; /* Grün für Hinzufügen */
-          color: white;
-          border: none;
-          padding: 5px 10px;
-          border-radius: 5px;
-          cursor: pointer;
-          font-size: 0.9em;
-          margin-top: 10px;
-          display: inline-block;
-          transition: background-color 0.2s;
-      }
-
-      .add-row-button:hover {
-          background-color: #218838;
-      }
-
-      /* Dateiauswahl-Styling */
-      .receipt-item {
-          display: flex;       /* Nutzt Flexbox für nebeneinanderliegende Elemente */
-          align-items: center; /* Zentriert Elemente vertikal */
-          gap: 10px;           /* Abstand zwischen den Elementen */
-          margin-bottom: 10px;
-          flex-wrap: wrap;     /* Erlaubt Zeilenumbruch auf kleineren Bildschirmen */
-          padding: 8px;        /* Leichter Innenabstand für visuelle Trennung */
-          border: 1px solid #e0e0e0; /* Leichter Rand um jedes Beleg-Item */
-          border-radius: 6px;
-          background-color: #ffffff; /* Weißer Hintergrund */
-      }
-
-      .receipt-item input[type="file"] {
-          flex-grow: 1; /* Erlaubt dem Dateifeld zu wachsen */
-          min-width: 150px; /* Mindestbreite, damit es nicht zu klein wird */
-          padding: 6px; /* Konsistentes Padding */
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          font-size: 0.95em;
-          box-sizing: border-box;
-      }
-
-      .receipt-item input[type="text"] {
-          flex-grow: 2; /* Erlaubt dem Textfeld, mehr Platz einzunehmen (doppelt so viel wie File) */
-          min-width: 180px; /* Mindestbreite */
-          padding: 6px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          font-size: 0.95em;
-          box-sizing: border-box;
-          transition: border-color 0.3s, box-shadow 0.3s; /* Für Fokus-Effekt */
-      }
-
-      .receipt-item input[type="text"]:focus {
-          border-color: #007bff;
-          box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-          outline: none;
-      }
-
-      .receipt-item button.remove-receipt-button { /* Spezifischer Selector für Löschen-Button */
-          background-color: #dc3545;
-          color: white;
-          border: none;
-          padding: 8px 12px;
-          border-radius: 5px;
-          cursor: pointer;
-          font-size: 0.9em;
-          transition: background-color 0.2s;
-          flex-shrink: 0; /* Verhindert, dass der Button schrumpft */
-      }
-      .receipt-item button.remove-receipt-button:hover {
-          background-color: #c82333;
-      }
-
-      /* Submit Button */
-      .submit-button {
-          display: block;
-          width: 100%;
-          padding: 15px;
-          background-color: #007bff;
-          color: white;
-          border: none;
-          border-radius: 8px;
-          font-size: 1.2em;
-          cursor: pointer;
-          margin-top: 30px;
-          transition: background-color 0.3s;
-      }
-
-      .submit-button:hover {
-          background-color: #0056b3;
-      }
-
-      /* Responsive Anpassungen */
-      @media (max-width: 768px) {
-          .container {
-              padding: 20px 25px;
-          }
-          .date-time-group {
-              flex-direction: column;
-              align-items: flex-start;
-              gap: 10px;
-          }
-          .date-input-wrapper {
-              width: 100%;
-          }
-          .date-input-wrapper input {
-              width: calc(100% - 70px); /* Adjust for span width */
-          }
-      }
-
-      .plusbutton-container {
-          display: flex;
-          flex-direction: row;
-          justify-content: flex-start;
-          margin-left: 5rem;
-      }
-    </style>
-  </head>
-<body>
-    <header>
-      <strong>fj — The Commandline Company — <i>{{company}}</i></strong>
-      <nav>
-        <a href="/dashboard">Dashboard</a>
-        <a href="/client">Clients</a>
-        <a href="/rate">Rate Sets</a>
-        <a href="/offer">Offers</a>
-        <a href="/invoice">Invoices</a>
-        <a href="/letter">Letters</a>
-        <a href="/travel">Travel Expenses</a>
+    }
+  </style>
+</head>
+<body class="font-sans bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+  <!-- Header Section -->
+  <header class="bg-white shadow-sm p-4 border-b border-gray-200">
+    <div class="container mx-auto flex flex-col md:flex-row items-start md:items-center justify-between">
+      <strong class="text-xl font-semibold text-gray-900 mb-2 md:mb-0">
+        fj — The Commandline Company — <i class="font-normal text-gray-600">{{company}}</i>
+      </strong>
+      <nav class="flex flex-wrap gap-x-4 gap-y-2 text-sm md:text-base">
+        <a href="/dashboard" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Dashboard</a>
+        <a href="/client" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Clients</a>
+        <a href="/rate" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Rate Sets</a>
+        <a href="/offer" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Offers</a>
+        <a href="/invoice" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Invoices</a>
+        <a href="/letter" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Letters</a>
+        <a href="/travel" class="text-blue-600 hover:text-blue-800 font-medium transition-colors duration-200">Travel Expenses</a>
       </nav>
-    </header>
+    </div>
+  </header>
 
-  <main>
-    <div class="container">
-        <h1>Travel Expenses</h1>
+  <!-- Main Content Section -->
+  <main class="container mx-auto p-4 flex-grow">
+    <div class="w-full max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-xl border border-gray-200">
+      <h1 class="text-3xl font-bold text-gray-900 mb-6 text-center">Travel Expenses</h1>
 
-        <form id="travelExpenseForm" method="post" action="/submit-travel" enctype="multipart/form-data">
-            <section class="form-section">
-                <h2>About the Trip</h2>
-                <div class="form-group">
-                    <label for="travelerName">Travellee:</label>
-                    <input type="text" id="travelerName" name="travelerName" required>
-                </div>
+      <form id="travelExpenseForm" method="post" action="/travel-submit" enctype="multipart/form-data">
+        <!-- About the Trip Section -->
+        <section class="p-6 border border-gray-200 rounded-lg bg-gray-50 mb-6">
+          <h2 class="text-xl font-semibold text-gray-800 pb-3 mb-4 border-b-2 border-gray-200">About the Trip</h2>
 
-                <div class="form-group">
-                    <label for="travelDestination">Destination:</label>
-                    <input type="text" id="travelDestination" name="travelDestination" placeholder="z.B. Berlin, Deutschland" required>
-                </div>
+          <div class="mb-4">
+            <label for="travelerName" class="block text-sm font-medium text-gray-700 mb-1">Travellee:</label>
+            <input type="text" id="travelerName" name="travelerName" required
+                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+          </div>
 
-                <div class="form-group date-time-group">
-                    <label for="travelPeriodFrom">Travel Period:</label>
-                    <div class="date-input-wrapper">
-                        <span>von:</span>
-                        <input type="datetime-local" id="travelPeriodFrom" name="travelPeriodFrom" required>
-                    </div>
-                    <div class="date-input-wrapper">
-                        <span>bis:</span>
-                        <input type="datetime-local" id="travelPeriodTo" name="travelPeriodTo" required>
-                    </div>
-                </div>
+          <div class="mb-4">
+            <label for="travelDestination" class="block text-sm font-medium text-gray-700 mb-1">Destination:</label>
+            <input type="text" id="travelDestination" name="travelDestination" placeholder="e.g., Berlin, Germany" required
+                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+          </div>
 
-                <div class="form-group">
-                    <label for="travelPurpose">Purpose of the trip:</label>
-                    <textarea id="travelPurpose" name="travelPurpose" rows="4" placeholder="Kurze Beschreibung des Reisezwecks, z.B. Kundengespräche, Messebesuch..." required></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="travelComments">Comments:</label>
-                    <textarea id="travelComments" name="travelComments" rows="4" placeholder="..." required></textarea>
-                </div>
-            </section>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Travel Period:</label>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div class="flex items-center gap-2 w-full sm:w-auto">
+                <span class="text-gray-700 font-medium">from:</span>
+                <input type="datetime-local" id="travelPeriodFrom" name="travelPeriodFrom" required
+                       class="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+              </div>
+              <div class="flex items-center gap-2 w-full sm:w-auto">
+                <span class="text-gray-700 font-medium">to:</span>
+                <input type="datetime-local" id="travelPeriodTo" name="travelPeriodTo" required
+                       class="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+              </div>
+            </div>
+          </div>
 
-            <section class="form-section">
-                <h2>Transport</h2>
-                <div class="transport-table-container">
-                    <h3>Outbound Journey</h3>
-                    <table id="outboundTravelTable" class="travel-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 30%;">Transport Method</th>
-                                <th style="width: 60%;">Description</th>
-                                <th style="width: 10%;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            </tbody>
-                    </table>
-                    <div class="plusbutton-container">
-                        <button type="button" class="add-row-button" data-table="outboundTravelTable">
-                            +
-                        </button>
-                    </div>
-                </div>
+          <div class="mb-4">
+            <label for="travelPurpose" class="block text-sm font-medium text-gray-700 mb-1">Purpose of the trip:</label>
+            <textarea id="travelPurpose" name="travelPurpose" rows="4" placeholder="Brief description of the travel purpose, e.g., client meetings, trade fair visit..." required
+                      class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm resize-y min-h-[80px] text-gray-800"></textarea>
+          </div>
+          <div class="mb-4">
+            <label for="travelComments" class="block text-sm font-medium text-gray-700 mb-1">Comments:</label>
+            <textarea id="travelComments" name="travelComments" rows="4" placeholder="..." required
+                      class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm resize-y min-h-[80px] text-gray-800"></textarea>
+          </div>
+        </section>
 
-                <div class="transport-table-container">
-                    <h3>Return Journey</h3>
-                    <table id="returnTravelTable" class="travel-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 30%;">Transport Method</th>
-                                <th style="width: 60%;">Description</th>
-                                <th style="width: 10%;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            </tbody>
-                    </table>
-                    <div class="plusbutton-container">
-                        <button type="button" class="add-row-button" data-table="returnTravelTable">
-                            +
-                        </button>
-                    </div>
-                </div>
-            </section>
+        <!-- Transport Section -->
+        <section class="p-6 border border-gray-200 rounded-lg bg-gray-50 mb-6">
+          <h2 class="text-xl font-semibold text-gray-800 pb-3 mb-4 border-b-2 border-gray-200">Transport</h2>
 
-            <section class="form-section">
-                <h2>Upload Receipts</h2>
-                <div class="receipt-upload-container">
-                    <div id="receiptsList">
-                        </div>
-                    <div class="plusbutton-container">
-                        <button type="button" id="addReceiptButton" class="add-row-button">
-                            +
-                    </button>
-                    </div>
-                </div>
-            </section>
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Outbound Journey</h3>
+            <div class="overflow-x-auto">
+              <table id="outboundTravelTable" class="travel-table min-w-full divide-y divide-gray-200 table-fixed">
+                <thead class="bg-gray-100">
+                  <tr>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/3">Transport Method</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/2">Description</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/12"></th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <!-- Dynamic rows will be added here by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+            <div class="flex justify-start mt-4">
+              <button type="button" class="add-row-button bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200" data-table="outboundTravelTable">
+                + Add Transport
+              </button>
+            </div>
+          </div>
 
-            <button type="submit" class="submit-button">Generate Documents</button>
-        </form>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Return Journey</h3>
+            <div class="overflow-x-auto">
+              <table id="returnTravelTable" class="travel-table min-w-full divide-y divide-gray-200 table-fixed">
+                <thead class="bg-gray-100">
+                  <tr>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/3">Transport Method</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/2">Description</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/12"></th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <!-- Dynamic rows will be added here by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+            <div class="flex justify-start mt-4">
+              <button type="button" class="add-row-button bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200" data-table="returnTravelTable">
+                + Add Transport
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Upload Receipts Section -->
+        <section class="p-6 border border-gray-200 rounded-lg bg-gray-50 mb-6">
+          <h2 class="text-xl font-semibold text-gray-800 pb-3 mb-4 border-b-2 border-gray-200">Upload Receipts</h2>
+          <div id="receiptsList" class="space-y-4">
+            <!-- Dynamic receipt items will be added here by JavaScript -->
+          </div>
+          <div class="flex justify-start mt-4">
+            <button type="button" id="addReceiptButton" class="add-row-button bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200">
+              + Add Receipt
+            </button>
+          </div>
+        </section>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-md shadow-md cursor-pointer transition-colors duration-200 mt-8">
+          Generate Documents
+        </button>
+      </form>
     </div>
   </main>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
       // --- Transportmittel-Tabellen-Funktionalität ---
       const addTravelRow = (tableId) => {
-          const tableBody = document.getElementById(tableId).querySelector('tbody');
-          const newRow = document.createElement('tr');
-          const rowCount = tableBody.rows.length; // Für eindeutige Namen
+        const tableBody = document.getElementById(tableId).querySelector('tbody');
+        const newRow = document.createElement('tr');
+        // Use a more robust unique identifier if needed, or rely on backend to re-index
+        const rowCount = tableBody.rows.length;
 
-          newRow.innerHTML = `
-              <td>
-                  <input type="text" name="${tableId}Type_${rowCount}" placeholder="z.B. Taxi, Flugzeug, Bahn" required>
-              </td>
-              <td>
-                  <input type="text" name="${tableId}Description_${rowCount}" placeholder="Beschreibung der Fahrt" required>
-              </td>
-              <td>
-                  <button type="button" class="remove-row-button">-</button>
-              </td>
-          `;
-          tableBody.appendChild(newRow);
+        // Apply Tailwind classes directly to the dynamically created elements
+        newRow.innerHTML = `
+          <td class="px-4 py-2 text-sm text-gray-800">
+            <input type="text" name="${tableId}Type_${rowCount}" placeholder="e.g., Taxi, Plane, Train" required
+                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+          </td>
+          <td class="px-4 py-2 text-sm text-gray-800">
+            <input type="text" name="${tableId}Description_${rowCount}" placeholder="Description of the journey" required
+                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+          </td>
+          <td class="px-4 py-2 text-sm text-gray-800">
+            <button type="button" class="remove-row-button bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-2 rounded-md shadow-sm cursor-pointer transition-colors duration-200 text-xs">
+              -
+            </button>
+          </td>
+        `;
+        tableBody.appendChild(newRow);
 
-          // Event Listener für den neuen Löschen-Button
-          newRow.querySelector('.remove-row-button').addEventListener('click', (event) => {
-              event.target.closest('tr').remove();
-              updateRowNames(tableId); // Namen nach dem Löschen aktualisieren
-          });
+        // Event Listener for the new remove button
+        newRow.querySelector('.remove-row-button').addEventListener('click', (event) => {
+          event.target.closest('tr').remove();
+          updateTravelRowNames(tableId); // Update names after removal
+        });
       };
 
-      // Helferfunktion, um input names nach dem Löschen zu aktualisieren (wichtig für Backend)
-      const updateRowNames = (tableId) => {
-          const tableBody = document.getElementById(tableId).querySelector('tbody');
-          Array.from(tableBody.rows).forEach((row, index) => {
-              row.querySelector('input[name^="' + tableId + 'Type"]').name = `${tableId}Type_${index}`;
-              row.querySelector('input[name^="' + tableId + 'Description"]').name = `${tableId}Description_${index}`;
-          });
+      // Helper function to update input names after removal (important for backend)
+      const updateTravelRowNames = (tableId) => {
+        const tableBody = document.getElementById(tableId).querySelector('tbody');
+        Array.from(tableBody.rows).forEach((row, index) => {
+          const typeInput = row.querySelector('input[name^="' + tableId + 'Type"]');
+          if (typeInput) typeInput.name = `${tableId}Type_${index}`;
+          const descInput = row.querySelector('input[name^="' + tableId + 'Description"]');
+          if (descInput) descInput.name = `${tableId}Description_${index}`;
+        });
       };
 
-      // Event Listener für "Transportmittel hinzufügen"-Buttons
+      // Event Listeners for "Add Transport" buttons
       document.querySelectorAll('.add-row-button[data-table]').forEach(button => {
-          button.addEventListener('click', () => {
-              addTravelRow(button.dataset.table);
-          });
+        button.addEventListener('click', () => {
+          addTravelRow(button.dataset.table);
+        });
       });
 
-      // Beim Laden der Seite eine Startzeile für jede Tabelle hinzufügen
+      // Add an initial row for each table on page load
       addTravelRow('outboundTravelTable');
       addTravelRow('returnTravelTable');
 
 
-      // --- Belege hochladen Funktionalität ---
-      let receiptCounter = 0; // Zähler für eindeutige Namen
+      // --- Upload Receipts Functionality ---
+      let receiptCounter = 0; // Counter for unique names
 
       const addReceiptField = () => {
         const receiptsList = document.getElementById('receiptsList');
         const newReceiptItem = document.createElement('div');
-        newReceiptItem.classList.add('receipt-item');
+        // Apply Tailwind classes to the dynamically created elements
+        newReceiptItem.classList.add('receipt-item', 'flex', 'flex-wrap', 'items-center', 'gap-4', 'p-3', 'border', 'border-gray-200', 'rounded-md', 'bg-white');
 
-        // WICHTIG: name-Attribute anpassen und Textfeld hinzufügen
+        // IMPORTANT: Adjust name attributes and add text field
         newReceiptItem.innerHTML = `
-            <input type="file" name="receiptFile_${receiptCounter}" accept="image/*,.pdf" required>
-            <input type="text" name="receiptName_${receiptCounter}" placeholder="Dateiname (z.B. Hinfahrt_Taxi)" required>
-            <button type="button" class="remove-receipt-button">-</button>
+          <input type="file" name="receiptFile_${receiptCounter}" accept="image/*,.pdf" required
+                 class="flex-grow min-w-[150px] text-gray-700 text-sm file:mr-4 file:py-2 file:px-4
+                        file:rounded-md file:border-0 file:text-sm file:font-semibold
+                        file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100
+                        border border-gray-300 rounded-md shadow-sm cursor-pointer" />
+          <input type="text" name="receiptName_${receiptCounter}" placeholder="File name (e.g., Outbound_Taxi)" required
+                 class="flex-grow-[2] min-w-[180px] p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+          <button type="button" class="remove-receipt-button bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-2 rounded-md shadow-sm cursor-pointer transition-colors duration-200 text-xs flex-shrink-0">
+            -
+          </button>
         `;
         receiptsList.appendChild(newReceiptItem);
 
-        // Event Listener für den neuen Löschen-Button
+        // Event Listener for the new remove button
         newReceiptItem.querySelector('.remove-receipt-button').addEventListener('click', (event) => {
-            event.target.closest('.receipt-item').remove();
-            // Hier ist keine Namensaktualisierung der Indizes nötig, da jedes Paar eindeutig bleibt
-            // und das Backend nach den vorhandenen Nummern suchen kann.
+          event.target.closest('.receipt-item').remove();
+          // No index name update needed here as each pair remains unique
         });
-        receiptCounter++; // Zähler für das nächste Feld erhöhen
-    };
-      // Event Listener für "Beleg hinzufügen"-Button
+        receiptCounter++; // Increment counter for the next field
+      };
+
+      // Event Listener for "Add Receipt" button
       document.getElementById('addReceiptButton').addEventListener('click', addReceiptField);
 
-      // Beim Laden der Seite ein Startfeld für Belege hinzufügen
+      // Add an initial field for receipts on page load
       addReceiptField();
 
 
-      // --- Formular-Validierung / Submission (optional, aber empfohlen) ---
+      // --- Form Validation / Submission (optional, but recommended) ---
       const travelExpenseForm = document.getElementById('travelExpenseForm');
       travelExpenseForm.addEventListener('submit', (event) => {
-          // Hier könnten Sie zusätzliche JavaScript-Validierungen durchführen,
-          // bevor das Formular an das Backend gesendet wird.
-          // z.B. prüfen, ob mindestens ein Transportmittel eingegeben wurde.
+        // You can add additional JavaScript validations here,
+        // before the form is submitted to the backend.
+        // e.g., check if at least one transport method has been entered.
 
-          // Standard-HTML5-Validierung (required-Attribute) läuft automatisch.
-          // event.preventDefault(); // Bei eigener Validierung nötig, um Standard-Submission zu verhindern
+        // Standard HTML5 validation (required attributes) runs automatically.
+        // event.preventDefault(); // Needed if you implement custom validation to prevent default submission
       });
     });
   </script>
-  </body>
+</body>
 </html>
 

@@ -34,7 +34,7 @@ pub fn post(ep: *Travel, arena: Allocator, context: *Context, r: zap.Request) !v
     if (r.path) |path| {
         log.info("POST {s}", .{path});
 
-        if (std.mem.eql(u8, path, "/submit-travel")) {
+        if (std.mem.eql(u8, path, "/travel-submit")) {
             return ep.submit_travel_form(arena, context, r);
         }
     }

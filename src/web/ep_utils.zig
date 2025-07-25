@@ -81,6 +81,7 @@ pub fn show_404(arena: Allocator, context: *Context, r: zap.Request) !void {
     defer mustache.deinit();
     const result = mustache.build(.{
         .company = fj_config.CompanyName,
+        .message = r.path orelse "<unknown>",
     });
     defer result.deinit();
 
