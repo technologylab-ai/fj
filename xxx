@@ -1,10 +1,4 @@
-
   <meta charset="UTF-8" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-  <link rel="manifest" href="/site.webmanifest">
-
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Configure Tailwind to use Inter font and extend default theme if needed -->
@@ -20,12 +14,12 @@
     }
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Custom styles for responsive table and other specific overrides -->
+  <!-- Custom styles for specific overrides -->
   <style>
     /* Ensure Inter font is loaded for better appearance */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* Keep specific styles that are unique or override Tailwind defaults if necessary */
+    /* Specific style for fj_home, not directly covered by Tailwind */
     .fj_home {
         display: inline-block;
         unicode-bidi: embed;
@@ -33,14 +27,18 @@
         white-space: pre;
     }
 
-    /* Custom CSS to ensure text wraps and columns shrink on smaller screens for tables */
+    /* Custom CSS to ensure text wraps and columns shrink on smaller screens */
+    /* This targets table cells to allow content to wrap and reduce minimum width */
     @media (max-width: 767px) {
       table td, table th {
-        white-space: normal; /* Allow text to wrap within cells */
+        /* Allow text to wrap within cells */
+        white-space: normal;
+        /* Further reduce padding for very small screens if needed, or rely on Tailwind's default smaller padding for 'sm' */
         padding-left: 0.5rem; /* px-2 */
         padding-right: 0.5rem; /* px-2 */
       }
-      /* Adjust action button size in table cells for small screens */
+
+      /* Make action links smaller on small screens */
       table td .flex a {
         font-size: 0.75rem; /* text-xs */
         padding: 0.25rem 0.5rem; /* py-1 px-2 */

@@ -1,50 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <<<head_block>>>
   <title>Travel Expenses — fj</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Configure Tailwind to use Inter font and extend default theme if needed -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          },
-        }
-      }
-    }
-  </script>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Custom styles for specific overrides, especially for responsive tables -->
-  <style>
-    /* Ensure Inter font is loaded for better appearance */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-    /* Specific style for fj_home, not directly covered by Tailwind */
-    .fj_home {
-        display: inline-block;
-        unicode-bidi: embed;
-        font-family: monospace;
-        white-space: pre;
-    }
-
-    /* Custom CSS to ensure text wraps and columns shrink on smaller screens for tables */
-    @media (max-width: 767px) {
-      .travel-table td, .travel-table th {
-        white-space: normal; /* Allow text to wrap within cells */
-        padding-left: 0.5rem; /* px-2 */
-        padding-right: 0.5rem; /* px-2 */
-      }
-      /* Adjust action button size in table cells for small screens */
-      .travel-table td button {
-        font-size: 0.75rem; /* text-xs */
-        padding: 0.25rem 0.5rem; /* py-1 px-2 */
-      }
-    }
-  </style>
 </head>
 <body class="font-sans bg-gray-50 text-gray-800 min-h-screen flex flex-col">
   <!-- Header Section -->

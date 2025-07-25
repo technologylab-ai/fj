@@ -1,53 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <<<head_block>>>
   <title>Dashboard — fj</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Configure Tailwind to use Inter font and extend default theme if needed -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          },
-        }
-      }
-    }
-  </script>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Custom styles for responsive table and other specific overrides -->
-  <style>
-    /* Ensure Inter font is loaded for better appearance */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-    /* Keep specific styles that are unique or override Tailwind defaults if necessary */
-    .fj_home {
-        display: inline-block;
-        unicode-bidi: embed;
-        font-family: monospace;
-        white-space: pre;
-    }
-
-    /* Custom CSS to ensure text wraps and columns shrink on smaller screens for tables */
-    @media (max-width: 767px) {
-      table td, table th {
-        white-space: normal; /* Allow text to wrap within cells */
-        padding-left: 0.5rem; /* px-2 */
-        padding-right: 0.5rem; /* px-2 */
-      }
-      /* Adjust action button size in table cells for small screens */
-      table td .flex a {
-        font-size: 0.75rem; /* text-xs */
-        padding: 0.25rem 0.5rem; /* py-1 px-2 */
-      }
-      table td .flex a.text-lg { /* For the download icon */
-        font-size: 1rem; /* text-base */
-      }
-    }
-  </style>
 </head>
 <body class="font-sans bg-gray-50 text-gray-800 min-h-screen flex flex-col">
   <!-- Header Section -->
@@ -128,10 +83,10 @@
             <td class="px-6 py-4 text-sm text-gray-700 sm:px-2">{{status}}</td>
             <td class="px-6 py-4 text-sm text-gray-700 sm:px-2">{{amount}}</td>
             <td class="px-6 py-4 text-right text-sm font-medium sm:px-2">
-              <div class="flex flex-wrap justify-end sm:justify-center gap-1">
+              <div class="flex flex-wrap justify-end sm:justify-center gap-2 items-center">
                 <a href="/{{type}}/view/{{id}}" class="text-blue-600 hover:text-blue-900 transition-colors duration-200 text-xs sm:text-sm">View</a>
                 <a href="/{{type}}/pdf/{{id}}" target="_blank" class="text-purple-600 hover:text-purple-900 transition-colors duration-200 text-xs sm:text-sm">PDF</a>
-                <a href="/{{type}}/download/{{id}}?client={{client}}" class="text-green-600 hover:text-green-900 transition-colors duration-200 text-base sm:text-lg"> ⬇ </a>
+                <a href="/{{type}}/download/{{id}}?client={{client}}" class="text-green-600 hover:text-green-900 transition-colors duration-200 text-sm "> ⬇ </a>
               </div>
             </td>
           </tr>
