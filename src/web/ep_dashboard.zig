@@ -77,7 +77,7 @@ pub fn get(_: *Dashboard, arena: Allocator, context: *Context, r: zap.Request) !
     defer result.deinit();
 
     if (result.str()) |rendered| {
-        return ep_utils.sendBody(arena, rendered, r);
+        return ep_utils.sendBody(arena, rendered, fj_config.CompanyName, r);
     }
     return error.Mustache;
 }

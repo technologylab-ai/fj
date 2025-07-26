@@ -37,7 +37,7 @@ pub fn get(ep: *Login, arena: Allocator, context: *Context, r: zap.Request) !voi
             defer result.deinit();
 
             if (result.str()) |rendered| {
-                return ep_utils.sendBody(arena, rendered, r);
+                return ep_utils.sendBody(arena, rendered, "", r);
             }
             return error.Mustache;
         }

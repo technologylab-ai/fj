@@ -55,7 +55,7 @@ fn show_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Requ
     defer result.deinit();
 
     if (result.str()) |rendered| {
-        return ep_utils.sendBody(arena, rendered, r);
+        return ep_utils.sendBody(arena, rendered, fj_config.CompanyName, r);
     }
     return error.Mustache;
 }
@@ -376,7 +376,7 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
     defer result.deinit();
 
     if (result.str()) |rendered| {
-        return ep_utils.sendBody(arena, rendered, r);
+        return ep_utils.sendBody(arena, rendered, fj_config.CompanyName, r);
     }
     return error.Mustache;
 }
