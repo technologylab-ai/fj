@@ -38,7 +38,7 @@ pub fn get(_: *Init, arena: Allocator, context: *Context, r: zap.Request) !void 
                 defer result.deinit();
 
                 if (result.str()) |rendered| {
-                    return ep_utils.sendBody(arena, rendered, r);
+                    return ep_utils.sendBody(arena, rendered, "", r);
                 }
                 return error.Mustache;
             }
@@ -54,7 +54,7 @@ pub fn get(_: *Init, arena: Allocator, context: *Context, r: zap.Request) !void 
             defer result.deinit();
 
             if (result.str()) |rendered| {
-                return ep_utils.sendBody(arena, rendered, r);
+                return ep_utils.sendBody(arena, rendered, "", r);
             }
             return error.Mustache;
         }
@@ -84,7 +84,7 @@ pub fn post(_: *Init, arena: Allocator, context: *Context, r: zap.Request) !void
                 defer result.deinit();
 
                 if (result.str()) |rendered| {
-                    return ep_utils.sendBody(arena, rendered, r);
+                    return ep_utils.sendBody(arena, rendered, "", r);
                 }
                 return error.Mustache;
             }

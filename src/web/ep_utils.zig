@@ -18,10 +18,12 @@ const GitCommand = Cli.GitCommand;
 
 const html_404_not_found = @embedFile("templates/404.html");
 const html_head = @embedFile("templates/html_head.html");
+const html_nav = @embedFile("templates/html_nav.html");
 
-pub fn sendBody(arena: Allocator, s: []const u8, r: zap.Request) !void {
+pub fn sendBody(arena: Allocator, s: []const u8, company: []const u8, r: zap.Request) !void {
     const params = .{
         .head_block = html_head,
+        .html_nav = try std.mem.replaceOwned(u8, arena, html_nav, "{{company}}", company),
     };
 
     const new_body_1 = try std.mem.replaceOwned(u8, arena, s, "<<<", "{{{");
@@ -87,7 +89,7 @@ pub fn show_404(arena: Allocator, context: *Context, r: zap.Request) !void {
 
     r.setStatus(.not_found);
     if (result.str()) |rendered| {
-        return sendBody(arena, rendered, r);
+        return sendBody(arena, rendered, fj_config.CompanyName, r);
     }
     return error.Mustache;
 }

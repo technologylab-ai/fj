@@ -54,7 +54,7 @@ fn git_push(_: *GitEndpoint, arena: Allocator, context: *Context, r: zap.Request
     defer result.deinit();
 
     if (result.str()) |rendered| {
-        return ep_utils.sendBody(arena, rendered, r);
+        return ep_utils.sendBody(arena, rendered, fj_config.CompanyName, r);
     }
     return error.Mustache;
 }
@@ -84,7 +84,7 @@ fn git_commit(_: *GitEndpoint, arena: Allocator, context: *Context, r: zap.Reque
     defer result.deinit();
 
     if (result.str()) |rendered| {
-        return ep_utils.sendBody(arena, rendered, r);
+        return ep_utils.sendBody(arena, rendered, fj_config.CompanyName, r);
     }
     return error.Mustache;
 }
