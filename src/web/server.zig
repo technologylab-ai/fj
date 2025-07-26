@@ -79,6 +79,8 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     //
     // Context
     //
+    const init_route = "/init";
+    const dashboard_route = "/dashboard";
     var context: Context = .{
         .gpa = allocator,
         .auth_lookup = &auth_lookup,
@@ -91,6 +93,8 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
                 break :blk try allocator.dupe(u8, "empty");
             };
         },
+        .init_path = init_route,
+        .dashboard_path = dashboard_route,
     };
     defer allocator.free(context.fj_home);
     defer allocator.free(context.logo_imgdata);
@@ -131,9 +135,9 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     //
 
     // The Pre-Router redirects all requests to /init if FJ is not initialized
-    const PreRouter: EpPreRoute = .{ .App = App, .init_route = "/init" };
+    const PreRouter: EpPreRoute = .{ .App = App, .init_route = init_route };
 
-    var ep_dashboard: EpDashboard = .{};
+    var ep_dashboard: EpDashboard = .{ .path = dashboard_route };
     const AuthDashboard = App.Endpoint.Authenticating(EpDashboard, Authenticator);
     var auth_dashboard = AuthDashboard.init(&ep_dashboard, &authenticator);
     var pre_auth_dashboard = PreRouter.Create(AuthDashboard).init(&auth_dashboard);
@@ -183,9 +187,9 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     var auth_travel = AuthTravel.init(&ep_travel, &authenticator);
     var pre_auth_travel = PreRouter.Create(AuthTravel).init(&auth_travel);
 
-    var ep_init: EpInit = .{};
+    var ep_init: EpInit = .{ .path = init_route, .on_ok = ep_login.path };
 
-    var ep_logout: EpLogout = .{ .redirect_to = "/login" };
+    var ep_logout: EpLogout = .{ .redirect_to = ep_login.path };
     const AuthLogout = App.Endpoint.Authenticating(EpLogout, Authenticator);
     var auth_logout = AuthLogout.init(&ep_logout, &authenticator);
     var pre_auth_logout = PreRouter.Create(AuthLogout).init(&auth_logout);

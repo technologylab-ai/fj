@@ -26,6 +26,9 @@ fj_home: []const u8,
 work_dir: []const u8,
 logo_imgdata: []const u8,
 
+dashboard_path: []const u8,
+init_path: []const u8,
+
 // we redirect to dashboard or init unless it's favico stuff
 pub fn unhandledRequest(self: *@This(), _: std.mem.Allocator, r: zap.Request) anyerror!void {
     if (r.path) |path| {
@@ -40,8 +43,8 @@ pub fn unhandledRequest(self: *@This(), _: std.mem.Allocator, r: zap.Request) an
 
     log.info("UNHANDLED: {s}", .{r.path orelse ""});
     if (fsutil.isDirPresent(self.fj_home)) {
-        try r.redirectTo("/dashboard", null);
+        try r.redirectTo(self.dashboard_path, null);
     } else {
-        try r.redirectTo("/init", null);
+        try r.redirectTo(self.init_path, null);
     }
 }

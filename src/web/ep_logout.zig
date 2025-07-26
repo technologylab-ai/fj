@@ -19,7 +19,7 @@ pub fn get(ep: *Logout, arena: Allocator, context: *Context, r: zap.Request) !vo
     log.info("GET {s}", .{r.path orelse ""});
     if (r.path) |path| {
         log.info("GET {s}", .{path});
-        if (std.mem.startsWith(u8, path, "/logout")) {
+        if (std.mem.startsWith(u8, path, ep.path)) {
             context.authenticator.logout(&r);
             return r.redirectTo(ep.redirect_to, null);
         }

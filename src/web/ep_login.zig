@@ -9,7 +9,7 @@ const Allocator = std.mem.Allocator;
 const Login = @This();
 const log = std.log.scoped(.login);
 
-path: []const u8 = "/login",
+comptime path: []const u8 = "/login",
 error_strategy: zap.Endpoint.ErrorStrategy = .log_to_response,
 
 main_page: []const u8,
@@ -20,14 +20,14 @@ pub fn get(ep: *Login, arena: Allocator, context: *Context, r: zap.Request) !voi
     if (r.path) |path| {
         log.info("GET {s}", .{path});
         // login
-        if (std.mem.eql(u8, path, "/login/logo.png")) {
+        if (std.mem.eql(u8, path, ep.path ++ "/logo.png")) {
             r.setStatus(.ok);
             try r.setContentTypeFromFilename("logo.png");
             return r.sendBody(context.logo_imgdata);
         }
-        if (std.mem.startsWith(u8, path, "/login")) {
+        if (std.mem.startsWith(u8, path, ep.path)) {
             const params = .{
-                .login_page = "/login",
+                .login_page = ep.path,
                 .main_page = ep.main_page,
             };
 

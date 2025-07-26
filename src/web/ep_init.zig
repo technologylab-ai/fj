@@ -10,6 +10,7 @@ const generateTexDefaultsTemplate = @import("../fj.zig").generateTexDefaultsTemp
 
 path: []const u8 = "/init",
 error_strategy: zap.Endpoint.ErrorStrategy = .log_to_response,
+on_ok: []const u8,
 
 const log = std.log.scoped(.init_endpoint);
 const html_error = @embedFile("templates/error.html");
@@ -17,10 +18,10 @@ const html_init = @embedFile("templates/init.html");
 
 const Init = @This();
 
-pub fn get(_: *Init, arena: Allocator, context: *Context, r: zap.Request) !void {
+pub fn get(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !void {
     if (r.path) |path| {
         log.info("GET {s}", .{path});
-        if (std.mem.eql(u8, path, "/init")) {
+        if (std.mem.eql(u8, path, ep.path)) {
             log.info("Using FJ_HOME = `{s}`", .{context.fj_home});
             if (fsutil.isDirPresent(context.fj_home)) {
                 const message = try std.fmt.allocPrint(
@@ -60,13 +61,13 @@ pub fn get(_: *Init, arena: Allocator, context: *Context, r: zap.Request) !void 
         }
     }
     // if /init is not the exact path, redirect to login
-    try r.redirectTo("/login", null);
+    try r.redirectTo(ep.on_ok, null);
 }
 
-pub fn post(_: *Init, arena: Allocator, context: *Context, r: zap.Request) !void {
+pub fn post(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !void {
     if (r.path) |path| {
         log.info("POST {s}", .{path});
-        if (std.mem.eql(u8, path, "/init")) {
+        if (std.mem.eql(u8, path, ep.path)) {
             log.info("Using FJ_HOME = `{s}`", .{context.fj_home});
             if (fsutil.isDirPresent(context.fj_home)) {
                 const message = try std.fmt.allocPrint(
@@ -146,9 +147,8 @@ pub fn post(_: *Init, arena: Allocator, context: *Context, r: zap.Request) !void
             try fj.cmd_init(command);
             context.gpa.free(context.logo_imgdata);
             context.logo_imgdata = try context.gpa.dupe(u8, logo_png_data);
-            try r.redirectTo("/login", null);
+            return r.redirectTo(ep.on_ok, null);
         }
     }
-    // if /init is not the exact path, redirect to login
-    try r.redirectTo("/login", null);
+    try ep_utils.show_404(arena, context, r);
 }
