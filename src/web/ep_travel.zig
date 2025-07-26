@@ -12,7 +12,7 @@ const Allocator = std.mem.Allocator;
 const Travel = @This();
 const log = std.log.scoped(.travel);
 
-path: []const u8 = "/travel",
+comptime path: []const u8 = "/travel",
 error_strategy: zap.Endpoint.ErrorStrategy = .log_to_response,
 
 /// Show the login form
@@ -20,10 +20,10 @@ pub fn get(ep: *Travel, arena: Allocator, context: *Context, r: zap.Request) !vo
     if (r.path) |path| {
         log.info("GET {s}", .{path});
 
-        if (std.mem.eql(u8, path, "/travel")) {
+        if (std.mem.eql(u8, path, ep.path)) {
             return ep.show_travel_form(arena, context, r);
         }
-        if (std.mem.startsWith(u8, path, "/travel-download")) {
+        if (std.mem.startsWith(u8, path, ep.path ++ "-download")) {
             return ep.downloadZip(arena, context, r);
         }
     }
@@ -34,7 +34,7 @@ pub fn post(ep: *Travel, arena: Allocator, context: *Context, r: zap.Request) !v
     if (r.path) |path| {
         log.info("POST {s}", .{path});
 
-        if (std.mem.eql(u8, path, "/travel-submit")) {
+        if (std.mem.eql(u8, path, ep.path ++ "-submit")) {
             return ep.submit_travel_form(arena, context, r);
         }
     }

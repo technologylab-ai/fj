@@ -6,7 +6,7 @@ const Allocator = std.mem.Allocator;
 
 const Git = @import("../git.zig");
 
-path: []const u8 = "/git",
+comptime path: []const u8 = "/git",
 error_strategy: zap.Endpoint.ErrorStrategy = .log_to_response,
 
 const log = std.log.scoped(.git_endpoint);
@@ -18,13 +18,13 @@ pub fn get(ep: *GitEndpoint, arena: Allocator, context: *Context, r: zap.Request
     if (r.path) |path| {
         log.info("GET {s}", .{path});
         // git commit
-        if (std.mem.eql(u8, path, "/git/commit")) {
+        if (std.mem.eql(u8, path, ep.path ++ "/commit")) {
             r.setStatus(.ok);
             return ep.git_commit(arena, context, r);
         }
 
         // git push
-        if (std.mem.eql(u8, path, "/git/push")) {
+        if (std.mem.eql(u8, path, ep.path ++ "/push")) {
             r.setStatus(.ok);
             return ep.git_push(arena, context, r);
         }
