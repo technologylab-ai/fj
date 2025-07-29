@@ -1258,12 +1258,15 @@ pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentComma
             \\# GroupName: any string NOT containing a comma
             \\# Items: description, amount, rate_name, optional_price_per_unit | null, optional remarks | null
             \\#
+            \\# Note: use \comma to add a comma in the description
+            \\#
             \\# Example:
             \\# --------
             \\#
             \\#    Software Development
             \\#    Backend, 2.5, week    , null, null
             \\#    Frontend, 1  , pauschal, 1000, (blah-blubb)
+            \\#    this\comma\space that, 1  , pauschal, 1000, (blah-blubb)
             \\
             \\
         ) catch |err| {
