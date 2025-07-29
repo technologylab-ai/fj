@@ -195,10 +195,12 @@ Die geschätzte Entwicklungszeit beläuft sich auf ca. \textbf{\devtime} ab Auft
 % <BEGIN GROUPSUMS>
 % <END GROUPSUMS>
 
+
 \midrule
 \\[0.3em]
+%%% DANGER! AVOID blocks like {{ this }} because it will be consumed by MUSTACHE!
   \textit{Netto} & \textit{\FjGrandTotal \space €} \\[0.3em]
-  \textit{{+ {\FjVatPercent}\% Ust.}} & \textit{\FjVatAmount\space  €} \\[0.1em]
+  \textit{+ {\FjVatPercent}\% Ust.} & \textit{\FjVatAmount\space  €} \\[0.1em]
 \textbf{TOTAL} & \textbf{\FjGrandTotalPlusVat\space  €} \\[0.5em]
 \bottomrule
 \bottomrule
