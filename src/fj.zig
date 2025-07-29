@@ -1113,6 +1113,11 @@ fn copyTemplateFile(self: *const Fj, filename: []const u8, dest_dir_spec: Docume
             err,
         );
     };
+
+    // TODO: removeme
+    if (std.mem.endsWith(u8, filename, ".tex")) {
+        log.debug("\n\n\n\nGENERATED {s}:\n{s}\n\n\n\n", .{ filename, ifile_content });
+    }
 }
 
 pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentCommandResult {

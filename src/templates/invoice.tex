@@ -162,15 +162,17 @@
 
 \input{totals.tex}
 
+
 \definecolor{optionblue}{RGB}{0, 120, 180}
 \vspace{1em}
 \begin{tabularx}{\textwidth}{@{}X R{4cm}@{}}
 \toprule
 % \input{groupsums.tex} \\
 % \midrule
+%%% DANGER! AVOID blocks like {{ this }} because it will be consumed by MUSTACHE!
   \textit{Netto} & \textit{\FjGrandTotal \space €} \\[0.3em]
-  \textit{{+ {\FjVatPercent}\% Ust.}} & \textit{\FjVatAmount\space  €} \\[0.1em]
-\textbf{{TOTAL}} & \textbf{\FjGrandTotalPlusVat\space  €} \\[0.5em]
+  \textit{+ {\FjVatPercent}\% Ust.} & \textit{\FjVatAmount\space  €} \\[0.1em]
+\textbf{TOTAL} & \textbf{\FjGrandTotalPlusVat\space  €} \\[0.5em]
 \bottomrule
 \bottomrule
 \end{tabularx}
