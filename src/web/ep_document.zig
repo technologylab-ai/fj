@@ -369,14 +369,26 @@ pub fn create(DocumentType: type) type {
                 break :blk try ep_utils.getBodyStrParam(arena, r, "project");
             };
 
-            const expected_path = try std.fmt.allocPrint(
+            const expected_path_prefix = try std.fmt.allocPrint(
                 arena,
-                "{s}--{d}-XXX--{s}",
-                .{ doc_type, try fj.year(), client },
+                "{s}--{d}-XXX",
+                .{ doc_type, try fj.year() },
             );
-            if (fsutil.isDirPresent(expected_path)) {
-                // delete it
-                try std.fs.cwd().deleteTree(expected_path);
+
+            // deleting just the expected path is NOT enough, as old edits
+            // can still linger around and confuse findDocumentById()!
+            // e.g. offer--2025-XXX--CLIENT_A and offer--2025-XXX--CLIENT_B
+            // TODO: this uses cwd() instead of workdir
+
+            var iter_dir = try std.fs.cwd().openDir(".", .{ .iterate = true });
+            defer iter_dir.close();
+            var it = iter_dir.iterate();
+            while (try it.next()) |item| {
+                if (std.mem.startsWith(u8, item.name, expected_path_prefix)) {
+                    if (item.kind == .directory) {
+                        try std.fs.cwd().deleteTree(item.name);
+                    }
+                }
             }
 
             const Command = switch (DocumentType) {
