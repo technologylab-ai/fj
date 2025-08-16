@@ -927,8 +927,8 @@ pub fn handleDocumentCommand(
             return self.cmdCompileDocument(args, null);
         },
         .commit => {
-            // Generic commit logic (ID increment, archive, move)
-            return self.cmdCommitDocument(args, null);
+            // Generic commit logic (ID increment, archive, move), don't delete working dir afterwards
+            return self.cmdCommitDocument(args, null, false);
         },
         .show => {
             return self.cmdShowDocument(args);
@@ -2243,7 +2243,7 @@ pub fn cmdCompileDocument(self: *const Fj, args: anytype, work_dir: ?[]const u8)
     return .{ .compile = try self.readDocumentFiles(DocumentType, subdir_spec) };
 }
 
-pub fn cmdCommitDocument(self: *Fj, args: anytype, work_dir: ?[]const u8) !HandleDocumentCommandResult {
+pub fn cmdCommitDocument(self: *Fj, args: anytype, work_dir: ?[]const u8, delete_working_copy: bool) !HandleDocumentCommandResult {
     // validate it
     // update it
     // compile it
@@ -2342,27 +2342,32 @@ pub fn cmdCommitDocument(self: *Fj, args: anytype, work_dir: ?[]const u8) !Handl
     }
 
     // only if all went well, we'll commit to fj_home
+    var dir_name_buf: [max_name_bytes]u8 = undefined;
+    const document_dir_name = try createDocumentName(DocumentType, obj.id, obj.client_shortname, &dir_name_buf);
+    const dest_path = try self.documentDir(DocumentType, document_dir_name, &dest_path_buf);
+    if (has_temp_id) {
+        cwd().makeDir(dest_path) catch |err| {
+            try fatal("Error creating dir `{s}`: {}", .{ dest_path, err }, err);
+        };
+    }
+    var dest_dir = try cwd().openDir(dest_path, .{});
+    defer dest_dir.close();
     {
         // const document_dir_name = try std.fmt.allocPrint(
         //     self.arena,
         //     "{s}--{s}--{s}",
         //     .{ human_doctype, obj.id, obj.client_shortname },
         // );
-        var dir_name_buf: [max_name_bytes]u8 = undefined;
-        const document_dir_name = try createDocumentName(DocumentType, obj.id, obj.client_shortname, &dir_name_buf);
-        const dest_path = try self.documentDir(DocumentType, document_dir_name, &dest_path_buf);
-        if (has_temp_id) {
-            cwd().makeDir(dest_path) catch |err| {
-                try fatal("Error creating dir `{s}`: {}", .{ dest_path, err }, err);
-            };
-        }
-        var dest_dir = try cwd().openDir(dest_path, .{});
-        defer dest_dir.close();
 
         var file_it = subdir_spec.dir.iterate();
         while (try file_it.next()) |entry| {
             log.info("    {s} -> {s}/{s}", .{ entry.name, dest_path, entry.name });
             try subdir_spec.dir.copyFile(entry.name, dest_dir, entry.name, .{});
+        }
+
+        // at the end, delete the temp copy if requested
+        if (delete_working_copy) {
+            try cwd().deleteTree(subdir_spec.name);
         }
     }
 
@@ -2382,7 +2387,16 @@ pub fn cmdCommitDocument(self: *Fj, args: anytype, work_dir: ?[]const u8) !Handl
         }
     }
     log.info("✅  {s} {s} committed!", .{ documentTypeHumanName(DocumentType), obj.id });
-    return .{ .commit = try self.readDocumentFiles(DocumentType, subdir_spec) };
+
+    // we deleted the temp dir, so return reading the committed copy's files
+    const committed_subdir_spec: DocumentSubdirSpec = .{
+        .name = dest_path,
+        .dir = dest_dir, // defer-closed above
+    };
+    log.debug("COMMITTED_DIR = {s}", .{committed_subdir_spec.name});
+    std.debug.print("COMMITTED_DIR = {s}", .{committed_subdir_spec.name});
+
+    return .{ .commit = try self.readDocumentFiles(DocumentType, committed_subdir_spec) };
 }
 
 fn getDocumentTypeId(self: *const Fj, DocumentType: type, lock_ptr: ?*fsutil.FileLock) ![]const u8 {

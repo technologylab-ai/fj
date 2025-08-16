@@ -642,7 +642,9 @@ pub fn create(DocumentType: type) type {
                 .positional = .{ .subcommand = .commit, .arg = document_subdir_name },
             };
 
-            const files = try fj.cmdCommitDocument(commitCommand, document_subdir_name);
+            // last parameter makes fj delete the working copy after committing.
+            // that way, we don't leave it lying around
+            const files = try fj.cmdCommitDocument(commitCommand, document_subdir_name, true);
 
             const obj = try std.json.parseFromSliceLeaky(
                 DocumentType,
