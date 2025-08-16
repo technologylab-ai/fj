@@ -243,13 +243,22 @@ pub fn create(ResourceType: type) type {
                 .positional = .{ .subcommand = .new, .arg = shortname },
             };
 
+            // this creates a temp file meant for manual editing. we don't need
+            // it, so we're going to delete it shortly
             _ = try fj.handleRecordCommand(command);
 
             const obj = try fj.loadRecord(
                 ResourceType,
                 try arena.dupe(u8, shortname),
-                .{ .custom_path = "." },
+                .{ .custom_path = context.work_dir },
             );
+
+            // after that, we don't need the file anymore, since we're going
+            // to POST from the browser directly when committing
+            var path_buf: [Fj.max_path_bytes]u8 = undefined;
+            const temp_file_path = try fj.recordPath(ResourceType, shortname, context.work_dir, &path_buf);
+            log.info("temp_file_path = {s}", .{temp_file_path});
+            try std.fs.cwd().deleteFile(temp_file_path);
 
             var alist: std.ArrayListUnmanaged(u8) = .empty;
             const writer = alist.writer(arena);
@@ -278,9 +287,6 @@ pub fn create(ResourceType: type) type {
             var fj = ep_utils.createFj(arena, context);
 
             try r.parseBody();
-            if (r.body) |body| {
-                log.debug("BODY: `{s}`", .{body});
-            }
 
             const json = try ep_utils.getBodyStrParam(arena, r, "json");
             // const fio_params = r.h.*.params;

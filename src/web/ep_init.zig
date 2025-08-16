@@ -7,6 +7,7 @@ const Cli = @import("../cli.zig");
 
 const fsutil = @import("../fsutil.zig");
 const generateTexDefaultsTemplate = @import("../fj.zig").generateTexDefaultsTemplate;
+const fj_json = @import("../json.zig");
 
 path: []const u8 = "/init",
 error_strategy: zap.Endpoint.ErrorStrategy = .log_to_response,
@@ -99,7 +100,8 @@ pub fn post(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !voi
             {
                 // block scope for immediate defer
                 defer json_file.close();
-                try json_file.writeAll(json);
+                const fixedup_json = try fixLogoFilenameInJson(arena, json);
+                try json_file.writeAll(fixedup_json);
             }
             log.debug("Wrote init.json", .{});
 
@@ -130,8 +132,7 @@ pub fn post(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !voi
                 break :blk "invalid";
             };
 
-            // TODO: we should make sure to either use the logo filename in the json or to
-            // fix the json to logo.png
+            // logo filename got fixed to logo.png in input json
             var logo_file = try cwd.createFile("logo.png", .{});
             {
                 // block scope for immediate defer
@@ -145,10 +146,21 @@ pub fn post(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !voi
 
             var fj = ep_utils.createFj(arena, context);
             try fj.cmd_init(command);
+
+            // cleanup the workdir/init.json and the workdir/logo.png
+            try cwd.deleteFile("init.json");
+            try cwd.deleteFile("logo.png");
+
             context.gpa.free(context.logo_imgdata);
             context.logo_imgdata = try context.gpa.dupe(u8, logo_png_data);
             return r.redirectTo(ep.on_ok, null);
         }
     }
     try ep_utils.show_404(arena, context, r);
+}
+
+fn fixLogoFilenameInJson(arena: std.mem.Allocator, json_in: []const u8) ![]const u8 {
+    var parsed = try std.json.parseFromSliceLeaky(fj_json.TexDefaults, arena, json_in, .{ .ignore_unknown_fields = true });
+    parsed.Logo = "logo.png";
+    return std.json.stringifyAlloc(arena, parsed, .{ .whitespace = .indent_4 });
 }
