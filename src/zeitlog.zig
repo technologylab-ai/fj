@@ -10,6 +10,7 @@ pub fn init(gpa: std.mem.Allocator) !void {
 pub fn deinit() void {
     if (timezone) |*tz| {
         tz.deinit();
+        timezone = null;
     }
 }
 
