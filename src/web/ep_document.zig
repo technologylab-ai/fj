@@ -664,7 +664,7 @@ pub fn create(DocumentType: type) type {
                 .billables = document.billables,
                 .tex = document.tex,
                 .id = document.id,
-                .compile = true,
+                .compile = false,
                 .is_letter = DocumentType == Letter,
                 .company = fj_config.CompanyName,
             };
