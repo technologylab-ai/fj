@@ -1,6 +1,8 @@
 const std = @import("std");
 const Fatal = @import("fatal.zig");
 const fatal = Fatal.fatal;
+const CommandUtils = @import("commandutils.zig");
+const showResultMessages = CommandUtils.showResultMessages;
 
 arena: std.mem.Allocator,
 repo_dir: []const u8,
@@ -11,20 +13,16 @@ const log = std.log.scoped(.git);
 
 const max_output_bytes: usize = 200 * 1024;
 
-fn showResultMessages(result: std.process.Child.RunResult, writer: ?std.io.AnyWriter) void {
-    var stdout = writer orelse std.io.getStdOut().writer().any();
-    var stderr = writer orelse std.io.getStdErr().writer().any();
-    stdout.writeAll(result.stdout) catch unreachable;
-    // stderr.writeAll("\n") catch unreachable;
-    stderr.writeAll(result.stderr) catch unreachable;
-}
-
-fn cmd(self: *const Git, argv: []const []const u8, writer: ?std.io.AnyWriter) !bool {
+fn cmd(self: *const Git, argv: []const []const u8, writer: ?*std.io.Writer) !bool {
     const arglist = std.mem.join(self.arena, " ", argv) catch {
         return false;
     };
 
-    var stderr = std.io.getStdErr();
+    var io_buffer: [1024]u8 = undefined;
+    var stderr_writer = std.fs.File.stderr().writer(&io_buffer);
+    const stderr = &stderr_writer.interface;
+    defer stderr.flush() catch unreachable;
+
     stderr.writeAll("\n" ++ "-" ** 80 ++ "\n") catch unreachable;
     defer stderr.writeAll("-" ** 80 ++ "\n") catch unreachable;
 
@@ -73,14 +71,14 @@ pub fn init(self: *const Git) !bool {
     return self.cmd(&[_][]const u8{ "git", "init" }, null);
 }
 
-pub fn status(self: *const Git, writer: ?std.io.AnyWriter) !bool {
+pub fn status(self: *const Git, writer: ?*std.io.Writer) !bool {
     return self.cmd(&[_][]const u8{ "git", "status" }, writer);
 }
 
 pub fn stage(
     self: *const Git,
     opts: union(enum) { file: []const u8, files: []const []const u8, all },
-    writer: ?std.io.AnyWriter,
+    writer: ?*std.io.Writer,
 ) !bool {
     var args: std.ArrayListUnmanaged([]const u8) = .empty;
     args.append(self.arena, "git") catch try fatal("OOM!", .{}, error.OutOfMemory);
@@ -97,15 +95,15 @@ pub fn stage(
     return self.cmd(args.items, writer);
 }
 
-pub fn commit(self: *const Git, commit_message: []const u8, writer: ?std.io.AnyWriter) !bool {
+pub fn commit(self: *const Git, commit_message: []const u8, writer: ?*std.io.Writer) !bool {
     return self.cmd(&[_][]const u8{ "git", "commit", "-m", commit_message }, writer);
 }
 
-pub fn push(self: *const Git, writer: ?std.io.AnyWriter) !bool {
+pub fn push(self: *const Git, writer: ?*std.io.Writer) !bool {
     return self.cmd(&[_][]const u8{ "git", "push", "-u", "origin", "master" }, writer);
 }
 
-pub fn pull(self: *const Git, writer: ?std.io.AnyWriter) !bool {
+pub fn pull(self: *const Git, writer: ?*std.io.Writer) !bool {
     return self.cmd(&[_][]const u8{ "git", "pull" }, writer);
 }
 

@@ -23,7 +23,9 @@ pub fn log(
     // this might make it thread-safe
     std.debug.lockStdErr();
     defer std.debug.unlockStdErr();
-    const stderr = std.io.getStdErr().writer();
+    var stderr_buffer: [1024]u8 = undefined;
+    var stderr_writer = std.fs.File.stderr().writer(&stderr_buffer);
+    const stderr = &stderr_writer.interface;
 
     var now = zeit.instant(.{}) catch {
         std.log.defaultLog(level, scope, "!" ++ format, args);

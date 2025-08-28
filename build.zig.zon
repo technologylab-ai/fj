@@ -1,20 +1,20 @@
 .{
     .name = .fj,
-    .version = "0.3.5",
+    .version = "0.4.0-dev",
     .fingerprint = 0xdf1956986963a6e9, // Changing this has security and trust implications.
-    .minimum_zig_version = "0.14.0",
+    .minimum_zig_version = "0.15.1",
     .dependencies = .{
         .zli = .{
-            .url = "git+https://github.com/renerocksai/zli?ref=v0.1.2#ef764110f4e60c8e9439f244cce437282c02f280",
-            .hash = "zli-0.1.1-pechggeGAAAPwjQaUd6KZchJGhjKobNmSX-1rAKterwr",
-        },
-        .zeit = .{
-            .url = "git+https://github.com/rockorager/zeit?ref=v0.6.0#44bebf856693332b168d8ba2c45b9d1ec15511de",
-            .hash = "zeit-0.0.0-5I6bk_pZAgB03N1p1GmVOZ--gOFwwQSRKj1UXb5tnaKS",
+            .url = "git+https://github.com/renerocksai/zli?ref=v0.1.3#bbefacf517d00a7e8a66b2999075743e7b51eeb5",
+            .hash = "zli-0.1.1-pechguyHAAD0zCz2OVwT7aAt_kBWIFcMXLVcGw1QthDC",
         },
         .zap = .{
-            .url = "git+https://github.com/zigzap/zap?ref=v0.10.6#e1c973d5e2b282c673d91d857459cc389eab80bb",
-            .hash = "zap-0.10.6-GoeB89aDJAAUufiqV7sUCudCoSSCle0E2fbw388bO1Ug",
+            .url = "git+https://github.com/zigzap/zap?ref=v0.11.0#66c5dc42c781bbb8a9100afda3c7e69ee96eddf3",
+            .hash = "zap-0.10.6-GoeB8xCEJABLgoiZjWZMMT5TsoZ5OO2EZe6j24RTUYEH",
+        },
+        .zeit = .{
+            .url = "https://github.com/renerocksai/zeit/archive/refs/heads/zig-0.15.1.tar.gz",
+            .hash = "zeit-0.6.0-5I6bk7V8AgAY0-hM-vUYtKZUFYhXct-VRkqISNNTfEfb",
         },
     },
     .paths = .{

@@ -38,14 +38,15 @@ fn git_push(_: *GitEndpoint, arena: Allocator, context: *Context, r: zap.Request
         .repo_dir = context.fj_home,
     };
     var fj = ep_utils.createFj(arena, context);
-    var alist = std.ArrayListUnmanaged(u8).empty;
-    _ = try git.push(alist.writer(arena).any());
+
+    var status_writer = std.io.Writer.Allocating.init(arena);
+    _ = try git.push(&status_writer.writer);
 
     const fj_config = try fj.loadConfigJson();
 
     const params = .{
         .command = "push",
-        .message = alist.items,
+        .message = status_writer.written(),
         .company = fj_config.CompanyName,
     };
     var mustache = try zap.Mustache.fromData(html_git_command);
@@ -65,17 +66,16 @@ fn git_commit(_: *GitEndpoint, arena: Allocator, context: *Context, r: zap.Reque
         .repo_dir = context.fj_home,
     };
     var fj = ep_utils.createFj(arena, context);
-    var alist = std.ArrayListUnmanaged(u8).empty;
-    const writer = alist.writer(arena).any();
-    if (try git.stage(.all, writer)) {
-        _ = try git.commit("Committed via web", writer);
+    var status_writer = std.io.Writer.Allocating.init(arena);
+    if (try git.stage(.all, &status_writer.writer)) {
+        _ = try git.commit("Committed via web", &status_writer.writer);
     }
 
     const fj_config = try fj.loadConfigJson();
 
     const params = .{
         .command = "commit",
-        .message = alist.items,
+        .message = status_writer.written(),
         .company = fj_config.CompanyName,
     };
     var mustache = try zap.Mustache.fromData(html_git_command);

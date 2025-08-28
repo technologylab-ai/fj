@@ -209,7 +209,7 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     //
     // zap
     //
-    const interface = try std.fmt.allocPrintZ(allocator, "{s}", .{opts.host});
+    const interface = try std.fmt.allocPrintSentinel(allocator, "{s}", .{opts.host}, 0);
     defer allocator.free(interface);
 
     try App.listen(.{

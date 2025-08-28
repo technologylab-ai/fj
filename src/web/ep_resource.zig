@@ -179,15 +179,13 @@ pub fn create(ResourceType: type) type {
                 .{ .custom_path = null },
             );
 
-            var alist: std.ArrayListUnmanaged(u8) = .empty;
-            const writer = alist.writer(arena);
-            try std.json.stringify(obj, .{ .whitespace = .indent_4 }, writer);
+            const json = try std.json.Stringify.valueAlloc(arena, obj, .{ .whitespace = .indent_4 });
 
             const fj_config = try fj.loadConfigJson();
             const params = .{
                 .type = type_string,
                 .shortname = id,
-                .json = alist.items,
+                .json = json,
                 .editable = editable,
                 .company = fj_config.CompanyName,
             };
@@ -260,14 +258,12 @@ pub fn create(ResourceType: type) type {
             log.info("temp_file_path = {s}", .{temp_file_path});
             try std.fs.cwd().deleteFile(temp_file_path);
 
-            var alist: std.ArrayListUnmanaged(u8) = .empty;
-            const writer = alist.writer(arena);
-            try std.json.stringify(obj, .{ .whitespace = .indent_4 }, writer);
+            const json = try std.json.Stringify.valueAlloc(arena, obj, .{ .whitespace = .indent_4 });
 
             const params = .{
                 .type = type_string,
                 .shortname = shortname,
-                .json = alist.items,
+                .json = json,
                 .editable = true,
                 .company = fj_config.CompanyName,
             };
