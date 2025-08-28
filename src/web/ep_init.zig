@@ -162,5 +162,5 @@ pub fn post(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !voi
 fn fixLogoFilenameInJson(arena: std.mem.Allocator, json_in: []const u8) ![]const u8 {
     var parsed = try std.json.parseFromSliceLeaky(fj_json.TexDefaults, arena, json_in, .{ .ignore_unknown_fields = true });
     parsed.Logo = "logo.png";
-    return std.json.stringifyAlloc(arena, parsed, .{ .whitespace = .indent_4 });
+    return std.json.Stringify.valueAlloc(arena, parsed, .{ .whitespace = .indent_4 });
 }

@@ -81,12 +81,8 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
         description: []const u8,
         pub fn format(
             self: @This(),
-            comptime fmt: []const u8,
-            opts: std.fmt.FormatOptions,
-            writer: anytype,
+            writer: *std.io.Writer,
         ) !void {
-            _ = fmt;
-            _ = opts;
             try writer.print(
                 "{{type=\"{s}\", description=\"{s}\"",
                 .{ self.kind, self.description },
@@ -121,7 +117,10 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
         try outbound_transports.append(arena, .{ .kind = ttype_param, .description = tdesc_param });
     }
 
-    log.info("outbound_transports = {s}", .{outbound_transports.items});
+    log.info("outbound_transports = ", .{});
+    for (outbound_transports.items) |item| {
+        log.info("    - {f}", .{item});
+    }
 
     transport_index = 0;
     while (transport_index < 100) : ({
@@ -145,7 +144,10 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
 
         try return_transports.append(arena, .{ .kind = ttype_param, .description = tdesc_param });
     }
-    log.info("return_transports = {s}", .{outbound_transports.items});
+    log.info("return_transports = ", .{});
+    for (return_transports.items) |item| {
+        log.info("    - {f}", .{item});
+    }
 
     // parse RECEIPT UPLOADS
     //
@@ -156,12 +158,8 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
         contents: []const u8,
         pub fn format(
             self: @This(),
-            comptime fmt: []const u8,
-            opts: std.fmt.FormatOptions,
-            writer: anytype,
+            writer: *std.io.Writer,
         ) !void {
-            _ = fmt;
-            _ = opts;
             try writer.print(
                 "{{filename=\"{s}\", human_given_name=\"{s}\", data_len={d}",
                 .{ self.filename, self.human_given_name, self.contents.len },
@@ -185,7 +183,7 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
 
                 const vv = try ep_utils.getBodyParam(r, kv.key);
                 log.info("\n\n\n       found key : {s} = {}", .{ kv.key, vv });
-                const vvv = try zap.Request.fiobj2HttpParam(arena, vv) orelse unreachable;
+                var vvv = try zap.Request.fiobj2HttpParam(arena, vv) orelse unreachable;
 
                 _ = v; // v makes us crash
                 switch (vvv) {
@@ -233,7 +231,7 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
                             }
                             // break;
                         }
-                        files.*.deinit();
+                        files.*.deinit(arena);
                     },
                     else => {
                         // let's just get it as its raw slice
@@ -244,7 +242,10 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
             }
         }
     }
-    log.info("Received receipts: {s}", .{receipts_list.items});
+    log.info("Received receipts: ", .{});
+    for (receipts_list.items) |item| {
+        log.info("    - {f}", .{item});
+    }
 
     // process UPLOADS
     //
@@ -260,17 +261,22 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
 
     var receipt_pdf_list = std.ArrayListUnmanaged(struct { pdf_name: []const u8 }).empty;
     for (receipts_list.items) |receipt| {
-        const pdf_nameZ = try std.fmt.allocPrintZ(
+        const pdf_nameZ = try std.fmt.allocPrintSentinel(
             arena,
             "{s}/{s}_Beleg_{s}.pdf",
             .{ temp_dir_name, pre_prefix, receipt.human_given_name },
+            0,
         );
         const pdf_basename = std.fs.path.basename(pdf_nameZ);
         try receipt_pdf_list.append(arena, .{ .pdf_name = pdf_basename });
         if (std.ascii.endsWithIgnoreCase(receipt.filename, ".pdf")) {
             var ofile = try temp_dir.createFile(pdf_nameZ, .{});
             defer ofile.close();
-            try ofile.writeAll(receipt.contents);
+            var obuf: [1024]u8 = undefined;
+            var ofile_writer = ofile.writer(&obuf);
+            const writer = &ofile_writer.interface;
+            try writer.writeAll(receipt.contents);
+            try writer.flush();
             log.info("Generated {s})", .{pdf_basename});
         } else {
             // generate the PDF from image
@@ -336,16 +342,17 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
         break :blk "error";
     };
 
-    const protocol_pdf_name = try std.fmt.allocPrintZ(
+    const protocol_pdf_name = try std.fmt.allocPrintSentinel(
         arena,
         "{s}/{s}.pdf",
         .{ temp_dir_name, pre_prefix },
+        0,
     );
     try travelpdfs.generateProtocolPdf(arena, protocol_pdf_name, protocol_text);
     try receipt_pdf_list.append(arena, .{ .pdf_name = std.fs.path.basename(protocol_pdf_name) });
 
     // now zip it
-    var zip_pdf_path_list = std.ArrayListUnmanaged([]const u8).empty;
+    var zip_pdf_path_list = std.ArrayList([]const u8).empty;
     for (receipt_pdf_list.items) |item| {
         try zip_pdf_path_list.append(
             arena,

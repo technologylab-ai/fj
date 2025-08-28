@@ -39,8 +39,8 @@ pub fn get(_: *Dashboard, arena: Allocator, context: *Context, r: zap.Request) !
         .repo_dir = context.fj_home,
     };
 
-    var git_status_alist = std.ArrayListUnmanaged(u8).empty;
-    _ = try git.status(git_status_alist.writer(arena).any());
+    var status_writer = std.io.Writer.Allocating.init(arena);
+    _ = try git.status(&status_writer.writer);
 
     const params = .{
         .recent_docs = recent_documents,
@@ -49,7 +49,7 @@ pub fn get(_: *Dashboard, arena: Allocator, context: *Context, r: zap.Request) !
         .invoices_open = stats.num_invoices_open,
         .offers_total = stats.num_offers_total,
         .offers_open = stats.num_offers_open,
-        .git_status = git_status_alist.items,
+        .git_status = status_writer.written(),
         .invoiced_total = try Format.floatThousandsAlloc(
             arena,
             @as(f32, @floatFromInt(stats.invoiced_total_amount)),

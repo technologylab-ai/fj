@@ -24,15 +24,17 @@ const MARGIN_PX: f32 = MARGIN_INCHES * PDF_PAGE_OUTPUT_DPI;
 const USABLE_PAGE_WIDTH_PX: f32 = A4_WIDTH_PX - (2 * MARGIN_PX);
 const USABLE_PAGE_HEIGHT_PX: f32 = A4_HEIGHT_PX - (2 * MARGIN_PX);
 
+const StbiWriteFuncContext = struct {
+    allocator: std.mem.Allocator,
+    cloned: ?[]const u8,
+};
+
 pub fn generateReceiptPdf(
     input_image_name: []const u8,
     input_image: []const u8,
     output_pdf_path: [*c]const u8,
     allocator: std.mem.Allocator,
 ) !void {
-    var jpg_output_alist: std.ArrayList(u8) = std.ArrayList(u8).init(allocator);
-    defer jpg_output_alist.deinit();
-
     var img_width: c_int = 0;
     var img_height: c_int = 0;
     var img_channels: c_int = 0;
@@ -121,23 +123,33 @@ pub fn generateReceiptPdf(
     const JPG_QUALITY: c_int = 0;
     _ = JPG_QUALITY;
 
+    var write_jpg_context: StbiWriteFuncContext = .{
+        .allocator = allocator,
+        .cloned = null, // <-- stbi we will use allocator to clone into here
+    };
+    defer {
+        if (write_jpg_context.cloned) |cloned| {
+            allocator.free(cloned);
+        }
+    }
+
     const write_jpg_result = C.stbi_write_png_to_func(
         stbi_write_func_zig_wrapper_impl,
-        &jpg_output_alist,
+        &write_jpg_context,
         final_resized_px_width,
         final_resized_px_height,
         img_channels,
         resized_image_data_buffer.ptr,
         0,
     );
-    if (write_jpg_result == 0) {
+    if (write_jpg_result == 0 or write_jpg_context.cloned == null) {
         log.err("Error: Failed to write JPEG data to buffer.", .{});
         return error.ImageWriteFailed;
     }
 
     log.info(
         "JPEG data successfully written to memory buffer (len={d}).",
-        .{jpg_output_alist.items.len},
+        .{write_jpg_context.cloned.?.len},
     );
 
     var info: C.pdf_info = .{};
@@ -165,8 +177,8 @@ pub fn generateReceiptPdf(
         image_y_offset_px,
         @as(f32, @floatFromInt(final_resized_px_width)),
         @as(f32, @floatFromInt(final_resized_px_height)),
-        jpg_output_alist.items.ptr,
-        jpg_output_alist.items.len,
+        write_jpg_context.cloned.?.ptr,
+        write_jpg_context.cloned.?.len,
     );
 
     if (C.pdf_save(pdf_doc, output_pdf_path) < 0) {
@@ -177,13 +189,31 @@ pub fn generateReceiptPdf(
         .{ output_pdf_path, final_resized_px_width, final_resized_px_height },
     );
 }
-
 fn stbi_write_func_zig_wrapper_impl(
     context: ?*anyopaque,
     data_ptr: ?*anyopaque,
     size: c_int,
-) callconv(.C) void {
-    const jpg_output_alist: *std.ArrayList(u8) = @alignCast(@ptrCast(context.?));
+) callconv(.c) void {
+    var ctx: *StbiWriteFuncContext = @ptrCast(@alignCast(context.?));
+
+    var data_slice: []const u8 = undefined;
+    data_slice.ptr = @ptrCast(data_ptr.?);
+    data_slice.len = @intCast(size);
+
+    // we take a copy because we don't know when stdbi will deallocate
+    if (ctx.allocator.dupe(u8, data_slice)) |slice| {
+        ctx.cloned = slice;
+    } else |_| {
+        ctx.cloned = null;
+    }
+}
+
+fn stbi_write_func_zig_wrapper_impl_old(
+    context: ?*anyopaque,
+    data_ptr: ?*anyopaque,
+    size: c_int,
+) callconv(.c) void {
+    const jpg_output_alist: *std.ArrayList(u8) = @ptrCast(@alignCast(context.?));
 
     var data_slice: []const u8 = undefined;
     data_slice.ptr = @ptrCast(data_ptr.?);
