@@ -2200,7 +2200,7 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
 
 fn replaceSection(self: *const Fj, input: []const u8, section: []const u8, replacement: []const u8) ![]const u8 {
     var allocating_writer = std.io.Writer.Allocating.init(self.arena);
-    var writer = allocating_writer.writer;
+    var writer = &allocating_writer.writer;
 
     const section_marker_start = try std.fmt.allocPrint(self.arena, "% <BEGIN {s}>", .{section});
     const section_marker_end = try std.fmt.allocPrint(self.arena, "% <END {s}>", .{section});
