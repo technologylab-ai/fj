@@ -339,7 +339,7 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
             self.arena,
             &[_][]const u8{ fj_home, "templates", ofilename },
         );
-        const f = cwd().createFile(dest_path, .{ .truncate = false }) catch |err| {
+        const f = cwd().openFile(dest_path, .{ .mode = .read_write }) catch |err| {
             try fatal(
                 "Unable to create {s}: {}",
                 .{ dest_path, err },
@@ -347,15 +347,10 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
             );
         };
         defer f.close();
-        // goto end
-        f.seekFromEnd(0) catch |err| {
-            try fatal(
-                "Unable to append to {s}: {}",
-                .{ dest_path, err },
-                err,
-            );
-        };
+
         var writer = f.writer(&io_buffer);
+        // goto end
+        try writer.seekTo(try f.getEndPos());
         writer.interface.print(
             \\
             \\ \makeatletter\@ifundefined{{greeting}}{{
