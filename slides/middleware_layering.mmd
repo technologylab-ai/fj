@@ -1,0 +1,18 @@
+graph TB
+    A["Endpoint<br/>(ep_dashboard)"] --> B["App.Endpoint.Authenticating<br/>(AuthDashboard)"]
+    B --> C["PreRouter.Create<br/>(pre_auth_dashboard)"]
+    C --> D["App.register"]
+
+    E["Request"] --> F["PreRouter<br/>Check initialized"]
+    F --> G["Authenticating<br/>Check session"]
+    G --> H["Endpoint<br/>Handle request"]
+
+    style A fill:#2de86c,stroke:#fff,color:#000
+    style B fill:#ffd447,stroke:#000,color:#000
+    style C fill:#ff5c57,stroke:#fff,color:#fff
+    style D fill:#3399FF,stroke:#fff,color:#fff
+
+    style E fill:#3399FF,stroke:#fff,color:#fff
+    style F fill:#ff5c57,stroke:#fff,color:#fff
+    style G fill:#ffd447,stroke:#000,color:#000
+    style H fill:#2de86c,stroke:#fff,color:#000

@@ -1,0 +1,21 @@
+graph TB
+subgraph EDIT
+    direction LR
+    A["fj invoice new"] --> B["Working Directory<br/>invoice--2025-XXX--client/"]
+    B --> C["Edit billables.csv<br/>(in vim)"]
+    C --> D["fj invoice compile<br/>(runs pdflatex)"]
+    D --> E["invoice.pdf generated"]
+end
+subgraph COMMIT
+    direction LR
+    F["fj invoice commit"]
+    F --> G["Assign permanent ID<br/>invoice--2025-042--client/"]
+    G --> H["Move to ~/.fj/invoices/"]
+    H --> I["Git commit"]
+end
+EDIT --> COMMIT
+    style A fill:#3399FF,stroke:#fff,color:#fff
+    style B fill:#ffd447,stroke:#000,color:#000
+    style D fill:#ff5c57,stroke:#fff,color:#fff
+    style F fill:#2de86c,stroke:#fff,color:#000
+    style I fill:#2de86c,stroke:#fff,color:#000
