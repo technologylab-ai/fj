@@ -23,7 +23,7 @@
 @let PRESENTATION_TITLE = Running your Company on the Command-Line
 @let PRESENTATION_SUBTITLE = With <$yellow$>Zig</>, LaTeX, Git, and ZAP!
 @let PRESENTATION_AUTHOR = @renerocksai
-@let PRESENTATION_DATE = 2025-10-25
+@let PRESENTATION_DATE = Zigtoberfest 2025-10-25
 
 @let white = #f0f3f8ff
 @let grey =#aab6c5ff
@@ -55,7 +55,7 @@
 @push intro_title    x=50 y=250 w=1900 h=246 fontsize=88 color=$white$
 @push intro_subtitle x=60 y=400 w=1400 h=246 fontsize=45 color=$blue$
 @push intro_authors  x=60 y=1000 w=836 h=246 fontsize=25 color=$cyan$
-@push intro_date  x=1750 y=1000 w=836 h=246 fontsize=25 color=$grey$
+@push intro_date  x=1600 y=1000 w=836 h=246 fontsize=25 color=$grey$
 @pushslide intro
 
 # -------------------------------------------------------------
@@ -78,7 +78,7 @@
 @push thankyou_title    x=50 y=200 w=1800 h=246 fontsize=96 color=$white$
 @push thankyou_subtitle x=60 y=450 w=1400 h=246 fontsize=45 color=$blue$
 @push thankyou_authors  x=60 y=1000 w=836 h=246 fontsize=25 color=$cyan$
-@push thankyou_date  x=1750 y=1000 w=836 h=246 fontsize=25 color=$grey$
+@push thankyou_date  x=1600 y=1000 w=836 h=246 fontsize=25 color=$grey$
 @pushslide thankyou
 
 
@@ -205,7 +205,7 @@ _
 _
 - Dependencies:
     - <$red$>**zli**</>: CLI argument parsing
-    - <$green$>**zeit**</>: date/time handling</>
+    - <$green$>**zeit**</>: date/time handling
     - <$darkgrey$>_(later)_ **zap**:</> web server framework
 
 
@@ -788,7 +788,6 @@ _
 - Brittle shell scripts
 - No version control
 - CLI only
-- Manual calculations
 - "Future-proof" scripts
 
 @pop rightbox
@@ -841,6 +840,7 @@ _
 @pop thankyou_subtitle text=**$PRESENTATION_SUBTITLE$**
 @pop thankyou_authors text=_$PRESENTATION_AUTHOR$_
 @pop thankyou_text
+@pop thankyou_date text=**$PRESENTATION_DATE$**
 @box img=assets/logos/fj.png x=1550 y=150 w=320 h=320
 
 # -------------------------------------------------------------
