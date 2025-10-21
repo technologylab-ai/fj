@@ -1,0 +1,32 @@
+graph LR
+    A["~/.fj (FJ_HOME)"] --> B[".git/"]
+    A --> C["clients/"]
+    A --> D["rates/"]
+    A --> E["invoices/"]
+    A --> F["offers/"]
+    A --> G["letters/"]
+    A --> H["templates/"]
+
+    C --> C1[".id (atomic counter)"]
+    C --> C2["acme.json"]
+    C --> C3["techcorp.json"]
+
+    D --> D1[".id"]
+    D --> D2["hourly-2025.json"]
+
+    E --> E1[".id"]
+    E --> E2["invoice--2025-001--acme/"]
+
+    E2 --> E2A["invoice.tex"]
+    E2 --> E2B["invoice.json"]
+    E2 --> E2C["billables.csv"]
+    E2 --> E2D["invoice.pdf"]
+
+    H --> H1["logo.png"]
+    H --> H2["invoice.tex"]
+    H --> H3["offer.tex"]
+    H --> H4["letter.tex"]
+
+    style A fill:#3399FF,stroke:#fff,color:#fff
+    style B fill:#2de86c,stroke:#fff,color:#000
+    style E2 fill:#ffd447,stroke:#000,color:#000

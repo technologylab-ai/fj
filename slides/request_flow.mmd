@@ -1,0 +1,15 @@
+graph LR
+    A["HTTP Request"] --> B{"PreRouter<br/>fj_home initialized?"}
+    B -->|No| C["Redirect to /init"]
+    B -->|Yes| D{"Authenticating<br/>Valid session?"}
+    D -->|No| E["Redirect to /login"]
+    D -->|Yes| F["Endpoint Handler<br/>Business Logic"]
+    F --> G["Response"]
+
+    style A fill:#3399FF,stroke:#fff,color:#fff
+    style B fill:#ffd447,stroke:#000,color:#000
+    style D fill:#ffd447,stroke:#000,color:#000
+    style F fill:#2de86c,stroke:#fff,color:#000
+    style G fill:#3399FF,stroke:#fff,color:#fff
+    style C fill:#ff5c57,stroke:#fff,color:#fff
+    style E fill:#ff5c57,stroke:#fff,color:#fff
