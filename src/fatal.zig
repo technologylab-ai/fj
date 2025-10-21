@@ -9,7 +9,11 @@ pub fn fatal(comptime fmt: []const u8, args: anytype, err: anyerror) !noreturn {
     switch (mode) {
         .cli => std.process.fatal(fmt, args),
         .server => {
-            errormsg = std.fmt.bufPrint(&errormsg_buffer, fmt, args) catch |bp_err| {
+            errormsg = std.fmt.bufPrint(
+                &errormsg_buffer,
+                fmt,
+                args,
+            ) catch |bp_err| {
                 switch (bp_err) {
                     error.NoSpaceLeft => {
                         // as much as possible WAS written to the buffer
