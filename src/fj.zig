@@ -2190,6 +2190,8 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
     const new_tex = try self.replaceSection(temp_tex_billables, "GROUPSUMS", groups_tex_writer.written());
     try input_tex_file.seekTo(0);
     try input_tex_file.writeAll(new_tex);
+    // Truncate file to prevent old content from remaining if new content is shorter
+    try input_tex_file.setEndPos(new_tex.len);
     return grand_total;
 }
 
@@ -2200,7 +2202,10 @@ fn replaceSection(self: *const Fj, input: []const u8, section: []const u8, repla
     const section_marker_start = try std.fmt.allocPrint(self.arena, "% <BEGIN {s}>", .{section});
     const section_marker_end = try std.fmt.allocPrint(self.arena, "% <END {s}>", .{section});
 
-    var it = std.mem.splitScalar(u8, input, '\n');
+    // Trim trailing newlines to prevent accumulation, but preserve internal blank lines
+    const trimmed_input = std.mem.trimRight(u8, input, "\n");
+
+    var it = std.mem.splitScalar(u8, trimmed_input, '\n');
     while (it.next()) |line_untrimmed| {
         try writer.print("{s}\n", .{line_untrimmed});
         const line = format.strip(line_untrimmed);
@@ -2566,4 +2571,104 @@ fn incrementDocumentTypeId(self: *const Fj, DocumentType: type) ![]const u8 {
     try writer.print("{s}\n", .{new_id_str});
     try writer.flush();
     return self.arena.dupe(u8, new_id_str);
+}
+
+test "file truncation prevents residual content" {
+    const testing = std.testing;
+    const tmpDir = testing.tmpDir(.{});
+    defer tmpDir.cleanup();
+
+    // Create a file with longer content
+    const filename = "test.txt";
+    const original_content = "This is a long piece of content with many bytes\n" ++
+        "and multiple lines that will be replaced\n" ++
+        "with something much shorter.\n";
+
+    {
+        const file = try tmpDir.dir.createFile(filename, .{});
+        defer file.close();
+        try file.writeAll(original_content);
+    }
+
+    // Now open for read_write and replace with shorter content
+    const new_content = "Short content\n";
+
+    {
+        var file = try tmpDir.dir.openFile(filename, .{ .mode = .read_write });
+        defer file.close();
+
+        const orig = try file.readToEndAlloc(testing.allocator, 1024);
+        defer testing.allocator.free(orig);
+
+        // Verify we read the original content
+        try testing.expectEqualStrings(original_content, orig);
+
+        // Write new shorter content with truncation (this is the fix!)
+        try file.seekTo(0);
+        try file.writeAll(new_content);
+        try file.setEndPos(new_content.len);
+    }
+
+    // Read back and verify no residual content
+    {
+        const file = try tmpDir.dir.openFile(filename, .{});
+        defer file.close();
+
+        const final_content = try file.readToEndAlloc(testing.allocator, 1024);
+        defer testing.allocator.free(final_content);
+
+        try testing.expectEqualStrings(new_content, final_content);
+        // Verify length matches exactly (no extra bytes)
+        try testing.expectEqual(new_content.len, final_content.len);
+    }
+}
+
+test "replaceSection does not accumulate newlines" {
+    const testing = std.testing;
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+
+    const fj = Fj{ .arena = arena.allocator() };
+
+    // Simulate a LaTeX file with a section and internal blank lines
+    const input =
+        \\documentclass{article}
+        \\
+        \\% <BEGIN TEST>
+        \\% <END TEST>
+        \\
+        \\end{document}
+        \\
+    ;
+
+    const replacement = "replaced content\n";
+
+    // Run replaceSection multiple times (simulating multiple compiles)
+    var current = input;
+    var i: usize = 0;
+    while (i < 5) : (i += 1) {
+        const result = try fj.replaceSection(current, "TEST", replacement);
+
+        // Verify the result doesn't grow in length
+        if (i > 0) {
+            try testing.expectEqual(current.len, result.len);
+        }
+
+        current = result;
+    }
+
+    // Verify the final result matches expected (no accumulated newlines at end)
+    // Note: internal blank line is preserved
+    const expected =
+        \\documentclass{article}
+        \\
+        \\% <BEGIN TEST>
+        \\replaced content
+        \\% <END TEST>
+        \\
+        \\end{document}
+        \\
+    ;
+
+    try testing.expectEqualStrings(expected, current);
 }
