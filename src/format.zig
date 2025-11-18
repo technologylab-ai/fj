@@ -29,23 +29,31 @@ pub fn intThousands(
     var buf: [32]u8 = undefined;
     var i: usize = buf.len;
 
-    var n = value;
+    // Handle negative numbers
+    const is_negative = value < 0;
+    var n = if (is_negative) -value else value;
     var digits: usize = 0;
 
     if (n == 0) {
         i -= 1;
         buf[i] = '0';
     } else {
-        while (n != 0) {
+        while (n > 0) {
             if (digits != 0 and digits % 3 == 0) {
                 i -= 1;
                 buf[i] = opts.sep;
             }
             i -= 1;
-            buf[i] = '0' + @as(u8, @intCast(n % 10));
-            n /= 10;
+            buf[i] = '0' + @as(u8, @intCast(@mod(n, 10)));
+            n = @divTrunc(n, 10);
             digits += 1;
         }
+    }
+
+    // Add minus sign for negative values
+    if (is_negative) {
+        i -= 1;
+        buf[i] = '-';
     }
 
     const result = buf[i..];
@@ -79,12 +87,16 @@ pub fn floatThousands(
     var buf_remainder: [2]u8 = undefined;
     var i: usize = buf.len;
 
-    var n: usize = @intFromFloat(@trunc(value));
+    // Handle negative numbers
+    const is_negative = value < 0;
+    const abs_value = if (is_negative) -value else value;
+
+    var n: u64 = @intFromFloat(@trunc(abs_value));
     const epsilon: @TypeOf(value) = 0.0005;
-    const remainder_2digits: u8 = @intFromFloat(@round((value + epsilon - @as(@TypeOf(value), @floatFromInt(n))) * 100.0));
+    const remainder_2digits: u8 = @intFromFloat(@round((abs_value + epsilon - @as(@TypeOf(abs_value), @floatFromInt(n))) * 100.0));
     var digits: usize = 0;
 
-    if (n == 0.0) {
+    if (n == 0) {
         i -= 1;
         buf[i] = '0';
     } else {
@@ -98,6 +110,12 @@ pub fn floatThousands(
             n /= 10;
             digits += 1;
         }
+    }
+
+    // Add minus sign for negative values
+    if (is_negative) {
+        i -= 1;
+        buf[i] = '-';
     }
 
     const result = buf[i..];
@@ -119,6 +137,7 @@ test floatThousands {
     var value: f32 = undefined;
     var result_str: []const u8 = undefined;
 
+    // Positive values
     value = 2.5;
     result_str = try floatThousands(value, .german, &out);
     try std.testing.expectEqualStrings("2,50", result_str);
@@ -146,6 +165,54 @@ test floatThousands {
     value = 2500.5054;
     result_str = try floatThousands(value, .german, &out);
     try std.testing.expectEqualStrings("2.500,51", result_str);
+
+    // Negative values
+    value = -2.5;
+    result_str = try floatThousands(value, .german, &out);
+    try std.testing.expectEqualStrings("-2,50", result_str);
+
+    value = -2500;
+    result_str = try floatThousands(value, .german, &out);
+    try std.testing.expectEqualStrings("-2.500,00", result_str);
+
+    value = -2500.5051;
+    result_str = try floatThousands(value, .german, &out);
+    try std.testing.expectEqualStrings("-2.500,51", result_str);
+
+    // Zero
+    value = 0.0;
+    result_str = try floatThousands(value, .german, &out);
+    try std.testing.expectEqualStrings("0,00", result_str);
+}
+
+test "intThousands with negative numbers" {
+    var out: [32]u8 = undefined;
+    var result_str: []const u8 = undefined;
+
+    // Test positive numbers
+    result_str = try intThousands(@as(i64, 1234), .german, &out);
+    try std.testing.expectEqualStrings("1.234", result_str);
+
+    result_str = try intThousands(@as(i64, 1234567), .german, &out);
+    try std.testing.expectEqualStrings("1.234.567", result_str);
+
+    // Test negative numbers
+    result_str = try intThousands(@as(i64, -1234), .german, &out);
+    try std.testing.expectEqualStrings("-1.234", result_str);
+
+    result_str = try intThousands(@as(i64, -1234567), .german, &out);
+    try std.testing.expectEqualStrings("-1.234.567", result_str);
+
+    // Test zero
+    result_str = try intThousands(@as(i64, 0), .german, &out);
+    try std.testing.expectEqualStrings("0", result_str);
+
+    // Test small numbers
+    result_str = try intThousands(@as(i64, -5), .german, &out);
+    try std.testing.expectEqualStrings("-5", result_str);
+
+    result_str = try intThousands(@as(i64, 99), .german, &out);
+    try std.testing.expectEqualStrings("99", result_str);
 }
 
 pub fn strip(str: []const u8) []const u8 {
