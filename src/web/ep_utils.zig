@@ -72,6 +72,7 @@ pub const Stats = struct {
     num_offers_open: isize = 0,
     num_offers_total: isize = 0,
     invoiced_total_amount: usize = 0,
+    invoices_open_amount: usize = 0,
     offers_pending_amount: usize = 0,
     offers_accepted_amount: usize = 0,
 };
@@ -177,6 +178,7 @@ pub fn allDocsAndStats(arena: Allocator, context: *Context, DocumentTypes: []con
                         stats.invoiced_total_amount += obj.total orelse 0;
                         if (obj.paid_date == null) {
                             stats.num_invoices_open += 1;
+                            stats.invoices_open_amount += obj.total orelse 0;
                             break :blk "open";
                         } else {
                             break :blk "paid";

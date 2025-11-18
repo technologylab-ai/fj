@@ -55,6 +55,11 @@ pub fn get(_: *Dashboard, arena: Allocator, context: *Context, r: zap.Request) !
             @as(f32, @floatFromInt(stats.invoiced_total_amount)),
             .{ .comma = ',', .sep = '.' },
         ),
+        .invoices_open_amount = try Format.floatThousandsAlloc(
+            arena,
+            @as(f32, @floatFromInt(stats.invoices_open_amount)),
+            .{ .comma = ',', .sep = '.' },
+        ),
         .offers_accepted_amount = try Format.floatThousandsAlloc(
             arena,
             @as(f32, @floatFromInt(stats.offers_accepted_amount)),
