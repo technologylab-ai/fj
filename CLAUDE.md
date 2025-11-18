@@ -204,3 +204,4 @@ Run all tests: `zig build test`
 ## Encrypted S3 Backup
 
 See `doc/push-to-s3.md` for detailed setup instructions. This is an optional feature that allows encrypted backups of the fj home Git repository to AWS S3 using git-remote-gcrypt and client-side GPG encryption.
+- this project uses jujutsu (jj) for version control and not git directly. use `jj describe` to assign a commit message to the current change and `jj new` to commit.

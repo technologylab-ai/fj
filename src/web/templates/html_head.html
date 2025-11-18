@@ -10,6 +10,7 @@
   <!-- Configure Tailwind to use Inter font and extend default theme if needed -->
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
@@ -19,11 +20,42 @@
       }
     }
   </script>
+  <!-- Theme initialization to prevent flash of unstyled content -->
+  <script>
+    (function() {
+      if (localStorage.theme === 'dark' ||
+          (!localStorage.theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Custom styles for responsive table and other specific overrides -->
   <style>
     /* Ensure Inter font is loaded for better appearance */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    /* Smooth transitions for theme changes */
+    * {
+      transition: background-color 0.2s ease-in-out,
+                  border-color 0.2s ease-in-out,
+                  color 0.2s ease-in-out;
+    }
+
+    /* Dark mode scrollbar styling */
+    .dark ::-webkit-scrollbar {
+      background-color: #1f2937;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+      background-color: #4b5563;
+    }
+
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background-color: #6b7280;
+    }
 
     /* Keep specific styles that are unique or override Tailwind defaults if necessary */
     .fj_home {
