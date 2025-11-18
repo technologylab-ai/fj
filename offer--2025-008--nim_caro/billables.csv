@@ -1,0 +1,28 @@
+# Lines starting with # are comments and ignored
+# Empty lines are ignored, too
+# All values are trimmed: preceding & trailing blanks are removed
+#
+# Format:
+# -------
+#
+# GroupName | Items
+#
+# GroupName: any string NOT containing a comma
+# Items: description, amount, rate_name, optional_price_per_unit | null, optional remarks | null
+#
+# Note: use \comma to add a comma in the description
+#
+# Example:
+# --------
+#
+#    Software Development
+#    Backend, 2.5, week    , null, null
+#    Frontend, 1  , pauschal, 1000, (blah-blubb)
+#    this\comma\space that, 1  , pauschal, 1000, (blah-blubb)
+
+Entwicklung
+Erweiterungen Ollama-Support\comma\space  JSON-Fehlertoleranz, 1, pauschal, 3500, null
+Anwendung
+Datensätze mit allen LLMs verarbeiten, 1, pauschal, 1500,null
+Dokumentation
+Dokumentation unerwartete Findings zu lokalen LLMs in der Anwendung, 1, pauschal, 0, null

@@ -4,69 +4,69 @@
   <<<head_block>>>
   <title>{{type}}s — fj</title>
 </head>
-<body class="font-sans bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+<body class="font-sans bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col">
 
   <<<html_nav>>>
 
   <!-- Main Content Section -->
   <main class="container mx-auto p-4 flex-grow">
-    <h2 class="text-2xl font-bold text-gray-900 mb-6">{{type}}s</h2>
+    <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{{type}}s</h2>
 
     <!-- New Document Form -->
-    <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-8">
+    <div class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 mb-8">
       <form action="/{{type}}/new" method="post" class="flex flex-col md:flex-row md:items-end gap-4">
         <input type="text" placeholder="client shortname" name="client" required
-               class="w-full md:flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-700" />
+               class="w-full md:flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100" />
         {{^is_letter}}
         <input type="text" placeholder="rates shortname" name="rates" required
-               class="w-full md:flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-700" />
+               class="w-full md:flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100" />
         <input type="text" placeholder="project" name="project" required
-               class="w-full md:flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-700" />
+               class="w-full md:flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100" />
         {{/is_letter}}
         <input type="submit" value="New {{type}}"
-               class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200" />
+               class="w-full md:w-auto bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white dark:text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200" />
       </form>
     </div>
 
     <!-- Documents Table -->
     <!-- Removed overflow-x-auto to prevent horizontal scrolling -->
-    <div class="bg-white rounded-lg shadow-md border border-gray-200">
-      <table class="min-w-full divide-y divide-gray-200 table-fixed"> <!-- Added table-fixed for better column width control -->
-        <thead class="bg-gray-50">
+    <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed"> <!-- Added table-fixed for better column width control -->
+        <thead class="bg-gray-50 dark:bg-gray-800">
           <tr>
             <!-- Adjusted px for smaller screens (sm:px-2) and added w-1/12 for relative width -->
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">ID</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-2/12">Client</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Date</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-3/12">Project</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Status</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Amount</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-2 w-3/12">Actions</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">ID</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-2/12">Client</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Date</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-3/12">Project</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Status</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Amount</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-3/12">Actions</th>
           </tr>
         </thead>
-        <tbody id="documents" class="bg-white divide-y divide-gray-200">
+        <tbody id="documents" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
           {{^documents}}
             <tr>
-              <td colspan="7" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 italic sm:px-2">
+              <td colspan="7" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-500 italic sm:px-2">
                 <i>(No {{type}}s).</i>
               </td>
             </tr>
           {{/documents}}
           {{#documents}}
-          <tr class="hover:bg-gray-50 transition-colors duration-150">
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
             <!-- Adjusted px for smaller screens (sm:px-2) and removed whitespace-nowrap -->
-            <td class="px-6 py-4 text-sm font-medium text-gray-900 sm:px-2">{{id}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 sm:px-2">{{client}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 sm:px-2">{{date}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 sm:px-2">{{project}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 sm:px-2">{{status}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 sm:px-2">{{amount}}</td>
+            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 sm:px-2">{{id}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{client}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{date}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{project}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{status}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{amount}}</td>
             <td class="px-6 py-4 text-right text-sm font-medium sm:px-2">
               <!-- Adjusted flex to allow wrapping and reduced space-x -->
               <div class="flex flex-wrap justify-end sm:justify-center gap-2 items-center">
-                <a href="/{{type}}/view/{{id}}" class="text-blue-600 hover:text-blue-900 transition-colors duration-200 text-xs sm:text-sm">View</a>
-                <a href="/{{type}}/edit/{{id}}" class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200 text-xs sm:text-sm">Edit</a>
-                <a href="/{{type}}/pdf/{{id}}" target="_blank" class="text-purple-600 hover:text-purple-900 transition-colors duration-200 text-xs sm:text-sm">PDF</a>
+                <a href="/{{type}}/view/{{id}}" class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 transition-colors duration-200 text-xs sm:text-sm">View</a>
+                <a href="/{{type}}/edit/{{id}}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors duration-200 text-xs sm:text-sm">Edit</a>
+                <a href="/{{type}}/pdf/{{id}}" target="_blank" class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 transition-colors duration-200 text-xs sm:text-sm">PDF</a>
                 <a href="/{{type}}/download/{{id}}?client={{client}}" class="">
                   <button class="text-sky-500 font-normal px-1 py-2 rounded inline-flex items-center">
                     <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13 8V2H7v6H2l8 8 8-8h-5zM0 18h20v2H0v-2z"/></svg>

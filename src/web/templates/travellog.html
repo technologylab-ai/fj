@@ -4,105 +4,105 @@
   <<<head_block>>>
   <title>Travel Expenses — fj</title>
 </head>
-<body class="font-sans bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+<body class="font-sans bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col">
 
   <<<html_nav>>>
 
   <!-- Main Content Section -->
   <main class="container mx-auto p-4 flex-grow">
-    <div class="w-full max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-xl border border-gray-200">
-      <h1 class="text-3xl font-bold text-gray-900 mb-6 text-center">Travel Expenses</h1>
+    <div class="w-full max-w-4xl mx-auto bg-white dark:bg-gray-900 p-8 rounded-lg shadow-xl dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6 text-center">Travel Expenses</h1>
 
       <form id="travelExpenseForm" method="post" action="/travel-submit" enctype="multipart/form-data">
         <!-- About the Trip Section -->
-        <section class="p-6 border border-gray-200 rounded-lg bg-gray-50 mb-6">
-          <h2 class="text-xl font-semibold text-gray-800 pb-3 mb-4 border-b-2 border-gray-200">About the Trip</h2>
+        <section class="p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 mb-6">
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 pb-3 mb-4 border-b-2 border-gray-200 dark:border-gray-700">About the Trip</h2>
 
           <div class="mb-4">
-            <label for="travelerName" class="block text-sm font-medium text-gray-700 mb-1">Travellee:</label>
+            <label for="travelerName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Travellee:</label>
             <input type="text" id="travelerName" name="travelerName" required
-                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100" />
           </div>
 
           <div class="mb-4">
-            <label for="travelDestination" class="block text-sm font-medium text-gray-700 mb-1">Destination:</label>
+            <label for="travelDestination" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Destination:</label>
             <input type="text" id="travelDestination" name="travelDestination" placeholder="e.g., Berlin, Germany" required
-                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100" />
           </div>
 
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Travel Period:</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Travel Period:</label>
             <div class="flex flex-col sm:flex-row sm:items-center gap-4">
               <div class="flex items-center gap-2 w-full sm:w-auto">
-                <span class="text-gray-700 font-medium">from:</span>
+                <span class="text-gray-700 dark:text-gray-300 font-medium">from:</span>
                 <input type="datetime-local" id="travelPeriodFrom" name="travelPeriodFrom" required
-                       class="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+                       class="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100" />
               </div>
               <div class="flex items-center gap-2 w-full sm:w-auto">
-                <span class="text-gray-700 font-medium">to:</span>
+                <span class="text-gray-700 dark:text-gray-300 font-medium">to:</span>
                 <input type="datetime-local" id="travelPeriodTo" name="travelPeriodTo" required
-                       class="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+                       class="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100" />
               </div>
             </div>
           </div>
 
           <div class="mb-4">
-            <label for="travelPurpose" class="block text-sm font-medium text-gray-700 mb-1">Purpose of the trip:</label>
+            <label for="travelPurpose" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Purpose of the trip:</label>
             <textarea id="travelPurpose" name="travelPurpose" rows="4" placeholder="Brief description of the travel purpose, e.g., client meetings, trade fair visit..." required
-                      class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm resize-y min-h-[80px] text-gray-800"></textarea>
+                      class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm resize-y min-h-[80px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"></textarea>
           </div>
           <div class="mb-4">
-            <label for="travelComments" class="block text-sm font-medium text-gray-700 mb-1">Comments:</label>
+            <label for="travelComments" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Comments:</label>
             <textarea id="travelComments" name="travelComments" rows="4" placeholder="..." required
-                      class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm resize-y min-h-[80px] text-gray-800"></textarea>
+                      class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm resize-y min-h-[80px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"></textarea>
           </div>
         </section>
 
         <!-- Transport Section -->
-        <section class="p-6 border border-gray-200 rounded-lg bg-gray-50 mb-6">
-          <h2 class="text-xl font-semibold text-gray-800 pb-3 mb-4 border-b-2 border-gray-200">Transport</h2>
+        <section class="p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 mb-6">
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 pb-3 mb-4 border-b-2 border-gray-200 dark:border-gray-700">Transport</h2>
 
           <div class="mb-6">
-            <h3 class="text-lg font-semibold text-gray-700 mb-3">Outbound Journey</h3>
+            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Outbound Journey</h3>
             <div class="overflow-x-auto">
-              <table id="outboundTravelTable" class="travel-table min-w-full divide-y divide-gray-200 table-fixed">
-                <thead class="bg-gray-100">
+              <table id="outboundTravelTable" class="travel-table min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
+                <thead class="bg-gray-100 dark:bg-gray-800">
                   <tr>
-                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/3">Transport Method</th>
-                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/2">Description</th>
-                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/12"></th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider w-1/3">Transport Method</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider w-1/2">Description</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider w-1/12"></th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                   <!-- Dynamic rows will be added here by JavaScript -->
                 </tbody>
               </table>
             </div>
             <div class="flex justify-start mt-4">
-              <button type="button" class="add-row-button bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200" data-table="outboundTravelTable">
+              <button type="button" class="add-row-button bg-green-600 dark:bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 text-white dark:text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200" data-table="outboundTravelTable">
                 + Add Transport
               </button>
             </div>
           </div>
 
           <div>
-            <h3 class="text-lg font-semibold text-gray-700 mb-3">Return Journey</h3>
+            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Return Journey</h3>
             <div class="overflow-x-auto">
-              <table id="returnTravelTable" class="travel-table min-w-full divide-y divide-gray-200 table-fixed">
-                <thead class="bg-gray-100">
+              <table id="returnTravelTable" class="travel-table min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
+                <thead class="bg-gray-100 dark:bg-gray-800">
                   <tr>
-                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/3">Transport Method</th>
-                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/2">Description</th>
-                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider w-1/12"></th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider w-1/3">Transport Method</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider w-1/2">Description</th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wider w-1/12"></th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                   <!-- Dynamic rows will be added here by JavaScript -->
                 </tbody>
               </table>
             </div>
             <div class="flex justify-start mt-4">
-              <button type="button" class="add-row-button bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200" data-table="returnTravelTable">
+              <button type="button" class="add-row-button bg-green-600 dark:bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 text-white dark:text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200" data-table="returnTravelTable">
                 + Add Transport
               </button>
             </div>
@@ -110,19 +110,19 @@
         </section>
 
         <!-- Upload Receipts Section -->
-        <section class="p-6 border border-gray-200 rounded-lg bg-gray-50 mb-6">
-          <h2 class="text-xl font-semibold text-gray-800 pb-3 mb-4 border-b-2 border-gray-200">Upload Receipts</h2>
+        <section class="p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 mb-6">
+          <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 pb-3 mb-4 border-b-2 border-gray-200 dark:border-gray-700">Upload Receipts</h2>
           <div id="receiptsList" class="space-y-4">
             <!-- Dynamic receipt items will be added here by JavaScript -->
           </div>
           <div class="flex justify-start mt-4">
-            <button type="button" id="addReceiptButton" class="add-row-button bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200">
+            <button type="button" id="addReceiptButton" class="add-row-button bg-green-600 dark:bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 text-white dark:text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200">
               + Add Receipt
             </button>
           </div>
         </section>
 
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-md shadow-md cursor-pointer transition-colors duration-200 mt-8">
+        <button type="submit" class="w-full bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white dark:text-white font-semibold py-3 px-4 rounded-md shadow-md cursor-pointer transition-colors duration-200 mt-8">
           Generate Documents
         </button>
       </form>
@@ -140,16 +140,16 @@
 
         // Apply Tailwind classes directly to the dynamically created elements
         newRow.innerHTML = `
-          <td class="px-4 py-2 text-sm text-gray-800">
+          <td class="px-4 py-2 text-sm text-gray-800 dark:text-gray-100">
             <input type="text" name="${tableId}Type_${rowCount}" placeholder="e.g., Taxi, Plane, Train" required
-                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100" />
           </td>
-          <td class="px-4 py-2 text-sm text-gray-800">
+          <td class="px-4 py-2 text-sm text-gray-800 dark:text-gray-100">
             <input type="text" name="${tableId}Description_${rowCount}" placeholder="Description of the journey" required
-                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
+                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100" />
           </td>
-          <td class="px-4 py-2 text-sm text-gray-800">
-            <button type="button" class="remove-row-button bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-2 rounded-md shadow-sm cursor-pointer transition-colors duration-200 text-xs">
+          <td class="px-4 py-2 text-sm text-gray-800 dark:text-gray-100">
+            <button type="button" class="remove-row-button bg-red-600 dark:bg-red-600 hover:bg-red-700 dark:hover:bg-red-500 text-white dark:text-white font-semibold py-1 px-2 rounded-md shadow-sm cursor-pointer transition-colors duration-200 text-xs">
               -
             </button>
           </td>
@@ -193,18 +193,18 @@
         const receiptsList = document.getElementById('receiptsList');
         const newReceiptItem = document.createElement('div');
         // Apply Tailwind classes to the dynamically created elements
-        newReceiptItem.classList.add('receipt-item', 'flex', 'flex-wrap', 'items-center', 'gap-4', 'p-3', 'border', 'border-gray-200', 'rounded-md', 'bg-white');
+        newReceiptItem.classList.add('receipt-item', 'flex', 'flex-wrap', 'items-center', 'gap-4', 'p-3', 'border', 'border-gray-200', 'dark:border-gray-700', 'rounded-md', 'bg-white', 'dark:bg-gray-900');
 
         // IMPORTANT: Adjust name attributes and add text field
         newReceiptItem.innerHTML = `
           <input type="file" name="receiptFile_${receiptCounter}" accept="image/*,.pdf" required
-                 class="flex-grow min-w-[150px] text-gray-700 text-sm file:mr-4 file:py-2 file:px-4
+                 class="flex-grow min-w-[150px] text-gray-700 dark:text-gray-300 text-sm file:mr-4 file:py-2 file:px-4
                         file:rounded-md file:border-0 file:text-sm file:font-semibold
                         file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100
-                        border border-gray-300 rounded-md shadow-sm cursor-pointer" />
+                        border border-gray-300 dark:border-gray-600 rounded-md shadow-sm cursor-pointer" />
           <input type="text" name="receiptName_${receiptCounter}" placeholder="File name (e.g., Outbound_Taxi)" required
-                 class="flex-grow-[2] min-w-[180px] p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm text-gray-800" />
-          <button type="button" class="remove-receipt-button bg-red-600 hover:bg-red-700 text-white font-semibold py-1 px-2 rounded-md shadow-sm cursor-pointer transition-colors duration-200 text-xs flex-shrink-0">
+                 class="flex-grow-[2] min-w-[180px] p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100" />
+          <button type="button" class="remove-receipt-button bg-red-600 dark:bg-red-600 hover:bg-red-700 dark:hover:bg-red-500 text-white dark:text-white font-semibold py-1 px-2 rounded-md shadow-sm cursor-pointer transition-colors duration-200 text-xs flex-shrink-0">
             -
           </button>
         `;

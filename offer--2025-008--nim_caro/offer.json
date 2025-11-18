@@ -1,0 +1,29 @@
+{
+    "id": "2025-008",
+    "accepted_date": "2025-11-10",
+    "declined_date": null,
+    "client_shortname": "nim_caro",
+    "date": "2025-11-06",
+    "project_name": "Synthetic Respondents: Lokale LLMs",
+    "applicable_rates": "nim",
+    "valid_thru": null,
+    "coverletter": {
+        "greeting": "Sehr geehrte Frau Kaiser!",
+        "show_rates": false
+    },
+    "devtime": null,
+    "footer": {
+        "show_allnetto": true,
+        "show_agb": true
+    },
+    "vat": {
+        "percent": 0,
+        "show_exempt_notice": true
+    },
+    "remarks": null,
+    "draft": true,
+    "created": "2025-11-06 10:24:14",
+    "updated": "2025-11-11 10:12:59",
+    "revision": 0,
+    "total": 5000
+}
