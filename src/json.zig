@@ -103,7 +103,7 @@ pub const Offer = struct {
     created: []const u8,
     updated: []const u8,
     revision: usize,
-    total: ?usize = null,
+    total: ?i64 = null,
 };
 
 pub const Invoice = struct {
@@ -139,5 +139,5 @@ pub const Invoice = struct {
     created: []const u8,
     updated: []const u8,
     revision: usize,
-    total: ?usize = null,
+    total: ?i64 = null,
 };

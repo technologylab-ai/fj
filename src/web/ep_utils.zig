@@ -71,10 +71,10 @@ pub const Stats = struct {
     num_invoices_total: isize = 0,
     num_offers_open: isize = 0,
     num_offers_total: isize = 0,
-    invoiced_total_amount: usize = 0,
-    invoices_open_amount: usize = 0,
-    offers_pending_amount: usize = 0,
-    offers_accepted_amount: usize = 0,
+    invoiced_total_amount: i64 = 0,
+    invoices_open_amount: i64 = 0,
+    offers_pending_amount: i64 = 0,
+    offers_accepted_amount: i64 = 0,
 };
 
 pub fn show_404(arena: Allocator, context: *Context, r: zap.Request) !void {

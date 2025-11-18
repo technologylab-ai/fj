@@ -1322,6 +1322,7 @@ pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentComma
             \\# Items: description, amount, rate_name, optional_price_per_unit | null, optional remarks | null
             \\#
             \\# Note: use \comma to add a comma in the description
+            \\# Note: Both amount and price_per_unit can be negative for storno/cancellation lines
             \\#
             \\# Example:
             \\# --------
@@ -1330,6 +1331,8 @@ pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentComma
             \\#    Backend, 2.5, week    , null, null
             \\#    Frontend, 1  , pauschal, 1000, (blah-blubb)
             \\#    this\comma\space that, 1  , pauschal, 1000, (blah-blubb)
+            \\#    Storno by price, 1, pauschal, -1000, (cancellation)
+            \\#    Storno by amount, -2.5, week, null, (reversed weeks)
             \\
             \\
         ) catch |err| {
@@ -2006,7 +2009,7 @@ fn documentDir(self: *const Fj, DocumentType: type, doc_dir_: ?[]const u8, dir_o
 }
 
 /// returns the grand total
-fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: anytype) !usize {
+fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: anytype) !i64 {
     var bfile = try subdir_spec.dir.openFile("billables.csv", .{});
     defer bfile.close();
 
@@ -2020,9 +2023,9 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
     var it = std.mem.splitScalar(u8, lines, '\n');
     var line_count: usize = 0;
     var item_count: usize = 0;
-    var grand_total: usize = 0;
+    var grand_total: i64 = 0;
 
-    var group_sum_map: std.StringArrayHashMapUnmanaged(usize) = .empty;
+    var group_sum_map: std.StringArrayHashMapUnmanaged(i64) = .empty;
     var current_group: []const u8 = "unnamed";
 
     while (it.next()) |line_untrimmed| {
@@ -2063,17 +2066,17 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
 
             item_count += 1;
 
-            const price_per_unit = blk: {
+            const price_per_unit: i64 = blk: {
                 if (startsWithIC(price_per_unit_str, "null")) {
                     if (startsWithIC(rate_name, "hour") or
                         startsWithIC(rate_name, "stunde"))
-                        break :blk rates.hourly;
+                        break :blk @intCast(rates.hourly);
                     if (startsWithIC(rate_name, "day") or
                         startsWithIC(rate_name, "tag"))
-                        break :blk rates.daily;
+                        break :blk @intCast(rates.daily);
                     if (startsWithIC(rate_name, "week") or
                         startsWithIC(rate_name, "woche"))
-                        break :blk rates.weekly;
+                        break :blk @intCast(rates.weekly);
 
                     try fatal(
                         "{s}/{d}: Column 3 (rate name): price_per_unit is null yet `{s}` is neither hourly, daily, nor weekly ",
@@ -2081,7 +2084,7 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
                         error.InvalidFileFormat,
                     );
                 } else {
-                    break :blk std.fmt.parseUnsigned(usize, price_per_unit_str, 10) catch |err| {
+                    break :blk std.fmt.parseInt(i64, price_per_unit_str, 10) catch |err| {
                         try fatal(
                             "{s}/{d}: Column 3 (price_per_unit): `{s}` cannot be parsed into a number: {}",
                             .{ friendly_filename, line_count, price_per_unit_str, err },
@@ -2092,7 +2095,7 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
             };
 
             // update sums
-            const line_price: usize = @intFromFloat(@as(f32, @floatFromInt(price_per_unit)) * amount);
+            const line_price: i64 = @intFromFloat(@as(f32, @floatFromInt(price_per_unit)) * amount);
             grand_total += line_price;
             if (group_sum_map.getPtr(current_group)) |group_sum| {
                 group_sum.* += line_price;
@@ -2167,7 +2170,7 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
 
     // invoices need the VAT treatment
     const DocumentType = @TypeOf(obj);
-    const vat_amount: usize = @divTrunc(grand_total * obj.vat.percent, 100);
+    const vat_amount: i64 = @divTrunc(grand_total * @as(i64, @intCast(obj.vat.percent)), 100);
     grand_total += vat_amount;
     try totals_tex_writer.print(
         "\\def\\FjVatAmount{{{s},00}}\n" ++
@@ -2296,7 +2299,7 @@ pub fn cmdCompileDocument(self: *const Fj, args: anytype, work_dir: ?[]const u8)
         };
     }
 
-    var grand_total: usize = 0;
+    var grand_total: i64 = 0;
     // generate billables if ! letter
     if (DocumentType != fj_json.Letter) {
         grand_total = self.generateBillablesTex(subdir_spec, obj) catch |err| {
