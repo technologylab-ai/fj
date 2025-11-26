@@ -8,5 +8,9 @@ zig-out/
 .zig-cache/
 *--2025-XXXX--*/
 offer--2025-XXXX--testclient/
+# Ignore all client document directories
+offer--*/
+invoice--*/
+letter--*/
 ,*/
 doc/plan*
