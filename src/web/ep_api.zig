@@ -23,6 +23,7 @@ const Endpoint = @This();
 
 // API route prefixes
 const api_v1 = "/api/v1";
+const health_route = api_v1 ++ "/health";
 const clients_route = api_v1 ++ "/clients";
 const rates_route = api_v1 ++ "/rates";
 const invoices_route = api_v1 ++ "/invoices";
@@ -57,13 +58,18 @@ fn checkAuth(context: *Context, r: zap.Request) bool {
 pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
     _ = ep;
 
-    // Check bearer authentication
+    const path = r.path orelse return sendError(arena, r, .bad_request, "No path");
+    log.info("API GET {s}", .{path});
+
+    // Health check - no auth required
+    if (std.mem.eql(u8, path, health_route)) {
+        return handleHealth(arena, r);
+    }
+
+    // Check bearer authentication for all other endpoints
     if (!checkAuth(context, r)) {
         return sendError(arena, r, .unauthorized, "Invalid or missing API key");
     }
-
-    const path = r.path orelse return sendError(arena, r, .bad_request, "No path");
-    log.info("API GET {s}", .{path});
 
     // Route matching
     if (std.mem.eql(u8, path, clients_route)) {
@@ -430,4 +436,12 @@ fn handleSummary(arena: Allocator, context: *Context, r: zap.Request) !void {
     };
 
     return sendJson(arena, r, summary);
+}
+
+// ============================================================================
+// Health endpoint (no auth required)
+// ============================================================================
+
+fn handleHealth(arena: Allocator, r: zap.Request) !void {
+    return sendJson(arena, r, .{ .status = "ok" });
 }

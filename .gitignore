@@ -3,7 +3,6 @@
 **/*.out
 **/*.pdf
 **/*.DS_Store
-docs/
 zig-out/
 .zig-cache/
 *--2025-XXXX--*/
@@ -13,5 +12,6 @@ offer--*/
 invoice--*/
 letter--*/
 ,*/
-docs/plan*
-doc/plan*
+#docs/plan*
+#doc/plan*
+#docs/
