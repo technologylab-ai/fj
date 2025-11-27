@@ -5,6 +5,9 @@ const zap = @import("zap");
 const auth_types = @import("auth_types.zig");
 const Authenticator = auth_types.Authenticator;
 const AuthLookup = auth_types.AuthLookup;
+const api_auth = @import("api_auth.zig");
+pub const HashedApiKeySet = api_auth.HashedApiKeySet;
+pub const BearerAuthenticator = api_auth.BearerAuthenticator;
 
 const log = std.log.scoped(.context);
 const fsutil = @import("../fsutil.zig");
@@ -28,6 +31,10 @@ logo_imgdata: []const u8,
 
 dashboard_path: []const u8,
 init_path: []const u8,
+
+// API Key authentication (optional - only initialized if API endpoints are enabled)
+api_key_set: ?*HashedApiKeySet = null,
+bearer_authenticator: ?*BearerAuthenticator = null,
 
 // we redirect to dashboard or init unless it's favico stuff
 pub fn unhandledRequest(self: *@This(), _: std.mem.Allocator, r: zap.Request) anyerror!void {

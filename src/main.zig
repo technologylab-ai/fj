@@ -69,6 +69,10 @@ pub fn main() !void {
             try fj.setup(args.fj_home);
             _ = try fj.cmdInvoice(args);
         },
+        .keys => |args| {
+            try fj.setup(args.fj_home);
+            try fj.cmdKeys(args);
+        },
         .serve => |args| {
             Fatal.mode = .server;
             try fj.setup(args.fj_home);

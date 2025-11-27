@@ -218,13 +218,14 @@ pub const LetterCommand = struct {
 pub const OfferCommand = struct {
     fj_home: ?[]const u8 = null,
     project: ?[]const u8 = null,
+    omsproject: ?[]const u8 = null,
     rates: ?[]const u8 = null,
     to: ?[]const u8 = null,
 
     force: bool = false,
 
     positional: struct {
-        subcommand: enum { new, checkout, commit, list, show, open, compile },
+        subcommand: enum { new, checkout, commit, list, show, open, compile, accept, reject },
         arg: ?[]const u8 = null,
     },
 
@@ -237,7 +238,7 @@ pub const OfferCommand = struct {
         \\
         \\ Usage:
         \\
-        \\ fj offer [new|commit|checkout|list|show|open|compile] [options]
+        \\ fj offer [new|commit|checkout|list|show|open|compile|accept|reject] [options]
         \\
         \\ Available Subcommands:
         \\ ======================
@@ -252,6 +253,8 @@ pub const OfferCommand = struct {
         \\ - fj offer show     <ID>           -> show metadata
         \\ - fj offer compile [<ID>]          -> compile PDF in current dir or from ID
         \\ - fj offer open     <ID>           -> open PDF
+        \\ - fj offer accept   <ID>           -> mark offer as accepted
+        \\ - fj offer reject   <ID>           -> mark offer as rejected/declined
         \\
         \\ Options:
         \\
@@ -266,13 +269,14 @@ pub const OfferCommand = struct {
 pub const InvoiceCommand = struct {
     fj_home: ?[]const u8 = null,
     project: ?[]const u8 = null,
+    omsproject: ?[]const u8 = null,
     rates: ?[]const u8 = null,
     to: ?[]const u8 = null,
 
     force: bool = false,
 
     positional: struct {
-        subcommand: enum { new, show, checkout, commit, list, open, compile },
+        subcommand: enum { new, show, checkout, commit, list, open, compile, paid },
         arg: ?[]const u8 = null,
     },
 
@@ -285,7 +289,7 @@ pub const InvoiceCommand = struct {
         \\
         \\ Usage:
         \\
-        \\ fj invoice [new|show|checkout|commit|list] [options]
+        \\ fj invoice [new|show|checkout|commit|list|paid] [options]
         \\
         \\ Available Subcommands:
         \\ ======================
@@ -301,6 +305,45 @@ pub const InvoiceCommand = struct {
         \\ - fj invoice show     <ID>          -> show metadata
         \\ - fj invoice open     <ID>          -> open PDF
         \\ - fj invoice compile [<ID>]         -> compile PDF in current dir or from ID
+        \\ - fj invoice paid    <ID>           -> mark invoice as paid
+        \\
+        \\ Options:
+        \\
+        \\ -h, --help               Displays this help message then exits.
+        \\
+        \\ -C, --fj_home            The FJ_HOME dir to use.
+        \\                          Default: $FJ_HOME orelse ~/.fj
+        \\
+    ;
+};
+
+pub const KeysCommand = struct {
+    fj_home: ?[]const u8 = null,
+    expires: ?[]const u8 = null,
+
+    positional: struct {
+        subcommand: enum { create, list, delete },
+        arg: ?[]const u8 = null,
+    },
+
+    pub const aliases = .{
+        .fj_home = "C",
+    };
+
+    pub const help =
+        \\ Command: keys
+        \\
+        \\ Usage:
+        \\
+        \\ fj keys [create|list|delete] [options]
+        \\
+        \\ Available Subcommands:
+        \\ ======================
+        \\
+        \\ - fj keys create <label> [--expires=YYYY-MM-DD]
+        \\                          -> Creates new API key, displays once
+        \\ - fj keys list           -> Lists all API keys (tokens masked)
+        \\ - fj keys delete <label> -> Soft-deletes an API key
         \\
         \\ Options:
         \\
@@ -377,6 +420,7 @@ pub const Cli = union(enum) {
     letter: LetterCommand,
     offer: OfferCommand,
     invoice: InvoiceCommand,
+    keys: KeysCommand,
     serve: ServeCommand,
     version: VersionCommand,
 
@@ -391,6 +435,7 @@ pub const Cli = union(enum) {
         \\  letter          Manager letters
         \\  offer           Manager offers
         \\  invoice         Manage invoices
+        \\  keys            Manage API keys
         \\  serve           Start the HTTP server for a web UI
         \\
         \\ General Options:

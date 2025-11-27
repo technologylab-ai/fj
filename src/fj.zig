@@ -529,6 +529,26 @@ pub fn isoTime(self: *const Fj) ![]const u8 {
     return self.arena.dupe(u8, ret) catch try fatal("OOM returning DATE", .{}, error.OutOfMemory);
 }
 
+pub fn todayString(self: *const Fj) ![]const u8 {
+    var date_buf: ["2025-12-31".len]u8 = undefined;
+
+    var now = zeit.instant(.{}) catch |err| {
+        try fatal("Unable to get current time: {}", .{err}, err);
+    };
+    const timezone = zeit.local(self.arena, null) catch |err| {
+        try fatal("Unable to get local timezone: {}", .{err}, err);
+    };
+    now = now.in(&timezone);
+
+    const time = now.time();
+    const ret = std.fmt.bufPrint(&date_buf, "{d}-{d:02}-{d:02}", .{
+        time.year,
+        @intFromEnum(time.month),
+        time.day,
+    }) catch unreachable;
+    return self.arena.dupe(u8, ret) catch try fatal("OOM returning DATE", .{}, error.OutOfMemory);
+}
+
 pub fn year(self: *const Fj) !i32 {
     var now = zeit.instant(.{}) catch |err| {
         try fatal("Unable to get current time: {}", .{err}, err);
@@ -898,11 +918,91 @@ pub fn cmdLetter(self: *Fj, args: Cli.LetterCommand) !HandleDocumentCommandResul
 }
 
 pub fn cmdOffer(self: *Fj, args: Cli.OfferCommand) !HandleDocumentCommandResult {
-    return self.handleDocumentCommand(args);
+    _ = try self.fjHomeTest(args.fj_home);
+    switch (args.positional.subcommand) {
+        .new => return self.cmdCreateNewDocument(args),
+        .checkout => return self.cmdCheckoutDocument(args),
+        .compile => return self.cmdCompileDocument(args, null),
+        .commit => return self.cmdCommitDocument(args, null, false),
+        .show => return self.cmdShowDocument(args),
+        .open => return self.cmdOpenDocument(args),
+        .list => return self.cmdListDocuments(args),
+        .accept => return self.cmdMarkOfferAccepted(args),
+        .reject => return self.cmdMarkOfferRejected(args),
+    }
 }
 
 pub fn cmdInvoice(self: *Fj, args: Cli.InvoiceCommand) !HandleDocumentCommandResult {
-    return self.handleDocumentCommand(args);
+    _ = try self.fjHomeTest(args.fj_home);
+    switch (args.positional.subcommand) {
+        .new => return self.cmdCreateNewDocument(args),
+        .checkout => return self.cmdCheckoutDocument(args),
+        .compile => return self.cmdCompileDocument(args, null),
+        .commit => return self.cmdCommitDocument(args, null, false),
+        .show => return self.cmdShowDocument(args),
+        .open => return self.cmdOpenDocument(args),
+        .list => return self.cmdListDocuments(args),
+        .paid => return self.cmdMarkInvoicePaid(args),
+    }
+}
+
+pub fn cmdKeys(self: *Fj, args: Cli.KeysCommand) !void {
+    const keys_mod = @import("keys.zig");
+    const fj_home = self.fj_home orelse return error.FjHomeNotSet;
+
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
+
+    switch (args.positional.subcommand) {
+        .create => {
+            const label = args.positional.arg orelse {
+                try fatal("Label required for 'keys create'\n", .{}, error.MissingArgument);
+            };
+            const token = keys_mod.createKey(self.arena, fj_home, label, args.expires) catch |err| {
+                switch (err) {
+                    error.LabelAlreadyExists => try fatal("Key with label '{s}' already exists\n", .{label}, err),
+                    else => return err,
+                }
+            };
+            stdout.print("Created API key: {s}\n\n", .{token}) catch unreachable;
+            stdout.print("Save this key now - it cannot be retrieved later!\n", .{}) catch unreachable;
+            stdout.flush() catch unreachable;
+        },
+        .list => {
+            const store = try keys_mod.loadKeys(self.arena, fj_home);
+            stdout.print("{s:<20} {s:<20} {s:<12} {s:<20}\n", .{
+                "LABEL", "CREATED", "EXPIRES", "LAST USED",
+            }) catch unreachable;
+            stdout.print("{s}\n", .{"-" ** 72}) catch unreachable;
+            for (store.keys) |key| {
+                if (key.deleted) continue;
+                const created = if (key.created_at.len >= 10) key.created_at[0..10] else key.created_at;
+                const expires = if (key.expires_at) |e| (if (e.len >= 10) e[0..10] else e) else "never";
+                const last_used = if (key.last_used_at) |u| (if (u.len >= 10) u[0..10] else u) else "never";
+                stdout.print("{s:<20} {s:<20} {s:<12} {s:<20}\n", .{
+                    key.label,
+                    created,
+                    expires,
+                    last_used,
+                }) catch unreachable;
+            }
+            stdout.flush() catch unreachable;
+        },
+        .delete => {
+            const label = args.positional.arg orelse {
+                try fatal("Label required for 'keys delete'\n", .{}, error.MissingArgument);
+            };
+            keys_mod.deleteKey(self.arena, fj_home, label) catch |err| {
+                switch (err) {
+                    error.KeyNotFound => try fatal("Key '{s}' not found\n", .{label}, err),
+                    else => return err,
+                }
+            };
+            stdout.print("Deleted API key '{s}'\n", .{label}) catch unreachable;
+            stdout.flush() catch unreachable;
+        },
+    }
 }
 
 pub const DocumentFileContents = struct {
@@ -1489,6 +1589,147 @@ pub fn findDocumentById(self: *const Fj, DocumentType: type, id: []const u8) ![]
     } else {
         return error.NotFound;
     }
+}
+
+/// Write a document's JSON file (for updating paid_date, accepted_date, etc.)
+/// DocumentType must be Invoice, Offer, or Letter
+pub fn writeDocumentJson(self: *Fj, DocumentType: type, id: []const u8, obj: DocumentType) !void {
+    const document_base = try self.documentBaseDir(DocumentType);
+    const human_doctype = documentTypeHumanName(DocumentType);
+
+    const document_dir_name = try self.findDocumentById(DocumentType, id);
+
+    const json_filename = try std.fmt.allocPrint(self.arena, "{s}.json", .{human_doctype});
+    const json_path = try path.join(
+        self.arena,
+        &[_][]const u8{ document_base, document_dir_name, json_filename },
+    );
+
+    const f = cwd().createFile(json_path, .{}) catch |err| {
+        try fatal("Error creating file {s}: {}", .{ json_path, err }, err);
+    };
+    defer f.close();
+
+    var io_buffer: [1024]u8 = undefined;
+    var writer = f.writer(&io_buffer);
+
+    std.json.Stringify.value(obj, .{ .whitespace = .indent_4 }, &writer.interface) catch |err| {
+        try fatal("Error writing to file {s}: {}", .{ json_path, err }, err);
+    };
+    writer.interface.flush() catch |err| {
+        try fatal("Error flushing file {s}: {}", .{ json_path, err }, err);
+    };
+}
+
+/// Mark an invoice as paid (CLI: fj invoice paid <ID>)
+pub fn cmdMarkInvoicePaid(self: *Fj, args: Cli.InvoiceCommand) !HandleDocumentCommandResult {
+    const id = args.positional.arg orelse {
+        try fatal("Please provide an invoice ID!", .{}, error.Cli);
+    };
+
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
+    defer stdout.flush() catch {};
+
+    // Load the invoice
+    const show_cli: Cli.InvoiceCommand = .{
+        .positional = .{ .subcommand = .show, .arg = id },
+    };
+    const files = try self.cmdShowDocument(show_cli);
+    var obj = try std.json.parseFromSliceLeaky(fj_json.Invoice, self.arena, files.show.json, .{});
+
+    if (obj.paid_date != null) {
+        try fatal("Invoice {s} is already marked as paid (date: {s})", .{ id, obj.paid_date.? }, error.AlreadyPaid);
+    }
+
+    // Set paid date to today
+    const today_date = try self.todayString();
+    obj.paid_date = today_date;
+    obj.updated = try self.isoTime();
+
+    // Write back
+    try self.writeDocumentJson(fj_json.Invoice, id, obj);
+
+    try stdout.print("Invoice {s} marked as paid on {s}\n", .{ id, today_date });
+
+    return .{ .show = files.show };
+}
+
+/// Mark an offer as accepted (CLI: fj offer accept <ID>)
+pub fn cmdMarkOfferAccepted(self: *Fj, args: Cli.OfferCommand) !HandleDocumentCommandResult {
+    const id = args.positional.arg orelse {
+        try fatal("Please provide an offer ID!", .{}, error.Cli);
+    };
+
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
+    defer stdout.flush() catch {};
+
+    // Load the offer
+    const show_cli: Cli.OfferCommand = .{
+        .positional = .{ .subcommand = .show, .arg = id },
+    };
+    const files = try self.cmdShowDocument(show_cli);
+    var obj = try std.json.parseFromSliceLeaky(fj_json.Offer, self.arena, files.show.json, .{});
+
+    if (obj.accepted_date != null) {
+        try fatal("Offer {s} is already marked as accepted (date: {s})", .{ id, obj.accepted_date.? }, error.AlreadyAccepted);
+    }
+    if (obj.declined_date != null) {
+        try fatal("Offer {s} is already marked as declined (date: {s})", .{ id, obj.declined_date.? }, error.AlreadyDeclined);
+    }
+
+    // Set accepted date to today
+    const today_date = try self.todayString();
+    obj.accepted_date = today_date;
+    obj.updated = try self.isoTime();
+
+    // Write back
+    try self.writeDocumentJson(fj_json.Offer, id, obj);
+
+    try stdout.print("Offer {s} marked as accepted on {s}\n", .{ id, today_date });
+
+    return .{ .show = files.show };
+}
+
+/// Mark an offer as rejected/declined (CLI: fj offer reject <ID>)
+pub fn cmdMarkOfferRejected(self: *Fj, args: Cli.OfferCommand) !HandleDocumentCommandResult {
+    const id = args.positional.arg orelse {
+        try fatal("Please provide an offer ID!", .{}, error.Cli);
+    };
+
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
+    defer stdout.flush() catch {};
+
+    // Load the offer
+    const show_cli: Cli.OfferCommand = .{
+        .positional = .{ .subcommand = .show, .arg = id },
+    };
+    const files = try self.cmdShowDocument(show_cli);
+    var obj = try std.json.parseFromSliceLeaky(fj_json.Offer, self.arena, files.show.json, .{});
+
+    if (obj.accepted_date != null) {
+        try fatal("Offer {s} is already marked as accepted (date: {s})", .{ id, obj.accepted_date.? }, error.AlreadyAccepted);
+    }
+    if (obj.declined_date != null) {
+        try fatal("Offer {s} is already marked as declined (date: {s})", .{ id, obj.declined_date.? }, error.AlreadyDeclined);
+    }
+
+    // Set declined date to today
+    const today_date = try self.todayString();
+    obj.declined_date = today_date;
+    obj.updated = try self.isoTime();
+
+    // Write back
+    try self.writeDocumentJson(fj_json.Offer, id, obj);
+
+    try stdout.print("Offer {s} marked as rejected/declined on {s}\n", .{ id, today_date });
+
+    return .{ .show = files.show };
 }
 
 pub fn cmdCheckoutDocument(self: *Fj, args: anytype) !HandleDocumentCommandResult {

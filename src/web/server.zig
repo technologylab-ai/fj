@@ -27,9 +27,11 @@ const EpGit = @import("ep_git.zig");
 const EpResource = @import("ep_resource.zig");
 const EpDocument = @import("ep_document.zig");
 const EpTravel = @import("ep_travel.zig");
+const EpKeys = @import("ep_keys.zig");
 const EpInit = @import("ep_init.zig");
 const EpPreRoute = @import("ep_preroute.zig");
 const EpLogout = @import("ep_logout.zig");
+const EpApi = @import("ep_api.zig");
 
 const log = std.log.scoped(.server);
 
@@ -115,6 +117,24 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     try context.auth_lookup.put(allocator, opts.username, opts.password);
     defer context.auth_lookup.deinit(allocator);
 
+    //
+    // API Key Authentication (Bearer tokens)
+    //
+    var api_key_set = Context.HashedApiKeySet.init(allocator);
+    defer api_key_set.deinit();
+
+    // Load API keys from storage
+    api_key_set.loadFromFile(fj_home) catch |err| {
+        log.warn("Could not load API keys: {}", .{err});
+    };
+
+    // Create bearer authenticator for API routes
+    var bearer_auth = try Context.BearerAuthenticator.init(allocator, &api_key_set, null);
+
+    // Store in context for use by API endpoints
+    context.api_key_set = &api_key_set;
+    context.bearer_authenticator = &bearer_auth;
+
     // debug
     var it = context.auth_lookup.iterator();
     std.log.debug("Registered credentials:", .{});
@@ -187,7 +207,16 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     var auth_travel = AuthTravel.init(&ep_travel, &authenticator);
     var pre_auth_travel = PreRouter.Create(AuthTravel).init(&auth_travel);
 
+    var ep_keys: EpKeys = .{};
+    const AuthKeys = App.Endpoint.Authenticating(EpKeys, Authenticator);
+    var auth_keys = AuthKeys.init(&ep_keys, &authenticator);
+    var pre_auth_keys = PreRouter.Create(AuthKeys).init(&auth_keys);
+
     var ep_init: EpInit = .{ .path = init_route, .on_ok = ep_login.path };
+
+    // API endpoint (uses bearer auth, not session auth)
+    var ep_api: EpApi = .{};
+    var pre_ep_api = PreRouter.Create(EpApi).init(&ep_api);
 
     var ep_logout: EpLogout = .{ .redirect_to = ep_login.path };
     const AuthLogout = App.Endpoint.Authenticating(EpLogout, Authenticator);
@@ -203,8 +232,10 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     try App.register(&pre_auth_offer);
     try App.register(&pre_auth_letter);
     try App.register(&pre_auth_travel);
+    try App.register(&pre_auth_keys);
     try App.register(&ep_init);
     try App.register(&pre_auth_logout);
+    try App.register(&pre_ep_api);
 
     //
     // zap

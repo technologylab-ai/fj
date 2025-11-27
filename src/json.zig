@@ -79,6 +79,7 @@ pub const Offer = struct {
     client_shortname: []const u8,
     date: []const u8 = "HEUTE",
     project_name: []const u8 = "",
+    oms_project: ?[]const u8 = null,
     applicable_rates: []const u8 = "",
     valid_thru: ?[]const u8 = null,
     coverletter: struct {
@@ -115,6 +116,7 @@ pub const Invoice = struct {
     client_shortname: []const u8,
     date: []const u8 = "HEUTE",
     project_name: []const u8 = "",
+    oms_project: ?[]const u8 = null,
     year: i32,
     applicable_rates: []const u8 = "",
     leistungszeitraum: []const u8 = "",
@@ -140,4 +142,17 @@ pub const Invoice = struct {
     updated: []const u8,
     revision: usize,
     total: ?i64 = null,
+};
+
+pub const ApiKey = struct {
+    label: []const u8,
+    token_hash: []const u8,
+    created_at: []const u8,
+    expires_at: ?[]const u8 = null,
+    last_used_at: ?[]const u8 = null,
+    deleted: bool = false,
+};
+
+pub const ApiKeyStore = struct {
+    keys: []const ApiKey,
 };
