@@ -1252,7 +1252,7 @@ pub fn loadUnpaidInvoices(self: *Fj) ![]const fj_json.Invoice {
 }
 
 /// Mark an invoice as paid (used by reconciliation)
-fn markInvoicePaidById(self: *Fj, invoice_id: []const u8, paid_date: []const u8) !void {
+pub fn markInvoicePaidById(self: *Fj, invoice_id: []const u8, paid_date: []const u8) !void {
     // Find the invoice directory
     const document_dir_name = self.findDocumentById(fj_json.Invoice, invoice_id) catch return;
     const document_base = self.documentBaseDir(fj_json.Invoice) catch return;

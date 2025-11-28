@@ -28,6 +28,7 @@ const EpResource = @import("ep_resource.zig");
 const EpDocument = @import("ep_document.zig");
 const EpTravel = @import("ep_travel.zig");
 const EpKeys = @import("ep_keys.zig");
+const EpBank = @import("ep_bank.zig");
 const EpInit = @import("ep_init.zig");
 const EpPreRoute = @import("ep_preroute.zig");
 const EpLogout = @import("ep_logout.zig");
@@ -212,6 +213,11 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     var auth_keys = AuthKeys.init(&ep_keys, &authenticator);
     var pre_auth_keys = PreRouter.Create(AuthKeys).init(&auth_keys);
 
+    var ep_bank: EpBank = .{};
+    const AuthBank = App.Endpoint.Authenticating(EpBank, Authenticator);
+    var auth_bank = AuthBank.init(&ep_bank, &authenticator);
+    var pre_auth_bank = PreRouter.Create(AuthBank).init(&auth_bank);
+
     var ep_init: EpInit = .{ .path = init_route, .on_ok = ep_login.path };
 
     // API endpoint (uses bearer auth, not session auth)
@@ -233,6 +239,7 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     try App.register(&pre_auth_letter);
     try App.register(&pre_auth_travel);
     try App.register(&pre_auth_keys);
+    try App.register(&pre_auth_bank);
     try App.register(&ep_init);
     try App.register(&pre_auth_logout);
     try App.register(&pre_ep_api);

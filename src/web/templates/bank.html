@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <<<head_block>>>
+  <title>Banking - fj</title>
+</head>
+<body class="font-sans bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col">
+
+  <<<html_nav>>>
+
+  <main class="container mx-auto p-4 flex-grow">
+    <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Banking</h2>
+
+    {{#has_import_result}}
+    <div class="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 px-4 py-3 rounded-lg mb-6">
+      <strong class="font-bold">Import Successful!</strong>
+      <p class="mt-1">Imported {{imported}} new transaction(s){{#has_reconciled}}, reconciled {{reconciled}} invoice(s){{/has_reconciled}}.</p>
+      {{#matched_invoices}}
+      <ul class="mt-2 text-sm">
+        {{#items}}
+        <li>Invoice {{invoice_id}}: {{amount}}</li>
+        {{/items}}
+      </ul>
+      {{/matched_invoices}}
+    </div>
+    {{/has_import_result}}
+
+    {{#has_error}}
+    <div class="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-6">
+      <strong class="font-bold">Error:</strong> {{error_message}}
+    </div>
+    {{/has_error}}
+
+    <!-- Upload Form -->
+    <div class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 mb-8">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Import Bank Statement</h3>
+      <form action="/bank/upload" method="post" enctype="multipart/form-data" class="flex flex-col md:flex-row md:items-end gap-4">
+        <div class="flex-1">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CSV File (BAWAG format)</label>
+          <input type="file" name="csv_file" accept=".csv" required
+                 class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 file:mr-4 file:py-1 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900 file:text-blue-700 dark:file:text-blue-200 hover:file:bg-blue-100 dark:hover:file:bg-blue-800" />
+        </div>
+        <button type="submit"
+                class="w-full md:w-auto bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200">
+          Import
+        </button>
+      </form>
+    </div>
+
+    <!-- Search Filter -->
+    <div class="mb-6">
+      <form action="/bank" method="get" class="flex flex-col sm:flex-row gap-3">
+        <div class="flex-1">
+          <input type="text" name="q" value="{{search_query}}" placeholder="Search transactions..."
+                 class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500" />
+        </div>
+        <button type="submit"
+                class="w-full sm:w-auto bg-gray-600 dark:bg-gray-700 hover:bg-gray-700 dark:hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200">
+          Search
+        </button>
+        {{#has_search}}
+        <a href="/bank"
+           class="w-full sm:w-auto text-center bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-md shadow-sm transition-colors duration-200">
+          Clear
+        </a>
+        {{/has_search}}
+      </form>
+    </div>
+
+    <!-- Summary -->
+    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+      {{total_count}} transaction(s) total{{#has_pages}} &mdash; Page {{page}} of {{total_pages}}{{/has_pages}}
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-800">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reconciled</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+          {{^transactions}}
+          <tr>
+            <td colspan="4" class="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400 italic">
+              No transactions imported yet. Upload a CSV file above to get started.
+            </td>
+          </tr>
+          {{/transactions}}
+          {{#transactions}}
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{date}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 max-w-md truncate" title="{{description}}">{{description}}</td>
+            <td class="px-6 py-4 text-sm font-medium text-right whitespace-nowrap {{#is_positive}}text-green-600 dark:text-green-400{{/is_positive}}{{^is_positive}}text-red-600 dark:text-red-400{{/is_positive}}">{{amount_display}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+              {{#is_reconciled}}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                {{reconciled_invoice}}
+              </span>
+              {{/is_reconciled}}
+              {{^is_reconciled}}
+              <span class="text-gray-400 dark:text-gray-500">&mdash;</span>
+              {{/is_reconciled}}
+            </td>
+          </tr>
+          {{/transactions}}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {{#has_pages}}
+    <div class="mt-6 flex items-center justify-between">
+      <div>
+        {{#has_prev}}
+        <a href="{{prev_page}}" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+          &larr; Previous
+        </a>
+        {{/has_prev}}
+        {{^has_prev}}
+        <span class="inline-flex items-center px-4 py-2 border border-gray-200 dark:border-gray-700 text-sm font-medium rounded-md text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 cursor-not-allowed">
+          &larr; Previous
+        </span>
+        {{/has_prev}}
+      </div>
+      <span class="text-sm text-gray-700 dark:text-gray-300">
+        Page {{page}} of {{total_pages}}
+      </span>
+      <div>
+        {{#has_next}}
+        <a href="{{next_page}}" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+          Next &rarr;
+        </a>
+        {{/has_next}}
+        {{^has_next}}
+        <span class="inline-flex items-center px-4 py-2 border border-gray-200 dark:border-gray-700 text-sm font-medium rounded-md text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 cursor-not-allowed">
+          Next &rarr;
+        </span>
+        {{/has_next}}
+      </div>
+    </div>
+    {{/has_pages}}
+
+  </main>
+</body>
+</html>

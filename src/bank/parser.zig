@@ -54,7 +54,14 @@ pub fn detectParser(filename: []const u8, content: []const u8) ?ParserType {
 }
 
 /// Convert ISO-8859-1 (Latin-1) bytes to UTF-8
+/// If the input is already valid UTF-8, returns it unchanged to avoid double-encoding
 pub fn latin1ToUtf8(arena: Allocator, input: []const u8) ![]const u8 {
+    // First check if input is already valid UTF-8
+    if (isValidUtf8(input)) {
+        return arena.dupe(u8, input);
+    }
+
+    // Convert from ISO-8859-1 to UTF-8
     var result = std.ArrayListUnmanaged(u8).empty;
     for (input) |byte| {
         if (byte < 128) {
@@ -66,6 +73,42 @@ pub fn latin1ToUtf8(arena: Allocator, input: []const u8) ![]const u8 {
         }
     }
     return result.toOwnedSlice(arena);
+}
+
+/// Check if bytes form valid UTF-8
+fn isValidUtf8(bytes: []const u8) bool {
+    var i: usize = 0;
+    while (i < bytes.len) {
+        const byte = bytes[i];
+        if (byte < 0x80) {
+            // ASCII
+            i += 1;
+        } else if (byte & 0xE0 == 0xC0) {
+            // 2-byte sequence
+            if (i + 1 >= bytes.len) return false;
+            if (bytes[i + 1] & 0xC0 != 0x80) return false;
+            // Check for overlong encoding (should use at least 2 bytes worth)
+            if (byte & 0x1E == 0) return false;
+            i += 2;
+        } else if (byte & 0xF0 == 0xE0) {
+            // 3-byte sequence
+            if (i + 2 >= bytes.len) return false;
+            if (bytes[i + 1] & 0xC0 != 0x80) return false;
+            if (bytes[i + 2] & 0xC0 != 0x80) return false;
+            i += 3;
+        } else if (byte & 0xF8 == 0xF0) {
+            // 4-byte sequence
+            if (i + 3 >= bytes.len) return false;
+            if (bytes[i + 1] & 0xC0 != 0x80) return false;
+            if (bytes[i + 2] & 0xC0 != 0x80) return false;
+            if (bytes[i + 3] & 0xC0 != 0x80) return false;
+            i += 4;
+        } else {
+            // Invalid UTF-8 start byte - this is likely ISO-8859-1
+            return false;
+        }
+    }
+    return true;
 }
 
 /// BAWAG CSV parser implementation
