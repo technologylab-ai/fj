@@ -380,6 +380,140 @@ Sets `declined_date` to today. Returns error if already accepted or declined.
 }
 ```
 
+### Transactions
+
+**GET /api/v1/transactions** - List bank transactions
+
+Query parameters (all optional):
+- `from` - Start date filter (ISO 8601: "2025-01-01")
+- `to` - End date filter (ISO 8601: "2025-12-31")
+- `type` - Filter by type: "incoming" or "outgoing"
+- `limit` - Max results per page (default: 100)
+- `offset` - Skip first N results (default: 0)
+
+```json
+{
+  "transactions": [
+    {
+      "id": "abc123def456",
+      "ref_code": "VD/000000089",
+      "date": "2025-11-06",
+      "amount": 540000,
+      "currency": "EUR",
+      "description": "RNr. 2025-005 RDat. 29.10.2025 VD/000000089",
+      "counterparty": {
+        "name": "ACME Corp",
+        "iban": "DE47760800400105567700",
+        "bic": "DRESDEFF760"
+      },
+      "reference": null,
+      "type": "incoming",
+      "category": null,
+      "source": {
+        "file": "web-upload",
+        "line": 5,
+        "imported_at": "2025-11-28T00:00:00"
+      },
+      "reconciliation": {
+        "invoice_id": "2025-005",
+        "matched_at": "2025-11-28T00:00:00",
+        "confidence": "high"
+      }
+    }
+  ],
+  "summary": {
+    "count": 1,
+    "total_incoming": 540000,
+    "total_outgoing": 0,
+    "net": 540000
+  },
+  "pagination": {
+    "limit": 100,
+    "offset": 0,
+    "total": 90
+  }
+}
+```
+
+Notes:
+- `amount` is in cents (540000 = €5,400.00). Positive = incoming, negative = outgoing.
+- `reconciliation.invoice_id` may contain comma-separated IDs for multi-invoice payments (e.g., "2025-002,2025-003,2025-004").
+- `reconciliation.confidence` is "high" for single-invoice matches, "multi" for multi-invoice matches.
+- `summary` reflects the filtered results (before pagination).
+- `pagination.total` is the total count of filtered transactions.
+
+**GET /api/v1/transactions/summary** - Get transaction summary
+
+Query parameters (all optional):
+- `from` - Start date filter (ISO 8601: "2025-01-01")
+- `to` - End date filter (ISO 8601: "2025-12-31")
+- `group_by` - Group results: "month" (only supported value)
+
+Without grouping:
+```json
+{
+  "period": {
+    "from": "2025-01-01",
+    "to": "2025-12-31"
+  },
+  "total_incoming": 8540000,
+  "total_outgoing": 2150000,
+  "net": 6390000,
+  "transaction_count": 90
+}
+```
+
+With `group_by=month`:
+```json
+{
+  "period": {
+    "from": "2025-01-01",
+    "to": "2025-12-31"
+  },
+  "by_month": [
+    {
+      "month": "2025-07",
+      "incoming": 2840000,
+      "outgoing": 460000,
+      "net": 2380000,
+      "count": 12
+    },
+    {
+      "month": "2025-08",
+      "incoming": 1500000,
+      "outgoing": 320000,
+      "net": 1180000,
+      "count": 8
+    }
+  ]
+}
+```
+
+All amounts are in cents.
+
+### Balance
+
+**GET /api/v1/balance** - Get current bank balance
+
+Returns the calculated balance from sum of all transactions.
+
+```json
+{
+  "balance": 2340567,
+  "balance_eur": 23405.67,
+  "currency": "EUR",
+  "as_of": "2025-11-28",
+  "transaction_count": 127,
+  "calculation": "sum_of_all_transactions"
+}
+```
+
+Notes:
+- `balance` is in cents (2340567 = €23,405.67). Can be negative.
+- `balance_eur` is a convenience float in EUR.
+- `as_of` is the date of the most recent transaction (or today if no transactions).
+- `calculation` describes the method used ("sum_of_all_transactions").
+
 ### Summary
 
 **GET /api/v1/summary** - Get financial summary

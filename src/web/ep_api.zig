@@ -31,6 +31,7 @@ const offers_route = api_v1 ++ "/offers";
 const summary_route = api_v1 ++ "/summary";
 const transactions_route = api_v1 ++ "/transactions";
 const transactions_summary_route = api_v1 ++ "/transactions/summary";
+const balance_route = api_v1 ++ "/balance";
 
 /// JSON response helper
 fn sendJson(arena: Allocator, r: zap.Request, data: anytype) !void {
@@ -116,6 +117,9 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
     }
     if (std.mem.eql(u8, path, transactions_route)) {
         return handleListTransactions(arena, context, r);
+    }
+    if (std.mem.eql(u8, path, balance_route)) {
+        return handleBalance(arena, context, r);
     }
 
     return sendError(arena, r, .not_found, "Unknown API endpoint");
@@ -597,4 +601,48 @@ fn getQueryParam(r: zap.Request, name: []const u8) ?[]const u8 {
 fn parseIntParam(r: zap.Request, name: []const u8) ?usize {
     const value = getQueryParam(r, name) orelse return null;
     return std.fmt.parseInt(usize, value, 10) catch null;
+}
+
+fn handleBalance(arena: Allocator, context: *Context, r: zap.Request) !void {
+    const fj_home = context.fj_home;
+
+    // Load all transactions
+    var store = bank.TransactionStore.init(arena, fj_home);
+    const txn_file = store.load() catch {
+        // No transactions yet - return zero balance
+        return sendJson(arena, r, .{
+            .balance = @as(i64, 0),
+            .balance_eur = @as(f64, 0.0),
+            .currency = "EUR",
+            .as_of = today.getTodayString(arena) catch "unknown",
+            .transaction_count = @as(usize, 0),
+            .calculation = "sum_of_all_transactions",
+        });
+    };
+
+    // Calculate balance: sum of all transaction amounts
+    var balance: i64 = 0;
+    var latest_date: ?[]const u8 = null;
+
+    for (txn_file.transactions) |txn| {
+        balance += txn.amount;
+        // Track latest transaction date
+        if (latest_date == null) {
+            latest_date = txn.date;
+        } else if (std.mem.order(u8, txn.date, latest_date.?) == .gt) {
+            latest_date = txn.date;
+        }
+    }
+
+    const balance_eur: f64 = @as(f64, @floatFromInt(balance)) / 100.0;
+    const as_of = latest_date orelse (today.getTodayString(arena) catch "unknown");
+
+    return sendJson(arena, r, .{
+        .balance = balance,
+        .balance_eur = balance_eur,
+        .currency = "EUR",
+        .as_of = as_of,
+        .transaction_count = txn_file.transactions.len,
+        .calculation = "sum_of_all_transactions",
+    });
 }
