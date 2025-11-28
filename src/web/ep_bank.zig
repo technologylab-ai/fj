@@ -97,13 +97,23 @@ fn listTransactions(ep: *EpBank, arena: Allocator, context: *Context, r: zap.Req
         const amount_display = try formatAmount(arena, txn.amount);
         const is_positive = txn.amount >= 0;
 
+        // Split comma-separated invoice IDs into array
+        var invoice_views = std.ArrayListUnmanaged(InvoiceIdView).empty;
+        if (txn.reconciliation.invoice_id) |inv_ids| {
+            var iter = std.mem.splitScalar(u8, inv_ids, ',');
+            while (iter.next()) |id| {
+                try invoice_views.append(arena, .{ .id = id });
+            }
+        }
+
         try txn_views.append(arena, .{
             .date = txn.date,
             .description = txn.description,
             .amount_display = amount_display,
             .is_positive = is_positive,
-            .reconciled_invoice = txn.reconciliation.invoice_id,
-            .is_reconciled = txn.reconciliation.invoice_id != null,
+            .reconciled_invoices = invoice_views.items,
+            .is_reconciled = invoice_views.items.len > 0,
+            .is_multi_invoice = invoice_views.items.len > 1,
         });
     }
 
@@ -340,13 +350,18 @@ fn formatAmount(arena: Allocator, cents: i64) ![]const u8 {
     return std.fmt.allocPrint(arena, "{s}€{s}", .{ sign, formatted });
 }
 
+const InvoiceIdView = struct {
+    id: []const u8,
+};
+
 const TransactionView = struct {
     date: []const u8,
     description: []const u8,
     amount_display: []const u8,
     is_positive: bool,
-    reconciled_invoice: ?[]const u8,
+    reconciled_invoices: []const InvoiceIdView,
     is_reconciled: bool,
+    is_multi_invoice: bool,
 };
 
 /// Case-insensitive search across transaction fields
