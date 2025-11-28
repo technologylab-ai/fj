@@ -1144,7 +1144,27 @@ pub fn cmdImport(self: *Fj, args: Cli.ImportCommand) !void {
             stdout.print("  Skipped {d} duplicates\n\n", .{dup_count}) catch {};
             stdout.flush() catch {};
 
-            // 8. Save if not dry-run
+            // 8. Reconciliation (Phase 4) - match transactions to unpaid invoices
+            var reconcile_count: usize = 0;
+            var matched_invoices: []const bank.MatchedInvoice = &.{};
+
+            if (!args.dry_run and new_count > 0) {
+                const unpaid = try self.loadUnpaidInvoices();
+                if (unpaid.len > 0) {
+                    // Run reconciliation on the new transactions (mutates in place)
+                    const new_txn_slice = new_txns.items[txn_file.transactions.len..];
+                    const reconcile_result = try bank.reconcileInvoices(
+                        self.arena,
+                        @constCast(new_txn_slice),
+                        unpaid,
+                        now,
+                    );
+                    reconcile_count = reconcile_result.matched_count;
+                    matched_invoices = reconcile_result.matched_invoices;
+                }
+            }
+
+            // 9. Save if not dry-run
             if (!args.dry_run) {
                 if (new_count > 0) {
                     const updated_txns = try new_txns.toOwnedSlice(self.arena);
@@ -1158,6 +1178,17 @@ pub fn cmdImport(self: *Fj, args: Cli.ImportCommand) !void {
                     try store.archiveImport(file_path, today_str);
                     stdout.print("✓ Imported {d} new transactions\n", .{new_count}) catch {};
                     stdout.print("  Archived to: bank/imports/{s}_{s}\n", .{ today_str, filename }) catch {};
+
+                    // Mark matched invoices as paid (using transaction date from bank statement)
+                    if (reconcile_count > 0) {
+                        for (matched_invoices) |match| {
+                            self.markInvoicePaidById(match.invoice_id, match.transaction_date) catch {};
+                        }
+                        stdout.print("\n✓ Reconciled {d} invoice(s):\n", .{reconcile_count}) catch {};
+                        for (matched_invoices) |match| {
+                            stdout.print("  - Invoice {s}: €{d}\n", .{ match.invoice_id, match.amount_euros }) catch {};
+                        }
+                    }
                 } else {
                     stdout.print("No new transactions imported.\n", .{}) catch {};
                 }
@@ -1178,6 +1209,71 @@ fn formatCents(arena: Allocator, cents: i64) ![]const u8 {
     const remaining_cents = abs_cents % 100;
     const sign: []const u8 = if (cents < 0) "-" else "";
     return std.fmt.allocPrint(arena, "{s}€{d}.{d:0>2}", .{ sign, euros, remaining_cents });
+}
+
+/// Load all unpaid invoices (paid_date == null) for reconciliation
+pub fn loadUnpaidInvoices(self: *Fj) ![]const fj_json.Invoice {
+    var unpaid = std.ArrayListUnmanaged(fj_json.Invoice).empty;
+
+    // Get list of invoice directories
+    const invoices_dir = try path.join(self.arena, &.{ self.fj_home.?, "invoices" });
+    var dir = cwd().openDir(invoices_dir, .{ .iterate = true }) catch |err| {
+        if (err == error.FileNotFound) return &[_]fj_json.Invoice{};
+        return err;
+    };
+    defer dir.close();
+
+    var it = dir.iterate();
+    while (try it.next()) |entry| {
+        if (entry.kind != .directory) continue;
+        if (!std.mem.startsWith(u8, entry.name, "invoice--")) continue;
+
+        // Verify directory name format (invoice--YYYY-NNN--client)
+        const rest = entry.name["invoice--".len..];
+        if (std.mem.indexOf(u8, rest, "--") == null) continue;
+
+        // Load invoice JSON
+        const json_path = try path.join(self.arena, &.{ invoices_dir, entry.name, "invoice.json" });
+        var json_file = cwd().openFile(json_path, .{}) catch continue;
+        defer json_file.close();
+
+        const json_content = json_file.readToEndAlloc(self.arena, 1024 * 1024) catch continue;
+        const inv = std.json.parseFromSliceLeaky(fj_json.Invoice, self.arena, json_content, .{
+            .ignore_unknown_fields = true,
+        }) catch continue;
+
+        // Only include unpaid invoices with a total
+        if (inv.paid_date == null and inv.total != null) {
+            try unpaid.append(self.arena, inv);
+        }
+    }
+
+    return unpaid.toOwnedSlice(self.arena);
+}
+
+/// Mark an invoice as paid (used by reconciliation)
+fn markInvoicePaidById(self: *Fj, invoice_id: []const u8, paid_date: []const u8) !void {
+    // Find the invoice directory
+    const document_dir_name = self.findDocumentById(fj_json.Invoice, invoice_id) catch return;
+    const document_base = self.documentBaseDir(fj_json.Invoice) catch return;
+
+    // Load the invoice JSON directly (without printing)
+    const json_path = path.join(self.arena, &.{ document_base, document_dir_name, "invoice.json" }) catch return;
+    var json_file = cwd().openFile(json_path, .{}) catch return;
+    defer json_file.close();
+    const json_content = json_file.readToEndAlloc(self.arena, 1024 * 1024) catch return;
+
+    var inv = std.json.parseFromSliceLeaky(fj_json.Invoice, self.arena, json_content, .{
+        .ignore_unknown_fields = true,
+    }) catch return;
+
+    // Skip if already paid
+    if (inv.paid_date != null) return;
+
+    // Update and save using existing writeDocumentJson
+    inv.paid_date = paid_date;
+    inv.updated = try self.isoTime();
+    try self.writeDocumentJson(fj_json.Invoice, invoice_id, inv);
 }
 
 pub const DocumentFileContents = struct {

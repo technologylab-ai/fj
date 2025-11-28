@@ -3,6 +3,7 @@
 
 pub const parser = @import("bank/parser.zig");
 pub const store = @import("bank/store.zig");
+pub const reconcile = @import("bank/reconcile.zig");
 
 // Re-export commonly used types
 pub const BawagParser = parser.BawagParser;
@@ -23,3 +24,8 @@ pub const parseGermanAmount = parser.parseGermanAmount;
 pub const calculateSummary = store.calculateSummary;
 pub const filterTransactions = store.filterTransactions;
 pub const groupByMonth = store.groupByMonth;
+
+// Reconciliation (Phase 4)
+pub const ReconcileResult = reconcile.ReconcileResult;
+pub const MatchedInvoice = reconcile.MatchedInvoice;
+pub const reconcileInvoices = reconcile.reconcile;
