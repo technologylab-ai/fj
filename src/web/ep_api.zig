@@ -29,6 +29,8 @@ const rates_route = api_v1 ++ "/rates";
 const invoices_route = api_v1 ++ "/invoices";
 const offers_route = api_v1 ++ "/offers";
 const summary_route = api_v1 ++ "/summary";
+const transactions_route = api_v1 ++ "/transactions";
+const transactions_summary_route = api_v1 ++ "/transactions/summary";
 
 /// JSON response helper
 fn sendJson(arena: Allocator, r: zap.Request, data: anytype) !void {
@@ -106,6 +108,14 @@ pub fn get(ep: *Endpoint, arena: Allocator, context: *Context, r: zap.Request) !
 
     if (std.mem.eql(u8, path, summary_route)) {
         return handleSummary(arena, context, r);
+    }
+
+    // Bank transactions endpoints
+    if (std.mem.eql(u8, path, transactions_summary_route)) {
+        return handleTransactionsSummary(arena, context, r);
+    }
+    if (std.mem.eql(u8, path, transactions_route)) {
+        return handleListTransactions(arena, context, r);
     }
 
     return sendError(arena, r, .not_found, "Unknown API endpoint");
@@ -444,4 +454,147 @@ fn handleSummary(arena: Allocator, context: *Context, r: zap.Request) !void {
 
 fn handleHealth(arena: Allocator, r: zap.Request) !void {
     return sendJson(arena, r, .{ .status = "ok" });
+}
+
+// ============================================================================
+// Bank Transactions endpoints
+// ============================================================================
+
+const bank = @import("../bank.zig");
+const Transaction = fj_json.Transaction;
+
+fn handleListTransactions(arena: Allocator, context: *Context, r: zap.Request) !void {
+    const fj_home = context.fj_home;
+
+    // Parse query parameters
+    const from = getQueryParam(r, "from");
+    const to = getQueryParam(r, "to");
+    const type_filter = getQueryParam(r, "type");
+    const limit = parseIntParam(r, "limit") orelse 100;
+    const offset = parseIntParam(r, "offset") orelse 0;
+
+    // Load transactions
+    var store = bank.TransactionStore.init(arena, fj_home);
+    const txn_file = store.load() catch {
+        // No transactions yet - return empty
+        return sendJson(arena, r, .{
+            .transactions = &[_]Transaction{},
+            .summary = .{
+                .count = @as(usize, 0),
+                .total_incoming = @as(i64, 0),
+                .total_outgoing = @as(i64, 0),
+                .net = @as(i64, 0),
+            },
+            .pagination = .{
+                .limit = limit,
+                .offset = offset,
+                .total = @as(usize, 0),
+            },
+        });
+    };
+
+    // Filter transactions
+    const filtered = try bank.filterTransactions(arena, txn_file.transactions, from, to, type_filter);
+
+    // Calculate summary from filtered transactions
+    const summary_stats = bank.calculateSummary(filtered);
+
+    // Apply pagination
+    const total = filtered.len;
+    const start = @min(offset, total);
+    const end = @min(start + limit, total);
+    const page = filtered[start..end];
+
+    return sendJson(arena, r, .{
+        .transactions = page,
+        .summary = .{
+            .count = page.len,
+            .total_incoming = summary_stats.total_incoming,
+            .total_outgoing = summary_stats.total_outgoing,
+            .net = summary_stats.net,
+        },
+        .pagination = .{
+            .limit = limit,
+            .offset = offset,
+            .total = total,
+        },
+    });
+}
+
+fn handleTransactionsSummary(arena: Allocator, context: *Context, r: zap.Request) !void {
+    const fj_home = context.fj_home;
+
+    // Parse query parameters
+    const from = getQueryParam(r, "from");
+    const to = getQueryParam(r, "to");
+    const group_by = getQueryParam(r, "group_by");
+
+    // Load transactions
+    var store = bank.TransactionStore.init(arena, fj_home);
+    const txn_file = store.load() catch {
+        // No transactions yet
+        return sendJson(arena, r, .{
+            .period = .{
+                .from = from orelse "",
+                .to = to orelse "",
+            },
+            .total_incoming = @as(i64, 0),
+            .total_outgoing = @as(i64, 0),
+            .net = @as(i64, 0),
+            .transaction_count = @as(usize, 0),
+        });
+    };
+
+    // Filter transactions
+    const filtered = try bank.filterTransactions(arena, txn_file.transactions, from, to, null);
+
+    // Check if grouping is requested
+    if (group_by) |gb| {
+        if (std.mem.eql(u8, gb, "month")) {
+            const by_month = try bank.groupByMonth(arena, filtered);
+            return sendJson(arena, r, .{
+                .period = .{
+                    .from = from orelse "",
+                    .to = to orelse "",
+                },
+                .by_month = by_month,
+            });
+        }
+    }
+
+    // Default: no grouping
+    const summary_stats = bank.calculateSummary(filtered);
+    return sendJson(arena, r, .{
+        .period = .{
+            .from = from orelse "",
+            .to = to orelse "",
+        },
+        .total_incoming = summary_stats.total_incoming,
+        .total_outgoing = summary_stats.total_outgoing,
+        .net = summary_stats.net,
+        .transaction_count = summary_stats.count,
+    });
+}
+
+/// Get query parameter from request
+fn getQueryParam(r: zap.Request, name: []const u8) ?[]const u8 {
+    const query = r.query orelse return null;
+
+    var pairs = std.mem.splitScalar(u8, query, '&');
+    while (pairs.next()) |pair| {
+        if (std.mem.indexOf(u8, pair, "=")) |eq_pos| {
+            const key = pair[0..eq_pos];
+            const value = pair[eq_pos + 1 ..];
+            if (std.mem.eql(u8, key, name)) {
+                return value;
+            }
+        }
+    }
+    return null;
+}
+
+/// Parse integer query parameter
+fn parseIntParam(r: zap.Request, name: []const u8) ?usize {
+    const value = getQueryParam(r, name) orelse return null;
+    return std.fmt.parseInt(usize, value, 10) catch null;
 }

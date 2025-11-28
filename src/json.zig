@@ -156,3 +156,45 @@ pub const ApiKey = struct {
 pub const ApiKeyStore = struct {
     keys: []const ApiKey,
 };
+
+// Bank transaction types (Phase 3: Bank Import)
+
+pub const Counterparty = struct {
+    name: ?[]const u8 = null,
+    iban: ?[]const u8 = null,
+    bic: ?[]const u8 = null,
+};
+
+pub const TransactionSource = struct {
+    file: []const u8,
+    line: usize,
+    imported_at: []const u8,
+};
+
+pub const Reconciliation = struct {
+    invoice_id: ?[]const u8 = null,
+    matched_at: ?[]const u8 = null,
+    confidence: ?[]const u8 = null,
+};
+
+pub const Transaction = struct {
+    id: []const u8,
+    ref_code: []const u8,
+    date: []const u8, // ISO 8601: "2025-06-10"
+    amount: i64, // Cents, positive=incoming, negative=outgoing
+    currency: []const u8, // Always "EUR"
+    description: []const u8, // Raw description from bank
+    counterparty: Counterparty = .{},
+    reference: ?[]const u8 = null,
+    @"type": []const u8, // "incoming" or "outgoing"
+    category: ?[]const u8 = null,
+    source: TransactionSource,
+    reconciliation: Reconciliation = .{},
+};
+
+pub const TransactionsFile = struct {
+    version: usize = 1,
+    last_updated: []const u8,
+    account_iban: ?[]const u8 = null,
+    transactions: []const Transaction = &.{},
+};

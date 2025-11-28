@@ -73,6 +73,10 @@ pub fn main() !void {
             try fj.setup(args.fj_home);
             try fj.cmdKeys(args);
         },
+        .import => |args| {
+            try fj.setup(args.fj_home);
+            try fj.cmdImport(args);
+        },
         .serve => |args| {
             Fatal.mode = .server;
             try fj.setup(args.fj_home);

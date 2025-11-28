@@ -12,6 +12,6 @@ offer--*/
 invoice--*/
 letter--*/
 ,*/
-#docs/plan*
-#doc/plan*
-#docs/
+docs/plan*
+doc/plan*
+docs/

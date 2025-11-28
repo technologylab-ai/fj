@@ -355,6 +355,51 @@ pub const KeysCommand = struct {
     ;
 };
 
+pub const ImportCommand = struct {
+    fj_home: ?[]const u8 = null,
+    dry_run: bool = false,
+    format: ?[]const u8 = null,
+    verbose: bool = false,
+
+    positional: struct {
+        subcommand: enum { bank, csv }, // csv reserved for future generic CSV import
+        file: ?[]const u8 = null,
+    },
+
+    pub const aliases = .{
+        .fj_home = "C",
+        .dry_run = "n",
+        .verbose = "v",
+    };
+
+    pub const help =
+        \\ Command: import
+        \\
+        \\ Usage:
+        \\
+        \\ fj import bank <csv-file> [options]
+        \\
+        \\ Import bank transactions from CSV export.
+        \\
+        \\ Subcommands:
+        \\ ============
+        \\
+        \\ - fj import bank <file.csv>    Import bank transactions from CSV
+        \\
+        \\ Options:
+        \\
+        \\ -n, --dry-run            Show what would be imported without saving
+        \\ --format=BAWAG           Force bank format (auto-detected by default)
+        \\ -v, --verbose            Verbose output
+        \\
+        \\ -h, --help               Displays this help message then exits.
+        \\
+        \\ -C, --fj_home            The FJ_HOME dir to use.
+        \\                          Default: $FJ_HOME orelse ~/.fj
+        \\
+    ;
+};
+
 pub const ServeCommand = struct {
     fj_home: ?[]const u8 = null,
     host: []const u8 = "0.0.0.0",
@@ -421,6 +466,7 @@ pub const Cli = union(enum) {
     offer: OfferCommand,
     invoice: InvoiceCommand,
     keys: KeysCommand,
+    import: ImportCommand,
     serve: ServeCommand,
     version: VersionCommand,
 
@@ -436,6 +482,7 @@ pub const Cli = union(enum) {
         \\  offer           Manager offers
         \\  invoice         Manage invoices
         \\  keys            Manage API keys
+        \\  import          Import bank transactions
         \\  serve           Start the HTTP server for a web UI
         \\
         \\ General Options:

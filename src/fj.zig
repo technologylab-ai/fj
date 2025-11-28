@@ -1005,6 +1005,181 @@ pub fn cmdKeys(self: *Fj, args: Cli.KeysCommand) !void {
     }
 }
 
+pub fn cmdImport(self: *Fj, args: Cli.ImportCommand) !void {
+    const bank = @import("bank.zig");
+    const fj_home = try self.fjHomeTest(args.fj_home);
+
+    var stdout_buffer: [4096]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
+
+    switch (args.positional.subcommand) {
+        .bank => {
+            const file_path = args.positional.file orelse {
+                try fatal("Usage: fj import bank <csv-file>", .{}, error.MissingArgument);
+            };
+
+            // 1. Read CSV file
+            var file = cwd().openFile(file_path, .{}) catch |err| {
+                try fatal("Error opening {s}: {}", .{ file_path, err }, err);
+            };
+            defer file.close();
+
+            const content = file.readToEndAlloc(self.arena, 10 * 1024 * 1024) catch |err| {
+                try fatal("Error reading {s}: {}", .{ file_path, err }, err);
+            };
+
+            // 2. Convert ISO-8859-1 to UTF-8
+            const utf8_content = try bank.latin1ToUtf8(self.arena, content);
+
+            // 3. Detect/select parser
+            const filename = path.basename(file_path);
+            const parser_type = if (args.format) |f|
+                std.meta.stringToEnum(bank.ParserType, f) orelse .bawag
+            else
+                bank.detectParser(filename, utf8_content) orelse .bawag;
+
+            stdout.print("Importing bank transactions from {s}...\n", .{filename}) catch {};
+            stdout.print("  Encoding: ISO-8859-1\n", .{}) catch {};
+            stdout.print("  Format: {s} (auto-detected)\n\n", .{@tagName(parser_type)}) catch {};
+            stdout.flush() catch {};
+
+            // 4. Parse CSV
+            var bawag_parser: bank.BawagParser = .{};
+            const p = switch (parser_type) {
+                .bawag => bawag_parser.parser(),
+            };
+            const result = try p.parse(utf8_content, self.arena);
+
+            // Report parse errors
+            if (result.errors.len > 0 and args.verbose) {
+                stdout.print("  Parse warnings:\n", .{}) catch {};
+                for (result.errors) |err| {
+                    stdout.print("    Line {d}: {s}\n", .{ err.line, err.message }) catch {};
+                }
+                stdout.print("\n", .{}) catch {};
+            }
+
+            // 5. Load existing transactions
+            var store = bank.TransactionStore.init(self.arena, fj_home);
+            const txn_file = try store.load();
+
+            // 6. Deduplicate and add new transactions
+            var new_count: usize = 0;
+            var dup_count: usize = 0;
+            var new_incoming: i64 = 0;
+            var new_outgoing: i64 = 0;
+
+            var new_txns = std.ArrayListUnmanaged(fj_json.Transaction).empty;
+            try new_txns.appendSlice(self.arena, txn_file.transactions);
+
+            const now = try self.isoTime();
+            const today_str = try self.today();
+
+            for (result.transactions) |parsed| {
+                const id = try bank.generateId(self.arena, parsed.ref_code);
+
+                // Check for duplicates
+                var is_dup = false;
+                for (txn_file.transactions) |existing| {
+                    if (std.mem.eql(u8, existing.id, id)) {
+                        is_dup = true;
+                        break;
+                    }
+                }
+                if (is_dup) {
+                    dup_count += 1;
+                    continue;
+                }
+
+                const txn_type: []const u8 = if (parsed.amount >= 0) "incoming" else "outgoing";
+                if (parsed.amount >= 0) {
+                    new_incoming += parsed.amount;
+                } else {
+                    new_outgoing += parsed.amount;
+                }
+
+                try new_txns.append(self.arena, .{
+                    .id = id,
+                    .ref_code = parsed.ref_code,
+                    .date = parsed.date,
+                    .amount = parsed.amount,
+                    .currency = parsed.currency,
+                    .description = parsed.description,
+                    .counterparty = parsed.counterparty,
+                    .reference = parsed.reference,
+                    .@"type" = txn_type,
+                    .source = .{
+                        .file = try self.arena.dupe(u8, filename),
+                        .line = parsed.line,
+                        .imported_at = now,
+                    },
+                });
+                new_count += 1;
+            }
+
+            // 7. Print summary
+            const new_incoming_count = blk: {
+                var count: usize = 0;
+                for (new_txns.items[txn_file.transactions.len..]) |t| {
+                    if (t.amount >= 0) count += 1;
+                }
+                break :blk count;
+            };
+            const new_outgoing_count = new_count - new_incoming_count;
+
+            stdout.print("  Parsed {d} transactions:\n", .{result.transactions.len}) catch {};
+            stdout.print("    + {d} incoming   (+{s})\n", .{
+                new_incoming_count,
+                formatCents(self.arena, new_incoming) catch "?",
+            }) catch {};
+            stdout.print("    - {d} outgoing   ({s})\n", .{
+                new_outgoing_count,
+                formatCents(self.arena, new_outgoing) catch "?",
+            }) catch {};
+            stdout.print("    = Net:         {s}\n\n", .{
+                formatCents(self.arena, new_incoming + new_outgoing) catch "?",
+            }) catch {};
+
+            stdout.print("  Skipped {d} duplicates\n\n", .{dup_count}) catch {};
+            stdout.flush() catch {};
+
+            // 8. Save if not dry-run
+            if (!args.dry_run) {
+                if (new_count > 0) {
+                    const updated_txns = try new_txns.toOwnedSlice(self.arena);
+                    const updated_file: fj_json.TransactionsFile = .{
+                        .version = 1,
+                        .last_updated = now,
+                        .account_iban = result.account_iban orelse txn_file.account_iban,
+                        .transactions = updated_txns,
+                    };
+                    try store.save(updated_file);
+                    try store.archiveImport(file_path, today_str);
+                    stdout.print("✓ Imported {d} new transactions\n", .{new_count}) catch {};
+                    stdout.print("  Archived to: bank/imports/{s}_{s}\n", .{ today_str, filename }) catch {};
+                } else {
+                    stdout.print("No new transactions imported.\n", .{}) catch {};
+                }
+            } else {
+                stdout.print("[dry-run] Would import {d} new transactions\n", .{new_count}) catch {};
+            }
+            stdout.flush() catch {};
+        },
+        .csv => {
+            try fatal("Generic CSV import not yet implemented. Use 'fj import bank' for bank CSV.", .{}, error.NotImplemented);
+        },
+    }
+}
+
+fn formatCents(arena: Allocator, cents: i64) ![]const u8 {
+    const abs_cents: u64 = @intCast(@abs(cents));
+    const euros = abs_cents / 100;
+    const remaining_cents = abs_cents % 100;
+    const sign: []const u8 = if (cents < 0) "-" else "";
+    return std.fmt.allocPrint(arena, "{s}€{d}.{d:0>2}", .{ sign, euros, remaining_cents });
+}
+
 pub const DocumentFileContents = struct {
     json: []const u8,
     billables: []const u8,
