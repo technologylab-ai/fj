@@ -69,6 +69,15 @@ commits the entire directory to the Git-managed archive.
 
 ## Getting Started
 
+### 0. Building it
+
+```
+zig build
+# generattes ./zig-out/bin/fj
+```
+
+See [`build.zig.zon`](./build.zig.zon) for minimum required Zig version.
+
 ### 1. Initialize your company setup
 
 ```sh
