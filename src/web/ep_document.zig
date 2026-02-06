@@ -160,7 +160,24 @@ pub fn create(DocumentType: type) type {
             const year = try fj.year();
             const fj_config = try fj.loadConfigJson();
 
-            const docs_and_stats = try ep_utils.allDocsAndStats(arena, context, &.{DocumentType});
+            // Year filtering
+            const year_param = r.getParamSlice("year");
+            const filter_year: ?i32 = blk: {
+                if (year_param) |yp| {
+                    if (std.mem.eql(u8, yp, "all")) break :blk null;
+                    break :blk std.fmt.parseInt(i32, yp, 10) catch year;
+                }
+                break :blk ep_utils.readCurrentYear(arena, context.fj_home) orelse year;
+            };
+
+            const available_years = try ep_utils.collectAvailableYears(arena, context);
+            const year_options = try ep_utils.buildYearOptions(arena, available_years, filter_year);
+            const selected_year_label: []const u8 = if (filter_year) |fy|
+                try std.fmt.allocPrint(arena, "{d}", .{fy})
+            else
+                "All Years";
+
+            const docs_and_stats = try ep_utils.allDocsAndStats(arena, context, &.{DocumentType}, filter_year);
             std.mem.sort(Document, docs_and_stats.documents, {}, Document.greaterThan);
 
             const params = .{
@@ -168,6 +185,8 @@ pub fn create(DocumentType: type) type {
                 .documents = docs_and_stats.documents,
                 .currency_symbol = fj_config.CurrencySymbol,
                 .year = year,
+                .year_options = year_options,
+                .selected_year_label = selected_year_label,
                 .is_letter = DocumentType == Letter,
                 .company = fj_config.CompanyName,
             };

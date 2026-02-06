@@ -12,10 +12,23 @@
   <main class="container mx-auto p-4 flex-grow">
     <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Dashboard</h2>
 
+    <!-- Year Filter -->
+    <div class="flex flex-wrap items-center gap-2 mb-6">
+      <span class="text-sm font-medium text-gray-500 dark:text-gray-400 mr-1">Year:</span>
+      {{#year_options}}
+        {{#is_current}}
+          <a href="?year={{value}}" class="px-3 py-1.5 rounded-full text-sm font-semibold bg-blue-600 text-white shadow-sm">{{label}}</a>
+        {{/is_current}}
+        {{^is_current}}
+          <a href="?year={{value}}" class="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition-colors duration-150">{{label}}</a>
+        {{/is_current}}
+      {{/year_options}}
+    </div>
+
     <!-- Stats Section -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <div class="bg-white dark:bg-gray-900 p-5 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700">
-        <strong class="block text-lg font-semibold text-gray-700 dark:text-gray-300 mb-1">Invoiced Total ({{year}})</strong>
+        <strong class="block text-lg font-semibold text-gray-700 dark:text-gray-300 mb-1">Invoiced Total ({{selected_year_label}})</strong>
         <span id="total-invoiced" class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ currency_symbol }} {{invoiced_total}}<br><span class="text-rose-400 dark:text-rose-400">{{ currency_symbol }} {{invoices_open_amount}} open</span></span>
       </div>
       <div class="bg-white dark:bg-gray-900 p-5 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700">
@@ -23,7 +36,7 @@
         <span id="invoice-count" class="text-2xl font-bold text-gray-700 dark:text-gray-300">{{invoices_total}} total<br><span class="text-orange-300 dark:text-orange-400">{{invoices_open}} open</span></span>
       </div>
       <div class="bg-white dark:bg-gray-900 p-5 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700">
-        <strong class="block text-lg font-semibold text-gray-700 dark:text-gray-300 mb-1">Offered Total ({{year}})</strong>
+        <strong class="block text-lg font-semibold text-gray-700 dark:text-gray-300 mb-1">Offered Total ({{selected_year_label}})</strong>
         <span id="offer-count" class="text-2xl font-bold text-green-600 dark:text-green-400">{{ currency_symbol }} {{offers_accepted_amount}} accepted<br><span class="text-rose-400 dark:text-rose-400">{{ currency_symbol }} {{offers_pending_amount}} pending</span></span>
       </div>
       <div class="bg-white dark:bg-gray-900 p-5 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700">

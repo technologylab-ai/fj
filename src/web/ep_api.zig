@@ -432,7 +432,7 @@ fn handleRejectOffer(arena: Allocator, context: *Context, r: zap.Request, id: []
 // ============================================================================
 
 fn handleSummary(arena: Allocator, context: *Context, r: zap.Request) !void {
-    const result = try ep_utils.allDocsAndStats(arena, context, &[_]type{ Invoice, Offer });
+    const result = try ep_utils.allDocsAndStats(arena, context, &[_]type{ Invoice, Offer }, null);
 
     const summary = .{
         .invoices = .{
