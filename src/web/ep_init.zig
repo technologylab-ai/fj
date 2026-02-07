@@ -49,6 +49,7 @@ pub fn get(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !void
             const default_json = try generateTexDefaultsTemplate(arena);
             const params = .{
                 .json = default_json,
+                .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
             };
             var mustache = try zap.Mustache.fromData(html_init);
             defer mustache.deinit();
@@ -93,6 +94,14 @@ pub fn post(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !voi
 
             // we can init
             try r.parseBody();
+
+            // CSRF validation
+            if (!ep_utils.validateCsrf(arena, r)) {
+                r.setStatus(.forbidden);
+                try r.sendBody("403 Forbidden: CSRF validation failed");
+                return;
+            }
+
             var cwd = try std.fs.cwd().openDir(context.work_dir, .{});
             defer cwd.close();
             const json = try r.getParamStr(arena, "json") orelse return error.Json;

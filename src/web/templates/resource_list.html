@@ -9,12 +9,13 @@
   <<<html_nav>>>
 
   <!-- Main Content Section -->
-  <main class="container mx-auto p-4 flex-grow">
+  <main id="main-content" class="container mx-auto p-4 flex-grow">
     <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{{type}}s</h2>
 
     <!-- New Resource Form -->
     <div class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 mb-8">
       <form action="/{{type}}/new" method="post" class="flex flex-col md:flex-row md:items-end gap-4">
+        <input type="hidden" name="_csrf" value="{{csrf_token}}" />
         <input type="text" placeholder="{{type}} shortname" name="shortname" required
                class="w-full md:flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100" />
         <input type="submit" value="New {{type}}"
@@ -25,26 +26,27 @@
     <!-- Resources Table -->
     <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
+        <caption class="sr-only">{{type}}s</caption>
         <thead class="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-3/12">ShortName</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-6/12">Remarks</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-3/12">Actions</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider w-3/12">ShortName</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider w-6/12">Remarks</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider w-3/12">Actions</th>
           </tr>
         </thead>
         <tbody id="resources" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
           {{^resources}}
             <tr>
-              <td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-500 italic sm:px-2">
+              <td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-500 italic">
                 <i>(No {{type}}s).</i>
               </td>
             </tr>
           {{/resources}}
           {{#resources}}
           <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
-            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 sm:px-2">{{shortname}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{remarks}}</td>
-            <td class="px-6 py-4 text-right text-sm font-medium sm:px-2">
+            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{shortname}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{remarks}}</td>
+            <td class="px-6 py-4 text-right text-sm font-medium">
               <div class="flex flex-wrap justify-end sm:justify-center gap-2">
                 <a href="/{{type}}/view/{{shortname}}" class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 transition-colors duration-200 text-xs sm:text-sm">View</a>
                 <a href="/{{type}}/edit/{{shortname}}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors duration-200 text-xs sm:text-sm">Edit</a>
@@ -56,10 +58,5 @@
       </table>
     </div>
   </main>
-
-  <script>
-    // No specific JavaScript needed for styling, but you can add your app logic here.
-  </script>
 </body>
 </html>
-

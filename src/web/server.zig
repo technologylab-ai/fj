@@ -70,6 +70,7 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     //
     // Authentication
     //
+    // Note: SameSite cookie attribute is not configurable in Zap. This is a known limitation.
     var auth_lookup: AuthLookup = .empty;
     var authenticator = try Authenticator.init(allocator, &auth_lookup, .{
         .usernameParam = "username",

@@ -9,16 +9,17 @@
   <<<html_nav>>>
 
   <!-- Main Content Section -->
-  <main class="container mx-auto p-4 flex-grow">
+  <main id="main-content" class="container mx-auto p-4 flex-grow">
     <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{{type}}s</h2>
 
     <!-- New Document Form -->
     <div class="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700 mb-8">
       <form action="/{{type}}/new" method="post" class="flex flex-col md:flex-row md:items-end gap-4">
-        <input type="text" placeholder="client shortname" name="client" required
+        <input type="hidden" name="_csrf" value="{{csrf_token}}" />
+        <input type="text" placeholder="client shortname" name="client" required list="client-names"
                class="w-full md:flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100" />
         {{^is_letter}}
-        <input type="text" placeholder="rates shortname" name="rates" required
+        <input type="text" placeholder="rates shortname" name="rates" required list="rate-names"
                class="w-full md:flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100" />
         <input type="text" placeholder="project" name="project" required
                class="w-full md:flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100" />
@@ -26,6 +27,8 @@
         <input type="submit" value="New {{type}}"
                class="w-full md:w-auto bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white dark:text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200" />
       </form>
+      <datalist id="client-names">{{#client_names}}<option value="{{name}}">{{/client_names}}</datalist>
+      <datalist id="rate-names">{{#rate_names}}<option value="{{name}}">{{/rate_names}}</datalist>
     </div>
 
     <!-- Year Filter -->
@@ -41,50 +44,71 @@
       {{/year_options}}
     </div>
 
+    <!-- Search -->
+    <div class="mb-6">
+      <form action="/{{type}}" method="get" data-no-loading class="flex flex-col sm:flex-row gap-3">
+        {{#selected_year_value}}<input type="hidden" name="year" value="{{selected_year_value}}" />{{/selected_year_value}}
+        <div class="flex-1">
+          <input type="text" name="q" value="{{search_query}}" placeholder="Search {{type}}s..."
+                 class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-sm bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500" />
+        </div>
+        <button type="submit" class="w-full sm:w-auto bg-gray-600 dark:bg-gray-700 hover:bg-gray-700 dark:hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm cursor-pointer transition-colors duration-200">Search</button>
+        {{#has_search}}
+        <a href="/{{type}}{{#selected_year_value}}?year={{selected_year_value}}{{/selected_year_value}}" class="w-full sm:w-auto text-center bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-md shadow-sm transition-colors duration-200">Clear</a>
+        {{/has_search}}
+      </form>
+    </div>
+
+    <!-- Result count -->
+    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+      {{total_count}} {{type}}(s){{#has_pages}} &mdash; Page {{page}} of {{total_pages}}{{/has_pages}}
+    </div>
+
     <!-- Documents Table -->
-    <!-- Removed overflow-x-auto to prevent horizontal scrolling -->
     <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md dark:shadow-2xl dark:shadow-gray-900/50 border border-gray-200 dark:border-gray-700">
-      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed"> <!-- Added table-fixed for better column width control -->
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
+        <caption class="sr-only">{{type}}s list</caption>
         <thead class="bg-gray-50 dark:bg-gray-800">
           <tr>
-            <!-- Adjusted px for smaller screens (sm:px-2) and added w-1/12 for relative width -->
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">ID</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-2/12">Client</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Date</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-3/12">Project</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Status</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-1/12">Amount</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider sm:px-2 w-3/12">Actions</th>
+            <th scope="col" data-sortable class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider w-1/12">ID</th>
+            <th scope="col" data-sortable class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider w-2/12">Client</th>
+            <th scope="col" data-sortable class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider w-1/12">Date</th>
+            <th scope="col" data-sortable class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider w-3/12">Project</th>
+            <th scope="col" data-sortable class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider w-1/12">Status</th>
+            <th scope="col" data-sortable class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider w-1/12">Amount</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-500 uppercase tracking-wider w-3/12">Actions</th>
           </tr>
         </thead>
         <tbody id="documents" class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
           {{^documents}}
             <tr>
-              <td colspan="7" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-500 italic sm:px-2">
+              <td colspan="7" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-500 italic">
                 <i>(No {{type}}s).</i>
               </td>
             </tr>
           {{/documents}}
           {{#documents}}
           <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
-            <!-- Adjusted px for smaller screens (sm:px-2) and removed whitespace-nowrap -->
-            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100 sm:px-2">{{id}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{client}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{date}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{project}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{status}}</td>
-            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 sm:px-2">{{amount}}</td>
-            <td class="px-6 py-4 text-right text-sm font-medium sm:px-2">
-              <!-- Adjusted flex to allow wrapping and reduced space-x -->
+            <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{{id}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{client}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{date}}</td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{project}}</td>
+            <td class="px-6 py-4 text-sm md:px-4">
+              {{#is_open}}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200">Open</span>{{/is_open}}
+              {{#is_paid}}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Paid</span>{{/is_paid}}
+              {{#is_accepted}}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Accepted</span>{{/is_accepted}}
+              {{#is_declined}}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">Declined</span>{{/is_declined}}
+              {{^is_open}}{{^is_paid}}{{^is_accepted}}{{^is_declined}}<span class="text-gray-500 dark:text-gray-400">{{status}}</span>{{/is_declined}}{{/is_accepted}}{{/is_paid}}{{/is_open}}
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{amount}}</td>
+            <td class="px-6 py-4 text-right text-sm font-medium">
               <div class="flex flex-wrap justify-end sm:justify-center gap-2 items-center">
                 <a href="/{{type}}/view/{{id}}" class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 transition-colors duration-200 text-xs sm:text-sm">View</a>
                 <a href="/{{type}}/edit/{{id}}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors duration-200 text-xs sm:text-sm">Edit</a>
                 <a href="/{{type}}/pdf/{{id}}" target="_blank" class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 transition-colors duration-200 text-xs sm:text-sm">PDF</a>
-                <a href="/{{type}}/download/{{id}}?client={{client}}" class="">
-                  <button class="text-sky-500 font-normal px-1 py-2 rounded inline-flex items-center">
-                    <svg class="fill-current w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13 8V2H7v6H2l8 8 8-8h-5zM0 18h20v2H0v-2z"/></svg>
-                    <span>Download</span>
-                  </button>
+                <a href="/{{type}}/download/{{id}}?client={{client}}" class="text-sky-500 dark:text-sky-400 font-normal px-1 py-2 rounded inline-flex items-center hover:text-sky-600 dark:hover:text-sky-300 transition-colors duration-200">
+                  <svg class="fill-current w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M13 8V2H7v6H2l8 8 8-8h-5zM0 18h20v2H0v-2z"/></svg>
+                  <span>Download</span>
                 </a>
               </div>
             </td>
@@ -93,11 +117,56 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Pagination -->
+    {{#has_pages}}
+    <div class="mt-6 flex items-center justify-between">
+      <div>
+        {{#has_prev}}
+        <a href="{{prev_page}}" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">&larr; Previous</a>
+        {{/has_prev}}
+        {{^has_prev}}
+        <span class="inline-flex items-center px-4 py-2 border border-gray-200 dark:border-gray-700 text-sm font-medium rounded-md text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 cursor-not-allowed">&larr; Previous</span>
+        {{/has_prev}}
+      </div>
+      <span class="text-sm text-gray-700 dark:text-gray-300">Page {{page}} of {{total_pages}}</span>
+      <div>
+        {{#has_next}}
+        <a href="{{next_page}}" class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">Next &rarr;</a>
+        {{/has_next}}
+        {{^has_next}}
+        <span class="inline-flex items-center px-4 py-2 border border-gray-200 dark:border-gray-700 text-sm font-medium rounded-md text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 cursor-not-allowed">Next &rarr;</span>
+        {{/has_next}}
+      </div>
+    </div>
+    {{/has_pages}}
+
   </main>
 
   <script>
-
+  (function() {
+    document.querySelectorAll('th[data-sortable]').forEach(function(th) {
+      th.style.cursor = 'pointer';
+      th.title = 'Click to sort';
+      th.addEventListener('click', function() {
+        var table = th.closest('table');
+        var tbody = table.querySelector('tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var idx = Array.from(th.parentNode.children).indexOf(th);
+        var asc = th.dataset.sortDir !== 'asc';
+        th.parentNode.querySelectorAll('th').forEach(function(h) { delete h.dataset.sortDir; h.textContent = h.textContent.replace(/ [▲▼]$/, ''); });
+        th.dataset.sortDir = asc ? 'asc' : 'desc';
+        th.textContent += asc ? ' ▲' : ' ▼';
+        rows.sort(function(a, b) {
+          var aVal = a.children[idx] ? a.children[idx].textContent.trim() : '';
+          var bVal = b.children[idx] ? b.children[idx].textContent.trim() : '';
+          var cmp = aVal.localeCompare(bVal, undefined, {numeric: true});
+          return asc ? cmp : -cmp;
+        });
+        rows.forEach(function(r) { tbody.appendChild(r); });
+      });
+    });
+  })();
   </script>
 </body>
 </html>
-

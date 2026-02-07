@@ -119,6 +119,14 @@ pub fn create(DocumentType: type) type {
             if (r.path) |path| {
                 log.info("POST {s} {s}", .{ doc_type, path });
 
+                // CSRF validation for all POST requests
+                try r.parseBody();
+                if (!ep_utils.validateCsrf(arena, r)) {
+                    r.setStatus(.forbidden);
+                    try r.sendBody("403 Forbidden: CSRF validation failed");
+                    return;
+                }
+
                 // /invoice/new/:shortname
                 if (std.mem.eql(u8, path, new_page)) {
                     return ep.document_new(
@@ -177,18 +185,49 @@ pub fn create(DocumentType: type) type {
             else
                 "All Years";
 
+            // Load client and rate shortnames for autocomplete suggestions
+            const client_names = ep_utils.loadResourceNames(arena, context, fj_json.Client) catch &.{};
+            const rate_names = ep_utils.loadResourceNames(arena, context, fj_json.Rate) catch &.{};
+
             const docs_and_stats = try ep_utils.allDocsAndStats(arena, context, &.{DocumentType}, filter_year);
             std.mem.sort(Document, docs_and_stats.documents, {}, Document.greaterThan);
 
+            // Search filtering
+            const search_query = r.getParamSlice("q");
+            const filtered_docs = try ep_utils.filterDocuments(
+                arena,
+                docs_and_stats.documents,
+                search_query orelse "",
+            );
+
+            // Pagination
+            const page_str = r.getParamSlice("page");
+            const page: usize = if (page_str) |ps| std.fmt.parseInt(usize, ps, 10) catch 1 else 1;
+            const paginated = ep_utils.paginate(Document, filtered_docs, page, 25);
+
             const params = .{
                 .type = doc_type,
-                .documents = docs_and_stats.documents,
+                .documents = paginated.items,
                 .currency_symbol = fj_config.CurrencySymbol,
                 .year = year,
                 .year_options = year_options,
                 .selected_year_label = selected_year_label,
                 .is_letter = DocumentType == Letter,
+                .is_invoice = DocumentType == Invoice,
+                .is_offer = DocumentType == Offer,
                 .company = fj_config.CompanyName,
+                .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                .search_query = search_query orelse "",
+                .has_search = if (search_query) |q| q.len > 0 else false,
+                .page = try std.fmt.allocPrint(arena, "{d}", .{paginated.page}),
+                .total_pages = try std.fmt.allocPrint(arena, "{d}", .{paginated.total_pages}),
+                .has_prev = paginated.has_prev,
+                .has_next = paginated.has_next,
+                .prev_page = try std.fmt.allocPrint(arena, "{d}", .{paginated.prev_page}),
+                .next_page = try std.fmt.allocPrint(arena, "{d}", .{paginated.next_page}),
+                .total_count = try std.fmt.allocPrint(arena, "{d}", .{paginated.total_count}),
+                .client_names = client_names,
+                .rate_names = rate_names,
             };
 
             var mustache = try zap.Mustache.fromData(html_document_list);
@@ -278,6 +317,11 @@ pub fn create(DocumentType: type) type {
 
             const document = try ep.toDocument(arena, obj, files.show);
 
+            const committed_param = r.getParamSlice("committed");
+
+            const client_names = ep_utils.loadResourceNames(arena, context, fj_json.Client) catch &.{};
+            const rate_names = ep_utils.loadResourceNames(arena, context, fj_json.Rate) catch &.{};
+
             const params = .{
                 .type = doc_type,
                 .document = document,
@@ -289,7 +333,13 @@ pub fn create(DocumentType: type) type {
                 .id = document.id,
                 .compile = false,
                 .is_letter = DocumentType == Letter,
+                .is_invoice = DocumentType == Invoice,
+                .is_offer = DocumentType == Offer,
                 .company = fj_config.CompanyName,
+                .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                .committed = committed_param != null,
+                .client_names = client_names,
+                .rate_names = rate_names,
             };
 
             var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -337,6 +387,9 @@ pub fn create(DocumentType: type) type {
 
             const document = try ep.toDocument(arena, obj, files.checkout);
 
+            const client_names = ep_utils.loadResourceNames(arena, context, fj_json.Client) catch &.{};
+            const rate_names = ep_utils.loadResourceNames(arena, context, fj_json.Rate) catch &.{};
+
             const params = .{
                 .type = doc_type,
                 .document = document,
@@ -348,7 +401,12 @@ pub fn create(DocumentType: type) type {
                 .id = document.id,
                 .compile = true,
                 .is_letter = DocumentType == Letter,
+                .is_invoice = DocumentType == Invoice,
+                .is_offer = DocumentType == Offer,
                 .company = fj_config.CompanyName,
+                .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                .client_names = client_names,
+                .rate_names = rate_names,
             };
 
             var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -370,9 +428,7 @@ pub fn create(DocumentType: type) type {
         ) !void {
             var fj = ep_utils.createFj(arena, context);
 
-            // get the files passed in from the browser
-            try r.parseBody();
-
+            // Body already parsed in post() handler
             const client = try ep_utils.getBodyStrParam(arena, r, "client");
             const rates = blk: {
                 if (DocumentType == Letter) {
@@ -462,11 +518,9 @@ pub fn create(DocumentType: type) type {
             const document = try ep.toDocument(arena, obj, result.new.files);
             const fj_config = try fj.loadConfigJson();
 
-            // const document_name_instead_of_id = try std.fmt.allocPrint(
-            //     arena,
-            //     "{s}--{s}--{s}",
-            //     .{ doc_type, document.id, document.client },
-            // );
+            const client_names = ep_utils.loadResourceNames(arena, context, fj_json.Client) catch &.{};
+            const rate_names = ep_utils.loadResourceNames(arena, context, fj_json.Rate) catch &.{};
+
             const params = .{
                 .type = doc_type,
                 .document = document,
@@ -478,7 +532,12 @@ pub fn create(DocumentType: type) type {
                 .id = document.id,
                 .compile = true,
                 .is_letter = DocumentType == Letter,
+                .is_invoice = DocumentType == Invoice,
+                .is_offer = DocumentType == Offer,
                 .company = fj_config.CompanyName,
+                .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                .client_names = client_names,
+                .rate_names = rate_names,
             };
 
             var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -505,9 +564,7 @@ pub fn create(DocumentType: type) type {
             var cwd = try std.fs.cwd().openDir(document_subdir_name, .{});
             defer cwd.close();
 
-            // get the files passed in from the browser
-            try r.parseBody();
-
+            // Body already parsed in post() handler
             const json = try ep_utils.getBodyStrParam(arena, r, "json");
             const billables = blk: {
                 if (DocumentType == Letter) {
@@ -553,23 +610,83 @@ pub fn create(DocumentType: type) type {
                 .positional = .{ .subcommand = .compile, .arg = document_subdir_name },
             };
 
-            const files = fj.cmdCompileDocument(compileCommand, document_subdir_name) catch |err| {
-                // show error
-                const message = try std.fmt.allocPrint(
+            const compile_result = fj.cmdCompileDocument(compileCommand, document_subdir_name);
+
+            const compile_error_msg: []const u8 = blk: {
+                if (compile_result) |_| {
+                    break :blk "";
+                } else |err| {
+                    break :blk try std.fmt.allocPrint(
+                        arena,
+                        "Error: {}\n\n{s}",
+                        .{ err, Fatal.errormsg },
+                    );
+                }
+            };
+
+            const files = compile_result catch {
+                // Re-read the files from disk so we can re-render the editor
+                const Command2 = switch (DocumentType) {
+                    Invoice => InvoiceCommand,
+                    Offer => OfferCommand,
+                    Letter => LetterCommand,
+                    else => unreachable,
+                };
+                const show_cmd: Command2 = .{
+                    .positional = .{ .subcommand = .show, .arg = id },
+                };
+                const show_files = fj.cmdShowDocument(show_cmd) catch {
+                    // Fallback: show error page
+                    var mustache = try zap.Mustache.fromData(html_error);
+                    defer mustache.deinit();
+                    const result = mustache.build(.{
+                        .message = compile_error_msg,
+                        .company = fj_config.CompanyName,
+                    });
+                    defer result.deinit();
+                    if (result.str()) |rendered| {
+                        return ep_utils.sendBody(arena, rendered, fj_config.CompanyName, r);
+                    }
+                    return error.Mustache;
+                };
+
+                const obj2 = try std.json.parseFromSliceLeaky(
+                    DocumentType,
                     arena,
-                    "Error: {}\n\n{s}",
-                    .{ err, Fatal.errormsg },
+                    show_files.show.json,
+                    .{},
                 );
+                const document2 = try ep.toDocument(arena, obj2, show_files.show);
 
-                var mustache = try zap.Mustache.fromData(html_error);
-                defer mustache.deinit();
-                const result = mustache.build(.{
-                    .message = message,
+                const client_names2 = ep_utils.loadResourceNames(arena, context, fj_json.Client) catch &.{};
+                const rate_names2 = ep_utils.loadResourceNames(arena, context, fj_json.Rate) catch &.{};
+
+                const params2 = .{
+                    .type = doc_type,
+                    .document = document2,
+                    .currency_symbol = fj_config.CurrencySymbol,
+                    .editable = true,
+                    .json = document2.json,
+                    .billables = document2.billables,
+                    .tex = document2.tex,
+                    .id = document2.id,
+                    .compile = true,
+                    .is_letter = DocumentType == Letter,
+                    .is_invoice = DocumentType == Invoice,
+                    .is_offer = DocumentType == Offer,
                     .company = fj_config.CompanyName,
-                });
-                defer result.deinit();
+                    .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                    .compile_success = false,
+                    .compile_error = compile_error_msg,
+                    .client_names = client_names2,
+                    .rate_names = rate_names2,
+                };
 
-                if (result.str()) |rendered| {
+                var mustache2 = try zap.Mustache.fromData(html_document_editor);
+                defer mustache2.deinit();
+                const result2 = mustache2.build(params2);
+                defer result2.deinit();
+                if (result2.str()) |rendered| {
                     return ep_utils.sendBody(arena, rendered, fj_config.CompanyName, r);
                 }
                 return error.Mustache;
@@ -584,6 +701,9 @@ pub fn create(DocumentType: type) type {
 
             const document = try ep.toDocument(arena, obj, files.compile);
 
+            const client_names = ep_utils.loadResourceNames(arena, context, fj_json.Client) catch &.{};
+            const rate_names = ep_utils.loadResourceNames(arena, context, fj_json.Rate) catch &.{};
+
             const params = .{
                 .type = doc_type,
                 .document = document,
@@ -595,7 +715,14 @@ pub fn create(DocumentType: type) type {
                 .id = document.id,
                 .compile = true,
                 .is_letter = DocumentType == Letter,
+                .is_invoice = DocumentType == Invoice,
+                .is_offer = DocumentType == Offer,
                 .company = fj_config.CompanyName,
+                .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                .compile_success = true,
+                .compile_error = "",
+                .client_names = client_names,
+                .rate_names = rate_names,
             };
 
             var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -617,16 +744,14 @@ pub fn create(DocumentType: type) type {
             id: []const u8,
         ) !void {
             var fj = ep_utils.createFj(arena, context);
-            const fj_config = try fj.loadConfigJson();
+            _ = try fj.loadConfigJson();
             // we need to find the subdir of the checked out invoice
             const document_subdir_name = std.fs.path.basename(try fj.findDocumentById(DocumentType, id));
 
             var cwd = try std.fs.cwd().openDir(document_subdir_name, .{});
             defer cwd.close();
 
-            // get the files passed in from the browser
-            try r.parseBody();
-
+            // Body already parsed in post() handler
             const json = try ep_utils.getBodyStrParam(arena, r, "json");
             const billables = blk: {
                 if (DocumentType == Letter) {
@@ -684,31 +809,15 @@ pub fn create(DocumentType: type) type {
                 .{},
             );
 
-            const document = try ep.toDocument(arena, obj, files.commit);
+            _ = ep;
 
-            const params = .{
-                .type = doc_type,
-                .document = document,
-                .currency_symbol = fj_config.CurrencySymbol,
-                .editable = false,
-                .json = document.json,
-                .billables = document.billables,
-                .tex = document.tex,
-                .id = document.id,
-                .compile = false,
-                .is_letter = DocumentType == Letter,
-                .company = fj_config.CompanyName,
-            };
-
-            var mustache = try zap.Mustache.fromData(html_document_editor);
-            defer mustache.deinit();
-            const result = mustache.build(params);
-            defer result.deinit();
-
-            if (result.str()) |rendered| {
-                return ep_utils.sendBody(arena, rendered, fj_config.CompanyName, r);
-            }
-            return error.Mustache;
+            // Redirect to view page with committed flash
+            const redirect_url = try std.fmt.allocPrint(
+                arena,
+                "/{s}/view/{s}?committed=1",
+                .{ doc_type, obj.id },
+            );
+            return r.redirectTo(redirect_url, null);
         }
 
         fn document_pdf(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, id: []const u8) !void {

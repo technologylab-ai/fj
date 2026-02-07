@@ -5,6 +5,8 @@ const Allocator = std.mem.Allocator;
 const Fj = @import("../fj.zig");
 const Format = @import("../format.zig");
 
+const Sha256 = std.crypto.hash.sha2.Sha256;
+
 const fj_json = @import("../json.zig");
 const Letter = fj_json.Letter;
 const Offer = fj_json.Offer;
@@ -55,6 +57,11 @@ pub const Document = struct {
     billables: []const u8 = "",
     tex: []const u8 = "",
 
+    is_open: bool = false,
+    is_paid: bool = false,
+    is_accepted: bool = false,
+    is_declined: bool = false,
+
     pub fn lessThan(ctx: void, a: @This(), b: @This()) bool {
         _ = ctx;
         return std.mem.order(u8, a.sort_date, b.sort_date) == .lt;
@@ -82,6 +89,36 @@ pub const YearOption = struct {
     label: []const u8,
     is_current: bool,
 };
+
+/// Simple struct for mustache datalist rendering: {{#items}}<option value="{{name}}">{{/items}}
+pub const NameOption = struct {
+    name: []const u8,
+};
+
+/// Load all shortnames for a resource type (Client or Rate) as NameOption array.
+pub fn loadResourceNames(arena: Allocator, context: *Context, comptime ResourceType: type) ![]NameOption {
+    var fj = createFj(arena, context);
+    const CliCommand = switch (ResourceType) {
+        fj_json.Client => Cli.ClientCommand,
+        fj_json.Rate => Cli.RateCommand,
+        else => unreachable,
+    };
+    const list_cli: CliCommand = .{
+        .positional = .{ .subcommand = .list },
+    };
+    const names = try fj.handleRecordCommand(list_cli);
+    var options = std.ArrayListUnmanaged(NameOption).empty;
+    for (names.list) |shortname| {
+        try options.append(arena, .{ .name = shortname });
+    }
+    const sorted = try options.toOwnedSlice(arena);
+    std.mem.sort(NameOption, sorted, {}, struct {
+        pub fn lessThan(_: void, a: NameOption, b: NameOption) bool {
+            return std.mem.order(u8, a.name, b.name) == .lt;
+        }
+    }.lessThan);
+    return sorted;
+}
 
 pub fn show_404(arena: Allocator, context: *Context, r: zap.Request) !void {
     var fj = createFj(arena, context);
@@ -319,6 +356,10 @@ pub fn allDocsAndStats(arena: Allocator, context: *Context, DocumentTypes: []con
                 .sort_date = try arena.dupe(u8, obj.updated),
                 .status = try arena.dupe(u8, status),
                 .amount = try arena.dupe(u8, amount),
+                .is_open = std.mem.eql(u8, status, "open"),
+                .is_paid = std.mem.eql(u8, status, "paid"),
+                .is_accepted = std.mem.eql(u8, status, "accepted"),
+                .is_declined = std.mem.eql(u8, status, "declined"),
             };
 
             try doc_list.append(arena, document);
@@ -326,4 +367,114 @@ pub fn allDocsAndStats(arena: Allocator, context: *Context, DocumentTypes: []con
     }
 
     return .{ .documents = try doc_list.toOwnedSlice(arena), .stats = stats };
+}
+
+/// Extract the FJ_SESSION cookie value from the Cookie header.
+pub fn getSessionCookie(r: zap.Request) ?[]const u8 {
+    const cookie_header = r.getHeader("cookie") orelse return null;
+    var it = std.mem.splitScalar(u8, cookie_header, ';');
+    while (it.next()) |part| {
+        const trimmed = std.mem.trim(u8, part, " ");
+        if (std.mem.startsWith(u8, trimmed, "FJ_SESSION=")) {
+            return trimmed["FJ_SESSION=".len..];
+        }
+    }
+    return null;
+}
+
+/// Compute a CSRF token by SHA-256 hashing the session cookie.
+/// Returns a hex string. If no session cookie exists, returns a fixed fallback.
+pub fn csrfTokenFromSession(arena: Allocator, r: zap.Request) []const u8 {
+    const session = getSessionCookie(r) orelse return "no-session-csrf-fallback";
+    var hash: [Sha256.digest_length]u8 = undefined;
+    Sha256.hash(session, &hash, .{});
+    const hex_chars = "0123456789abcdef";
+    var hex_buf: [Sha256.digest_length * 2]u8 = undefined;
+    for (hash, 0..) |byte, i| {
+        hex_buf[i * 2] = hex_chars[byte >> 4];
+        hex_buf[i * 2 + 1] = hex_chars[byte & 0x0f];
+    }
+    return arena.dupe(u8, &hex_buf) catch "csrf-error";
+}
+
+/// Validate CSRF token from the `_csrf` body parameter against the session-derived token.
+/// The request body must already be parsed before calling this.
+pub fn validateCsrf(arena: Allocator, r: zap.Request) bool {
+    const submitted = getBodyStrParam(arena, r, "_csrf") catch return false;
+    const expected = csrfTokenFromSession(arena, r);
+    return std.mem.eql(u8, submitted, expected);
+}
+
+/// Case-insensitive substring search (public, for use by other endpoints).
+pub fn containsIgnoreCase(haystack: []const u8, needle: []const u8) bool {
+    if (needle.len == 0) return true;
+    if (needle.len > haystack.len) return false;
+
+    var i: usize = 0;
+    while (i <= haystack.len - needle.len) : (i += 1) {
+        var match = true;
+        for (needle, 0..) |nc, j| {
+            const hc = haystack[i + j];
+            if (std.ascii.toLower(hc) != std.ascii.toLower(nc)) {
+                match = false;
+                break;
+            }
+        }
+        if (match) return true;
+    }
+    return false;
+}
+
+/// Paginated result for document lists.
+pub fn PaginatedResult(T: type) type {
+    return struct {
+        items: []const T,
+        page: usize,
+        total_pages: usize,
+        has_prev: bool,
+        has_next: bool,
+        prev_page: usize,
+        next_page: usize,
+        total_count: usize,
+    };
+}
+
+/// Filter documents by search query (case-insensitive across common fields).
+pub fn filterDocuments(arena: Allocator, documents: []const Document, query: []const u8) ![]const Document {
+    if (query.len == 0) return documents;
+    var filtered = std.ArrayListUnmanaged(Document).empty;
+    for (documents) |doc| {
+        if (containsIgnoreCase(doc.id, query) or
+            containsIgnoreCase(doc.client, query) or
+            containsIgnoreCase(doc.project, query) or
+            containsIgnoreCase(doc.status, query) or
+            containsIgnoreCase(doc.date, query) or
+            containsIgnoreCase(doc.amount, query) or
+            containsIgnoreCase(doc.type, query))
+        {
+            try filtered.append(arena, doc);
+        }
+    }
+    return filtered.toOwnedSlice(arena);
+}
+
+/// Paginate a slice given a 1-based page number and page size.
+pub fn paginate(T: type, items: []const T, page: usize, page_size: usize) PaginatedResult(T) {
+    const total_count = items.len;
+    const total_pages = if (total_count == 0) 1 else (total_count + page_size - 1) / page_size;
+    const current_page = @min(@max(page, 1), total_pages);
+    const start_idx = (current_page - 1) * page_size;
+    const end_idx = @min(start_idx + page_size, total_count);
+    const page_items = if (start_idx < total_count) items[start_idx..end_idx] else &[_]T{};
+
+    return .{
+        .items = page_items,
+        .page = current_page,
+        .total_pages = total_pages,
+        .has_prev = current_page > 1,
+        .has_next = current_page < total_pages,
+        .prev_page = if (current_page > 1) current_page - 1 else 1,
+        .next_page = if (current_page < total_pages) current_page + 1 else total_pages,
+        .total_count = total_count,
+    };
 }

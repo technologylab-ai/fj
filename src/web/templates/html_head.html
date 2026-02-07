@@ -57,6 +57,11 @@
       background-color: #6b7280;
     }
 
+    /* Firefox dark mode scrollbar */
+    .dark {
+      scrollbar-color: #4b5563 #1f2937;
+    }
+
     /* Keep specific styles that are unique or override Tailwind defaults if necessary */
     .fj_home {
         display: inline-block;
@@ -81,5 +86,91 @@
         font-size: 1rem; /* text-base */
       }
     }
+
+    @media print {
+      nav, header, footer, form, button, .no-print { display: none !important; }
+      main { padding: 0 !important; }
+      table { border-collapse: collapse; }
+      table th, table td { border: 1px solid #ddd; padding: 4px 8px; }
+      body { background: white !important; color: black !important; }
+    }
+
+    a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+    }
+
+    .skip-nav {
+      position: absolute;
+      left: -9999px;
+      z-index: 999;
+      padding: 0.5rem 1rem;
+      background: #1e40af;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .skip-nav:focus {
+      left: 0.5rem;
+      top: 0.5rem;
+    }
   </style>
+
+  <script>
+    // Loading states for form submissions
+    document.addEventListener('submit', function(e) {
+      var form = e.target;
+      if (form.hasAttribute('data-no-loading')) return;
+      var btn = form.querySelector('button[type="submit"]:focus, input[type="submit"]:focus')
+                || e.submitter
+                || form.querySelector('button[type="submit"], input[type="submit"]');
+      if (btn && !btn.disabled) {
+        btn.disabled = true;
+        var originalText = btn.innerHTML;
+        btn.dataset.originalText = originalText;
+        btn.innerHTML = '<svg class="animate-spin inline-block w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Processing...';
+        // Re-enable after 30s as safety net
+        setTimeout(function() { btn.disabled = false; btn.innerHTML = originalText; }, 30000);
+      }
+    });
+
+    // Confirmation dialogs for data-confirm attributes
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-confirm]');
+      if (btn) {
+        if (!confirm(btn.getAttribute('data-confirm'))) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    });
+
+    // Unsaved changes warning for forms with textareas
+    (function() {
+      var dirty = false;
+      document.querySelectorAll('form textarea').forEach(function(ta) {
+        ta.addEventListener('input', function() { dirty = true; });
+      });
+      document.querySelectorAll('form').forEach(function(f) {
+        f.addEventListener('submit', function() { dirty = false; });
+      });
+      window.addEventListener('beforeunload', function(e) {
+        if (dirty) { e.preventDefault(); e.returnValue = ''; }
+      });
+    })();
+
+    // Keyboard shortcuts: Ctrl/Cmd+S = compile, Ctrl/Cmd+Enter = commit
+    document.addEventListener('keydown', function(e) {
+      var mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      if (e.key === 's') {
+        var compileBtn = document.querySelector('button[formaction*="/compile/"]');
+        if (compileBtn) { e.preventDefault(); compileBtn.click(); }
+      }
+      if (e.key === 'Enter') {
+        var commitBtn = document.querySelector('button[formaction*="/commit/"]');
+        if (commitBtn) { e.preventDefault(); commitBtn.click(); }
+      }
+    });
+  </script>
 

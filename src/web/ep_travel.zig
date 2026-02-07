@@ -34,6 +34,14 @@ pub fn post(ep: *Travel, arena: Allocator, context: *Context, r: zap.Request) !v
     if (r.path) |path| {
         log.info("POST {s}", .{path});
 
+        // CSRF validation for all POST requests
+        try r.parseBody();
+        if (!ep_utils.validateCsrf(arena, r)) {
+            r.setStatus(.forbidden);
+            try r.sendBody("403 Forbidden: CSRF validation failed");
+            return;
+        }
+
         if (std.mem.eql(u8, path, ep.path ++ "-submit")) {
             return ep.submit_travel_form(arena, context, r);
         }
@@ -47,6 +55,7 @@ fn show_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Requ
 
     const params = .{
         .company = fj_config.CompanyName,
+        .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
     };
 
     var mustache = try zap.Mustache.fromData(html_travellog);
@@ -64,9 +73,8 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
     var fj = ep_utils.createFj(arena, context);
     const fj_config = try fj.loadConfigJson();
 
-    // parse STRING form parameters
+    // parse STRING form parameters (body already parsed in post() handler)
     //
-    try r.parseBody();
     const travelerName = try ep_utils.getBodyStrParam(arena, r, "travelerName");
     const travelDestination = try ep_utils.getBodyStrParam(arena, r, "travelDestination");
     const travelPeriodFrom = try ep_utils.getBodyStrParam(arena, r, "travelPeriodFrom");

@@ -79,6 +79,14 @@ pub fn create(ResourceType: type) type {
             if (r.path) |path| {
                 log.info("POST {s} {s}", .{ type_string, path });
 
+                // CSRF validation for all POST requests
+                try r.parseBody();
+                if (!ep_utils.validateCsrf(arena, r)) {
+                    r.setStatus(.forbidden);
+                    try r.sendBody("403 Forbidden: CSRF validation failed");
+                    return;
+                }
+
                 if (std.mem.eql(u8, path, new_page)) {
                     return ep.resource_new(
                         arena,
@@ -157,6 +165,9 @@ pub fn create(ResourceType: type) type {
                 .type = type_string,
                 .resources = resources,
                 .company = fj_config.CompanyName,
+                .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                .is_client = ResourceType == Client,
+                .is_rate = ResourceType == Rate,
             };
             var mustache = try zap.Mustache.fromData(html_resource_list);
             defer mustache.deinit();
@@ -182,12 +193,17 @@ pub fn create(ResourceType: type) type {
             const json = try std.json.Stringify.valueAlloc(arena, obj, .{ .whitespace = .indent_4 });
 
             const fj_config = try fj.loadConfigJson();
+            const committed_param = r.getParamSlice("committed");
             const params = .{
                 .type = type_string,
                 .shortname = id,
                 .json = json,
                 .editable = editable,
                 .company = fj_config.CompanyName,
+                .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                .is_client = ResourceType == Client,
+                .is_rate = ResourceType == Rate,
+                .committed = committed_param != null,
             };
 
             var mustache = try zap.Mustache.fromData(html_resource_editor);
@@ -206,8 +222,7 @@ pub fn create(ResourceType: type) type {
             const fj_config = try fj.loadConfigJson();
             log.debug("fj_home: {s}", .{fj.fj_home.?});
 
-            try r.parseBody();
-
+            // Body already parsed in post() handler
             const shortname = try ep_utils.getBodyStrParam(arena, r, "shortname");
             const expected_filename = try std.fmt.allocPrint(arena, "{s}.json", .{shortname});
             if (fsutil.fileExists(expected_filename)) {
@@ -266,6 +281,9 @@ pub fn create(ResourceType: type) type {
                 .json = json,
                 .editable = true,
                 .company = fj_config.CompanyName,
+                .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                .is_client = ResourceType == Client,
+                .is_rate = ResourceType == Rate,
             };
 
             var mustache = try zap.Mustache.fromData(html_resource_editor);
@@ -282,8 +300,7 @@ pub fn create(ResourceType: type) type {
         fn resource_commit(_: *Endpoint, arena: Allocator, context: *Context, r: zap.Request, shortname: []const u8) !void {
             var fj = ep_utils.createFj(arena, context);
 
-            try r.parseBody();
-
+            // Body already parsed in post() handler
             const json = try ep_utils.getBodyStrParam(arena, r, "json");
             // const fio_params = r.h.*.params;
             // log.debug("type of params = {s}", .{util.fiobj_type(r.h.*.params)});
@@ -309,7 +326,12 @@ pub fn create(ResourceType: type) type {
 
             // and write it into fj_home
             _ = try fj.writeRecord(shortname, obj, .{ .allow_overwrite = true });
-            try r.redirectTo("/dashboard", null);
+            const redirect_url = try std.fmt.allocPrint(
+                arena,
+                "/{s}/view/{s}?committed=1",
+                .{ type_string, shortname },
+            );
+            try r.redirectTo(redirect_url, null);
         }
     };
 }

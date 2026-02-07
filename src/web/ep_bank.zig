@@ -33,6 +33,14 @@ pub fn post(ep: *EpBank, arena: Allocator, context: *Context, r: zap.Request) !v
     if (r.path) |path| {
         log.info("POST bank {s}", .{path});
 
+        // CSRF validation for all POST requests
+        try r.parseBody();
+        if (!ep_utils.validateCsrf(arena, r)) {
+            r.setStatus(.forbidden);
+            try r.sendBody("403 Forbidden: CSRF validation failed");
+            return;
+        }
+
         if (std.mem.eql(u8, path, "/bank/upload")) {
             return ep.uploadCsv(arena, context, r);
         }
@@ -153,6 +161,7 @@ fn listTransactions(ep: *EpBank, arena: Allocator, context: *Context, r: zap.Req
         .has_reconciled = reconciled_str != null,
         .error_message = error_param orelse "",
         .has_error = error_param != null,
+        .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
     };
 
     var mustache = try zap.Mustache.fromData(html_bank);
@@ -168,7 +177,7 @@ fn listTransactions(ep: *EpBank, arena: Allocator, context: *Context, r: zap.Req
 
 fn uploadCsv(ep: *EpBank, arena: Allocator, context: *Context, r: zap.Request) !void {
     _ = ep;
-    try r.parseBody();
+    // Body already parsed in post() handler
 
     // Get the uploaded file
     const file_param = ep_utils.getBodyParam(r, "csv_file") catch |err| {

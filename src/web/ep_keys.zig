@@ -30,6 +30,14 @@ pub fn post(ep: *EpKeys, arena: Allocator, context: *Context, r: zap.Request) !v
     if (r.path) |path| {
         log.info("POST keys {s}", .{path});
 
+        // CSRF validation for all POST requests
+        try r.parseBody();
+        if (!ep_utils.validateCsrf(arena, r)) {
+            r.setStatus(.forbidden);
+            try r.sendBody("403 Forbidden: CSRF validation failed");
+            return;
+        }
+
         // Route: POST /keys/create
         if (std.mem.eql(u8, path, "/keys/create")) {
             return ep.createKey(arena, context, r);
@@ -74,6 +82,7 @@ fn listKeys(ep: *EpKeys, arena: Allocator, context: *Context, r: zap.Request) !v
         .error_message = error_param orelse "",
         .has_error = error_param != null,
         .deleted = deleted != null,
+        .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
     };
 
     // Render template
@@ -90,7 +99,7 @@ fn listKeys(ep: *EpKeys, arena: Allocator, context: *Context, r: zap.Request) !v
 
 fn createKey(ep: *EpKeys, arena: Allocator, context: *Context, r: zap.Request) !void {
     _ = ep;
-    try r.parseBody();
+    // Body already parsed in post() handler
 
     const label = ep_utils.getBodyStrParam(arena, r, "label") catch {
         return r.redirectTo("/keys?error=missing_label", null);
@@ -125,7 +134,7 @@ fn createKey(ep: *EpKeys, arena: Allocator, context: *Context, r: zap.Request) !
 
 fn deleteKey(ep: *EpKeys, arena: Allocator, context: *Context, r: zap.Request) !void {
     _ = ep;
-    try r.parseBody();
+    // Body already parsed in post() handler
 
     const label = ep_utils.getBodyStrParam(arena, r, "label") catch {
         return r.redirectTo("/keys?error=missing_label", null);
