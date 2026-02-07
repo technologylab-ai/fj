@@ -223,8 +223,8 @@ pub fn create(DocumentType: type) type {
                 .total_pages = try std.fmt.allocPrint(arena, "{d}", .{paginated.total_pages}),
                 .has_prev = paginated.has_prev,
                 .has_next = paginated.has_next,
-                .prev_page = try std.fmt.allocPrint(arena, "{d}", .{paginated.prev_page}),
-                .next_page = try std.fmt.allocPrint(arena, "{d}", .{paginated.next_page}),
+                .prev_page = try ep_utils.buildPaginationUrl(arena, filter_year, search_query, paginated.prev_page),
+                .next_page = try ep_utils.buildPaginationUrl(arena, filter_year, search_query, paginated.next_page),
                 .total_count = try std.fmt.allocPrint(arena, "{d}", .{paginated.total_count}),
                 .client_names = client_names,
                 .rate_names = rate_names,
@@ -338,6 +338,7 @@ pub fn create(DocumentType: type) type {
                 .company = fj_config.CompanyName,
                 .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
                 .committed = committed_param != null,
+                .created = false,
                 .client_names = client_names,
                 .rate_names = rate_names,
             };
@@ -405,6 +406,7 @@ pub fn create(DocumentType: type) type {
                 .is_offer = DocumentType == Offer,
                 .company = fj_config.CompanyName,
                 .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                .created = false,
                 .client_names = client_names,
                 .rate_names = rate_names,
             };
@@ -536,6 +538,7 @@ pub fn create(DocumentType: type) type {
                 .is_offer = DocumentType == Offer,
                 .company = fj_config.CompanyName,
                 .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
+                .created = true,
                 .client_names = client_names,
                 .rate_names = rate_names,
             };
@@ -678,6 +681,7 @@ pub fn create(DocumentType: type) type {
                     .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
                     .compile_success = false,
                     .compile_error = compile_error_msg,
+                    .created = false,
                     .client_names = client_names2,
                     .rate_names = rate_names2,
                 };
@@ -721,6 +725,7 @@ pub fn create(DocumentType: type) type {
                 .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
                 .compile_success = true,
                 .compile_error = "",
+                .created = false,
                 .client_names = client_names,
                 .rate_names = rate_names,
             };

@@ -16,16 +16,21 @@
       <strong class="font-bold">PDF compiled successfully!</strong>
     </div>
     {{/compile_success}}
-    {{#has_compile_error}}
+    {{#compile_error}}
     <div class="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-6">
       <strong class="font-bold">Compilation Error:</strong> {{compile_error}}
     </div>
-    {{/has_compile_error}}
+    {{/compile_error}}
     {{#committed}}
     <div class="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 px-4 py-3 rounded-lg mb-6">
       <strong class="font-bold">Document committed and finalized!</strong>
     </div>
     {{/committed}}
+    {{#created}}
+    <div class="bg-blue-100 dark:bg-blue-900 border border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-200 px-4 py-3 rounded-lg mb-6">
+      <strong class="font-bold">Document created successfully!</strong>
+    </div>
+    {{/created}}
 
     <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
       {{type}} <span id="invoice-id" class="font-normal text-gray-600 dark:text-gray-400">{{id}}</span>

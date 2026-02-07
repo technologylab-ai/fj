@@ -458,6 +458,23 @@ pub fn filterDocuments(arena: Allocator, documents: []const Document, query: []c
     return filtered.toOwnedSlice(arena);
 }
 
+/// Build a pagination URL preserving year and search query parameters.
+/// Omits params that are empty/not set to keep URLs clean.
+pub fn buildPaginationUrl(arena: Allocator, filter_year: ?i32, search_query: ?[]const u8, page: usize) ![]const u8 {
+    const has_year = filter_year != null;
+    const has_query = if (search_query) |q| q.len > 0 else false;
+
+    if (has_year and has_query) {
+        return std.fmt.allocPrint(arena, "?year={d}&q={s}&page={d}", .{ filter_year.?, search_query.?, page });
+    } else if (has_year) {
+        return std.fmt.allocPrint(arena, "?year={d}&page={d}", .{ filter_year.?, page });
+    } else if (has_query) {
+        return std.fmt.allocPrint(arena, "?year=all&q={s}&page={d}", .{ search_query.?, page });
+    } else {
+        return std.fmt.allocPrint(arena, "?page={d}", .{page});
+    }
+}
+
 /// Paginate a slice given a 1-based page number and page size.
 pub fn paginate(T: type, items: []const T, page: usize, page_size: usize) PaginatedResult(T) {
     const total_count = items.len;
