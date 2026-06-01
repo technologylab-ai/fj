@@ -35,11 +35,12 @@ pub fn get(ep: *GitEndpoint, arena: Allocator, context: *Context, r: zap.Request
 fn git_push(_: *GitEndpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
     const git: Git = .{
         .arena = arena,
+        .io = context.io,
         .repo_dir = context.fj_home,
     };
     var fj = ep_utils.createFj(arena, context);
 
-    var status_writer = std.io.Writer.Allocating.init(arena);
+    var status_writer = std.Io.Writer.Allocating.init(arena);
     _ = try git.push(&status_writer.writer);
 
     const fj_config = try fj.loadConfigJson();
@@ -63,10 +64,11 @@ fn git_push(_: *GitEndpoint, arena: Allocator, context: *Context, r: zap.Request
 fn git_commit(_: *GitEndpoint, arena: Allocator, context: *Context, r: zap.Request) !void {
     const git: Git = .{
         .arena = arena,
+        .io = context.io,
         .repo_dir = context.fj_home,
     };
     var fj = ep_utils.createFj(arena, context);
-    var status_writer = std.io.Writer.Allocating.init(arena);
+    var status_writer = std.Io.Writer.Allocating.init(arena);
     if (try git.stage(.all, &status_writer.writer)) {
         _ = try git.commit("Committed via web", &status_writer.writer);
     }

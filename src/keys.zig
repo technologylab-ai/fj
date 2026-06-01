@@ -2,13 +2,14 @@ const std = @import("std");
 const json = @import("json.zig");
 const zeit = @import("zeit");
 const today = @import("today.zig");
+const fsutil = @import("fsutil.zig");
 
 pub const API_KEY_PREFIX = "fj_sk_";
 pub const API_KEY_LENGTH = 64; // prefix (6) + random (58)
 pub const TOKEN_HASH_LENGTH = 64; // SHA-256 hex
 
 /// Generate a new API key token
-pub fn generateToken(allocator: std.mem.Allocator) ![]u8 {
+pub fn generateToken(io: std.Io, allocator: std.mem.Allocator) ![]u8 {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     var token = try allocator.alloc(u8, API_KEY_LENGTH);
 
@@ -16,7 +17,7 @@ pub fn generateToken(allocator: std.mem.Allocator) ![]u8 {
     @memcpy(token[0..6], API_KEY_PREFIX);
 
     // Generate random part
-    std.crypto.random.bytes(token[6..]);
+    try io.randomSecure(token[6..]);
     for (token[6..]) |*byte| {
         byte.* = charset[@as(usize, byte.*) % charset.len];
     }
@@ -35,19 +36,19 @@ pub fn hashToken(allocator: std.mem.Allocator, token: []const u8) ![]u8 {
 }
 
 /// Load API keys from FJ_HOME/.api_keys.json
-pub fn loadKeys(allocator: std.mem.Allocator, fj_home: []const u8) !json.ApiKeyStore {
+pub fn loadKeys(io: std.Io, allocator: std.mem.Allocator, fj_home: []const u8) !json.ApiKeyStore {
     const path = try std.fs.path.join(allocator, &.{ fj_home, ".api_keys.json" });
     defer allocator.free(path);
 
-    const file = std.fs.openFileAbsolute(path, .{}) catch |err| {
+    const file = std.Io.Dir.openFileAbsolute(io, path, .{}) catch |err| {
         if (err == error.FileNotFound) {
             return json.ApiKeyStore{ .keys = &.{} };
         }
         return err;
     };
-    defer file.close();
+    defer file.close(io);
 
-    const content = try file.readToEndAlloc(allocator, 1024 * 1024);
+    const content = try fsutil.readToEndAlloc(io, file, allocator, 1024 * 1024);
 
     const parsed = try std.json.parseFromSlice(json.ApiKeyStore, allocator, content, .{
         .ignore_unknown_fields = true,
@@ -57,22 +58,22 @@ pub fn loadKeys(allocator: std.mem.Allocator, fj_home: []const u8) !json.ApiKeyS
 }
 
 /// Save API keys to FJ_HOME/.api_keys.json
-pub fn saveKeys(allocator: std.mem.Allocator, fj_home: []const u8, store: json.ApiKeyStore) !void {
+pub fn saveKeys(io: std.Io, allocator: std.mem.Allocator, fj_home: []const u8, store: json.ApiKeyStore) !void {
     const path = try std.fs.path.join(allocator, &.{ fj_home, ".api_keys.json" });
     defer allocator.free(path);
 
-    const file = try std.fs.createFileAbsolute(path, .{ .mode = 0o600 });
-    defer file.close();
+    const file = try std.Io.Dir.createFileAbsolute(io, path, .{ .permissions = @enumFromInt(0o600) });
+    defer file.close(io);
 
     var io_buffer: [4096]u8 = undefined;
-    var writer = file.writer(&io_buffer);
+    var writer = file.writer(io, &io_buffer);
     std.json.Stringify.value(store, .{ .whitespace = .indent_2 }, &writer.interface) catch return error.JsonWriteError;
     writer.interface.flush() catch return error.FlushError;
 }
 
 /// Create a new API key
-pub fn createKey(allocator: std.mem.Allocator, fj_home: []const u8, label: []const u8, expires: ?[]const u8) ![]u8 {
-    const store = try loadKeys(allocator, fj_home);
+pub fn createKey(io: std.Io, allocator: std.mem.Allocator, fj_home: []const u8, label: []const u8, expires: ?[]const u8) ![]u8 {
+    const store = try loadKeys(io, allocator, fj_home);
 
     // Check label uniqueness
     for (store.keys) |key| {
@@ -82,7 +83,7 @@ pub fn createKey(allocator: std.mem.Allocator, fj_home: []const u8, label: []con
     }
 
     // Generate token and hash
-    const token = try generateToken(allocator);
+    const token = try generateToken(io, allocator);
     const token_hash = try hashToken(allocator, token);
 
     // Get current timestamp
@@ -108,14 +109,14 @@ pub fn createKey(allocator: std.mem.Allocator, fj_home: []const u8, label: []con
     };
 
     // Save
-    try saveKeys(allocator, fj_home, new_store);
+    try saveKeys(io, allocator, fj_home, new_store);
 
     return token; // Return plaintext token (shown once)
 }
 
 /// Delete an API key (soft-delete)
-pub fn deleteKey(allocator: std.mem.Allocator, fj_home: []const u8, label: []const u8) !void {
-    const store = try loadKeys(allocator, fj_home);
+pub fn deleteKey(io: std.Io, allocator: std.mem.Allocator, fj_home: []const u8, label: []const u8) !void {
+    const store = try loadKeys(io, allocator, fj_home);
 
     var found = false;
     var new_keys = std.ArrayListUnmanaged(json.ApiKey).empty;
@@ -145,17 +146,17 @@ pub fn deleteKey(allocator: std.mem.Allocator, fj_home: []const u8, label: []con
         .keys = try new_keys.toOwnedSlice(allocator),
     };
 
-    try saveKeys(allocator, fj_home, new_store);
+    try saveKeys(io, allocator, fj_home, new_store);
 }
 
 /// Verify a token against stored hashes
-pub fn verifyToken(allocator: std.mem.Allocator, fj_home: []const u8, token: []const u8) !?json.ApiKey {
+pub fn verifyToken(io: std.Io, allocator: std.mem.Allocator, fj_home: []const u8, token: []const u8) !?json.ApiKey {
     // Validate format
     if (token.len != API_KEY_LENGTH or !std.mem.startsWith(u8, token, API_KEY_PREFIX)) {
         return null;
     }
 
-    const store = try loadKeys(allocator, fj_home);
+    const store = try loadKeys(io, allocator, fj_home);
     const token_hash = try hashToken(allocator, token);
     defer allocator.free(token_hash);
 
@@ -185,7 +186,7 @@ fn getCurrentTimestamp(allocator: std.mem.Allocator) ![]u8 {
 
 // Tests
 test "generateToken has correct format" {
-    const token = try generateToken(std.testing.allocator);
+    const token = try generateToken(std.Io.Threaded.global_single_threaded.io(), std.testing.allocator);
     defer std.testing.allocator.free(token);
 
     try std.testing.expectEqual(@as(usize, 64), token.len);

@@ -4,6 +4,7 @@ const Context = @import("context.zig");
 const Allocator = std.mem.Allocator;
 const Fj = @import("../fj.zig");
 const Format = @import("../format.zig");
+const fsutil = @import("../fsutil.zig");
 
 const Sha256 = std.crypto.hash.sha2.Sha256;
 
@@ -141,6 +142,7 @@ pub fn show_404(arena: Allocator, context: *Context, r: zap.Request) !void {
 pub fn createFj(arena: Allocator, context: *Context) Fj {
     const fj: Fj = .{
         .arena = arena,
+        .io = context.io,
         .fj_home = context.fj_home,
     };
     return fj;
@@ -182,21 +184,20 @@ pub fn documentIdFromName(docname: []const u8) ![]const u8 {
     return error.InvalidName;
 }
 
-pub fn readCurrentYear(arena: Allocator, fj_home: []const u8) ?i32 {
+pub fn readCurrentYear(io: std.Io, arena: Allocator, fj_home: []const u8) ?i32 {
     const file_path = std.fs.path.join(arena, &.{ fj_home, ".current_year" }) catch return null;
-    const file = std.fs.cwd().openFile(file_path, .{}) catch return null;
-    defer file.close();
-    var buf: [16]u8 = undefined;
-    const n = file.readAll(&buf) catch return null;
-    const content = std.mem.trim(u8, buf[0..n], &.{ ' ', '\n', '\r', '\t' });
+    const file = std.Io.Dir.cwd().openFile(io, file_path, .{}) catch return null;
+    defer file.close(io);
+    const content_raw = fsutil.readToEndAlloc(io, file, arena, 64) catch return null;
+    const content = std.mem.trim(u8, content_raw, &.{ ' ', '\n', '\r', '\t' });
     return std.fmt.parseInt(i32, content, 10) catch null;
 }
 
-fn collectYearsFromDir(arena: Allocator, base_dir_path: []const u8, human: []const u8, year_set: *std.AutoHashMapUnmanaged(i32, void)) !void {
-    var dir = std.fs.cwd().openDir(base_dir_path, .{ .iterate = true }) catch return;
-    defer dir.close();
+fn collectYearsFromDir(io: std.Io, arena: Allocator, base_dir_path: []const u8, human: []const u8, year_set: *std.AutoHashMapUnmanaged(i32, void)) !void {
+    var dir = std.Io.Dir.cwd().openDir(io, base_dir_path, .{ .iterate = true }) catch return;
+    defer dir.close(io);
     var it = dir.iterate();
-    while (try it.next()) |entry| {
+    while (try it.next(io)) |entry| {
         if (std.ascii.startsWithIgnoreCase(entry.name, human)) {
             const id = documentIdFromName(entry.name) catch continue;
             if (id.len >= 4) {
@@ -214,7 +215,7 @@ pub fn collectAvailableYears(arena: Allocator, context: *Context) ![]i32 {
     inline for (&[_]type{ Invoice, Offer, Letter }) |DocType| {
         const human = Fj.documentTypeHumanName(DocType);
         if (fj.documentBaseDir(DocType)) |base_dir_path| {
-            try collectYearsFromDir(arena, base_dir_path, human, &year_set);
+            try collectYearsFromDir(context.io, arena, base_dir_path, human, &year_set);
         } else |_| {}
     }
 
@@ -250,7 +251,7 @@ pub fn buildYearOptions(arena: Allocator, available_years: []const i32, selected
     return options.toOwnedSlice(arena);
 }
 
-pub fn allDocsAndStats(arena: Allocator, context: *Context, DocumentTypes: []const type, filter_year: ?i32) !struct { documents: []Document, stats: Stats } {
+pub fn allDocsAndStats(arena: Allocator, context: *Context, comptime DocumentTypes: []const type, filter_year: ?i32) !struct { documents: []Document, stats: Stats } {
     var doc_list = std.ArrayListUnmanaged(Document).empty;
     var stats: Stats = .{};
 

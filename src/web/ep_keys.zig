@@ -56,7 +56,7 @@ fn listKeys(ep: *EpKeys, arena: Allocator, context: *Context, r: zap.Request) !v
     const fj_config = try fj.loadConfigJson();
 
     // Load keys from storage
-    const store = keys_mod.loadKeys(arena, context.fj_home) catch json.ApiKeyStore{ .keys = &.{} };
+    const store = keys_mod.loadKeys(context.io, arena, context.fj_home) catch json.ApiKeyStore{ .keys = &.{} };
 
     // Check for new_token query param (after create redirect)
     const new_token = r.getParamSlice("new_token");
@@ -114,7 +114,7 @@ fn createKey(ep: *EpKeys, arena: Allocator, context: *Context, r: zap.Request) !
     const expires = if (expires_raw) |e| (if (e.len > 0) e else null) else null;
 
     // Create key using keys.zig module
-    const token = keys_mod.createKey(arena, context.fj_home, label, expires) catch |err| {
+    const token = keys_mod.createKey(context.io, arena, context.fj_home, label, expires) catch |err| {
         switch (err) {
             error.LabelAlreadyExists => return r.redirectTo("/keys?error=duplicate_label", null),
             else => return r.redirectTo("/keys?error=create_failed", null),
@@ -140,7 +140,7 @@ fn deleteKey(ep: *EpKeys, arena: Allocator, context: *Context, r: zap.Request) !
         return r.redirectTo("/keys?error=missing_label", null);
     };
 
-    keys_mod.deleteKey(arena, context.fj_home, label) catch {
+    keys_mod.deleteKey(context.io, arena, context.fj_home, label) catch {
         return r.redirectTo("/keys?error=delete_failed", null);
     };
 

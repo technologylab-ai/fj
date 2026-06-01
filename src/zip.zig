@@ -1,6 +1,39 @@
 const std = @import("std");
 const log = std.log.scoped(.zip);
-const c = @cImport(@cInclude("miniz.h")); // This works after adding miniz.c to the build
+
+// Zig 0.16's translate-c (Aro) cannot translate the full miniz.h single-header,
+// so the archive symbols are no longer exposed via `@cImport`. We declare the
+// handful of writer bindings we use manually; miniz.c is linked by the build, so
+// these `extern` functions resolve at link time. The `mz_zip_archive` layout is
+// kept byte-compatible with miniz.h (all pointers, then the integer/enum fields).
+const c = struct {
+    const MZ_FALSE = 0;
+    const MZ_DEFAULT_LEVEL = 6;
+
+    const mz_zip_archive = extern struct {
+        m_archive_size: u64,
+        m_central_directory_file_ofs: u64,
+        m_total_files: u32,
+        m_zip_mode: c_uint,
+        m_zip_type: c_uint,
+        m_last_error: c_uint,
+        m_file_offset_alignment: u64,
+        m_pAlloc: ?*const anyopaque,
+        m_pFree: ?*const anyopaque,
+        m_pRealloc: ?*const anyopaque,
+        m_pAlloc_opaque: ?*anyopaque,
+        m_pRead: ?*const anyopaque,
+        m_pWrite: ?*const anyopaque,
+        m_pNeeds_keepalive: ?*const anyopaque,
+        m_pIO_opaque: ?*anyopaque,
+        m_pState: ?*anyopaque,
+    };
+
+    extern fn mz_zip_writer_init_file(pZip: *mz_zip_archive, pFilename: [*:0]const u8, size_to_reserve_at_beginning: u64) c_int;
+    extern fn mz_zip_writer_add_file(pZip: *mz_zip_archive, pArchive_name: [*:0]const u8, pSrc_filename: [*:0]const u8, pComment: ?*const anyopaque, comment_size: u16, level_and_flags: c_uint) c_int;
+    extern fn mz_zip_writer_finalize_archive(pZip: *mz_zip_archive) c_int;
+    extern fn mz_zip_writer_end(pZip: *mz_zip_archive) c_int;
+};
 
 pub const ZipArgs = struct {
     zip_name: []const u8,

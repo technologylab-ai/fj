@@ -89,7 +89,7 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
         description: []const u8,
         pub fn format(
             self: @This(),
-            writer: *std.io.Writer,
+            writer: *std.Io.Writer,
         ) !void {
             try writer.print(
                 "{{type=\"{s}\", description=\"{s}\"",
@@ -166,7 +166,7 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
         contents: []const u8,
         pub fn format(
             self: @This(),
-            writer: *std.io.Writer,
+            writer: *std.Io.Writer,
         ) !void {
             try writer.print(
                 "{{filename=\"{s}\", human_given_name=\"{s}\", data_len={d}",
@@ -263,9 +263,9 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
     const TMP = context.work_dir;
     const pre_prefix = try std.fmt.allocPrint(arena, "Reise_{s}", .{travelPeriodFrom[0.."2025-07-04".len]});
     const temp_dir_name = try std.fmt.allocPrint(arena, "{s}/{s}", .{ TMP, pre_prefix });
-    try std.fs.cwd().makePath(temp_dir_name);
-    var temp_dir = try std.fs.cwd().openDir(temp_dir_name, .{});
-    defer temp_dir.close();
+    try std.Io.Dir.cwd().createDirPath(context.io, temp_dir_name);
+    var temp_dir = try std.Io.Dir.cwd().openDir(context.io, temp_dir_name, .{});
+    defer temp_dir.close(context.io);
 
     var receipt_pdf_list = std.ArrayListUnmanaged(struct { pdf_name: []const u8 }).empty;
     for (receipts_list.items) |receipt| {
@@ -278,10 +278,10 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
         const pdf_basename = std.fs.path.basename(pdf_nameZ);
         try receipt_pdf_list.append(arena, .{ .pdf_name = pdf_basename });
         if (std.ascii.endsWithIgnoreCase(receipt.filename, ".pdf")) {
-            var ofile = try temp_dir.createFile(pdf_nameZ, .{});
-            defer ofile.close();
+            var ofile = try temp_dir.createFile(context.io, pdf_nameZ, .{});
+            defer ofile.close(context.io);
             var obuf: [1024]u8 = undefined;
-            var ofile_writer = ofile.writer(&obuf);
+            var ofile_writer = ofile.writer(context.io, &obuf);
             const writer = &ofile_writer.interface;
             try writer.writeAll(receipt.contents);
             try writer.flush();
@@ -376,7 +376,7 @@ fn submit_travel_form(_: *Travel, arena: Allocator, context: *Context, r: zap.Re
     });
 
     // remove zipped dir
-    try std.fs.cwd().deleteTree(temp_dir_name);
+    try std.Io.Dir.cwd().deleteTree(context.io, temp_dir_name);
 
     // output HTML
     //

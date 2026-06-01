@@ -92,6 +92,15 @@
                   <input type="text" data-json-path="remarks" class="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
               </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Number Format (PDF)</label>
+                  <select data-json-path="number_format" class="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="de">German &mdash; 1.234,56</option>
+                    <option value="en">English &mdash; 1,234.56</option>
+                  </select>
+                </div>
+              </div>
             </fieldset>
             {{/is_client}}
 

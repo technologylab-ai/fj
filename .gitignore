@@ -15,3 +15,5 @@ letter--*/
 docs/plan*
 doc/plan*
 docs/
+deps/
+zig-pkg/

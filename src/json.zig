@@ -30,6 +30,10 @@ pub const Client = struct {
     country: []const u8 = "",
     tax_uid: []const u8 = "",
 
+    // Number format used in generated PDFs (offers/invoices): "de" => 1.234,56
+    // "en" => 1,234.56. Defaults to German.
+    number_format: []const u8 = "de",
+
     remarks: ?[]const u8 = null,
     created: []const u8,
     updated: []const u8,

@@ -23,6 +23,7 @@ const webmanifest_tuples = &[_][2][]const u8{
 };
 
 gpa: std.mem.Allocator,
+io: std.Io,
 auth_lookup: *AuthLookup,
 authenticator: *Authenticator,
 fj_home: []const u8,
@@ -49,7 +50,7 @@ pub fn unhandledRequest(self: *@This(), _: std.mem.Allocator, r: zap.Request) an
     }
 
     log.info("UNHANDLED: {s}", .{r.path orelse ""});
-    if (fsutil.isDirPresent(self.fj_home)) {
+    if (fsutil.isDirPresent(self.io, self.fj_home)) {
         try r.redirectTo(self.dashboard_path, null);
     } else {
         try r.redirectTo(self.init_path, null);

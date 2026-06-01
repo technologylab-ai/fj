@@ -1,21 +1,12 @@
 .{
     .name = .fj,
-    .version = "0.8.0",
+    .version = "0.9.0",
     .fingerprint = 0xdf1956986963a6e9, // Changing this has security and trust implications.
-    .minimum_zig_version = "0.15.2",
+    .minimum_zig_version = "0.16.0",
     .dependencies = .{
-        .zli = .{
-            .url = "git+https://github.com/renerocksai/zli?ref=v0.1.3#bbefacf517d00a7e8a66b2999075743e7b51eeb5",
-            .hash = "zli-0.1.1-pechguyHAAD0zCz2OVwT7aAt_kBWIFcMXLVcGw1QthDC",
-        },
-        .zap = .{
-            .url = "git+https://github.com/zigzap/zap#76679f308c702cd8880201e6e93914e1d836a54b",
-            .hash = "zap-0.10.6-GoeB8w-EJABTkxyoGH_Z8oMBYMxTBvn7YWk-DrJOHuDO",
-        },
-        .zeit = .{
-            .url = "https://github.com/renerocksai/zeit/archive/refs/heads/zig-0.15.1.tar.gz",
-            .hash = "zeit-0.6.0-5I6bk7V8AgAY0-hM-vUYtKZUFYhXct-VRkqISNNTfEfb",
-        },
+        .zli = .{ .path = "deps/zli" },
+        .zap = .{ .path = "deps/zap" },
+        .zeit = .{ .path = "deps/zeit" },
     },
     .paths = .{
         "build.zig",

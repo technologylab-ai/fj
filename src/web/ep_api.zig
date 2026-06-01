@@ -478,7 +478,7 @@ fn handleListTransactions(arena: Allocator, context: *Context, r: zap.Request) !
     const offset = parseIntParam(r, "offset") orelse 0;
 
     // Load transactions
-    var store = bank.TransactionStore.init(arena, fj_home);
+    var store = bank.TransactionStore.init(context.io, arena, fj_home);
     const txn_file = store.load() catch {
         // No transactions yet - return empty
         return sendJson(arena, r, .{
@@ -534,7 +534,7 @@ fn handleTransactionsSummary(arena: Allocator, context: *Context, r: zap.Request
     const group_by = getQueryParam(r, "group_by");
 
     // Load transactions
-    var store = bank.TransactionStore.init(arena, fj_home);
+    var store = bank.TransactionStore.init(context.io, arena, fj_home);
     const txn_file = store.load() catch {
         // No transactions yet
         return sendJson(arena, r, .{
@@ -607,7 +607,7 @@ fn handleBalance(arena: Allocator, context: *Context, r: zap.Request) !void {
     const fj_home = context.fj_home;
 
     // Load all transactions
-    var store = bank.TransactionStore.init(arena, fj_home);
+    var store = bank.TransactionStore.init(context.io, arena, fj_home);
     const txn_file = store.load() catch {
         // No transactions yet - return zero balance
         return sendJson(arena, r, .{

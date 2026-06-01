@@ -15,9 +15,9 @@ const fatal = Fatal.fatal;
 const Allocator = std.mem.Allocator;
 const path = std.fs.path;
 const assert = std.debug.assert;
-const File = std.fs.File;
-const Dir = std.fs.Dir;
-const cwd = std.fs.cwd;
+const File = std.Io.File;
+const Dir = std.Io.Dir;
+const cwd = std.Io.Dir.cwd;
 pub const startsWithIC = std.ascii.startsWithIgnoreCase;
 
 pub const max_path_bytes = std.fs.max_path_bytes;
@@ -28,6 +28,8 @@ const log = std.log.scoped(.fj);
 const Fj = @This();
 
 arena: Allocator,
+io: std.Io,
+environ: ?*std.process.Environ.Map = null,
 
 // buffer for fj_home: so the arena can be reset between commands, outside of Fj
 buf_fj_home: [1024]u8 = undefined,
@@ -55,12 +57,13 @@ pub fn deinit(self: *const Fj) void {
 }
 
 fn expandHomeDir(self: *const Fj, p: []const u8) ![]const u8 {
-    if (std.process.getEnvVarOwned(self.arena, "HOME")) |v| {
+    const home: ?[]const u8 = if (self.environ) |env| env.get("HOME") else null;
+    if (home) |v| {
         return std.mem.replaceOwned(u8, self.arena, p, "~", v) catch |err| {
             try fatal("Cannot get expand {s}: {}\n", .{ p, err }, err);
         };
-    } else |err| {
-        try fatal("Cannot get $HOME: {}\n", .{err}, err);
+    } else {
+        try fatal("Cannot get $HOME: {}\n", .{error.EnvironmentVariableNotFound}, error.EnvironmentVariableNotFound);
     }
     unreachable;
 }
@@ -73,7 +76,8 @@ fn fjHome(self: *Fj, from_args: ?[]const u8) ![]const u8 {
     if (from_args) |p| return p;
     self.fj_home = blk: {
         // try from env var
-        if (std.process.getEnvVarOwned(self.arena, "FJ_HOME")) |v| {
+        const fj_home_env: ?[]const u8 = if (self.environ) |env| env.get("FJ_HOME") else null;
+        if (fj_home_env) |v| {
             if (v.len >= self.buf_fj_home.len) {
                 try fatal(
                     "Error: FJ_HOME content is too large: {d} > {d}\n",
@@ -83,13 +87,8 @@ fn fjHome(self: *Fj, from_args: ?[]const u8) ![]const u8 {
             }
             @memcpy(self.buf_fj_home[0..v.len], v);
             break :blk self.buf_fj_home[0..v.len];
-        } else |err| {
-            switch (err) {
-                error.OutOfMemory => try fatal("Cannot get $FJ_HOME: Out of memory!\n", .{}, err),
-                error.InvalidWtf8 => try fatal("Cannot get $FJ_HOME: Invalid Wtf8 sequence!\n", .{}, err),
-                error.EnvironmentVariableNotFound => break :blk "",
-            }
-            return err;
+        } else {
+            break :blk "";
         }
     };
 
@@ -111,7 +110,7 @@ fn fjHome(self: *Fj, from_args: ?[]const u8) ![]const u8 {
 
 fn fjHomeTest(self: *Fj, from_args: ?[]const u8) ![]const u8 {
     const fj_home = try self.fjHome(from_args);
-    if (!fsutil.isDirPresent(fj_home)) {
+    if (!fsutil.isDirPresent(self.io, fj_home)) {
         try fatal(
             "No FJ_HOME ({s}) found! Did you call `fj init`?",
             .{fj_home},
@@ -133,17 +132,17 @@ pub fn generateTexDefaultsTemplate(arena: Allocator) ![]const u8 {
 pub fn loadConfigJson(self: *const Fj) !fj_json.TexDefaults {
     if (self.fj_home == null) return error.Uninitialized;
     const fj_home = self.fj_home.?;
-    var fj_home_dir = cwd().openDir(fj_home, .{}) catch |err| {
+    var fj_home_dir = cwd().openDir(self.io, fj_home, .{}) catch |err| {
         try fatal("Cannot open fj_home dir `{s}`: {}", .{ fj_home, err }, err);
     };
-    defer fj_home_dir.close();
+    defer fj_home_dir.close(self.io);
 
-    var fj_config_file = fj_home_dir.openFile("config.json", .{}) catch |err| {
+    var fj_config_file = fj_home_dir.openFile(self.io, "config.json", .{}) catch |err| {
         try fatal("Error opening file `{s}/config.json`: {}", .{ fj_home, err }, err);
     };
-    defer fj_config_file.close();
+    defer fj_config_file.close(self.io);
 
-    const json_string = try fj_config_file.readToEndAlloc(self.arena, self.max_json_file_size);
+    const json_string = try fsutil.readToEndAlloc(self.io, fj_config_file, self.arena, self.max_json_file_size);
     // special case : LaTeX-ready `\&`
     std.mem.replaceScalar(u8, json_string, '\\', ' ');
     const json_config = std.json.parseFromSliceLeaky(fj_json.TexDefaults, self.arena, json_string, .{
@@ -158,18 +157,23 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
     const fj_home = try self.fjHome(args.fj_home);
 
     log.info("Using FJ_HOME = `{s}`", .{fj_home});
-    if (fsutil.isDirPresent(fj_home)) {
+    if (fsutil.isDirPresent(self.io, fj_home)) {
         try fatal("FJ_HOME `{s}` already exists!", .{fj_home}, error.PathAlreadyExists);
     }
 
     if (args.generate) {
         if (args.positional.init_json_file) |output_filename| {
             const default_json = try generateTexDefaultsTemplate(self.arena);
-            var ofile = cwd().createFile(output_filename, .{ .exclusive = true }) catch |err| {
+            var ofile = cwd().createFile(self.io, output_filename, .{ .exclusive = true }) catch |err| {
                 try fatal("Unable to create {s}: {}", .{ output_filename, err }, err);
             };
-            defer ofile.close();
-            ofile.writeAll(default_json) catch |err| {
+            defer ofile.close(self.io);
+            var ofile_buf: [4096]u8 = undefined;
+            var ofile_writer = ofile.writer(self.io, &ofile_buf);
+            ofile_writer.interface.writeAll(default_json) catch |err| {
+                try fatal("Unable to write {s}: {}", .{ output_filename, err }, err);
+            };
+            ofile_writer.interface.flush() catch |err| {
                 try fatal("Unable to write {s}: {}", .{ output_filename, err }, err);
             };
             log.info("✅ Generated: {s}", .{output_filename});
@@ -192,12 +196,12 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
                 error.Cli,
             );
         };
-        var ifile = cwd().openFile(init_json_file, .{}) catch |err| {
+        var ifile = cwd().openFile(self.io, init_json_file, .{}) catch |err| {
             try fatal("Unable to open {s}: {}", .{ init_json_file, err }, err);
         };
-        defer ifile.close();
+        defer ifile.close(self.io);
 
-        const json_string = ifile.readToEndAlloc(self.arena, self.max_json_file_size) catch |err| {
+        const json_string = fsutil.readToEndAlloc(self.io, ifile, self.arena, self.max_json_file_size) catch |err| {
             switch (err) {
                 error.OutOfMemory => try fatal(
                     "File {s} too large: > {d} bytes!",
@@ -227,10 +231,10 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
         }
 
         // try to see if logo is present
-        var logo_file = cwd().openFile(json_config.Logo, .{}) catch |err| {
+        var logo_file = cwd().openFile(self.io, json_config.Logo, .{}) catch |err| {
             try fatal("Error reading logo file {s}: {}", .{ json_config.Logo, err }, err);
         };
-        logo_file.close();
+        logo_file.close(self.io);
     }
 
     // create dirs, incl. archive subdir
@@ -249,16 +253,16 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
         for (dirs) |dir| {
             const archive = try path.join(self.arena, &[_][]const u8{ fj_home, dir, "archive" });
             log.info("Creating... {s}", .{archive});
-            try cwd().makePath(archive);
+            try cwd().createDirPath(self.io, archive);
 
             // put a .keep file in there
             const dest_path = try path.join(
                 self.arena,
                 &[_][]const u8{ archive, ".keep" },
             );
-            const f = try cwd().createFile(dest_path, .{});
-            defer f.close();
-            var writer = f.writer(&io_buffer);
+            const f = try cwd().createFile(self.io, dest_path, .{});
+            defer f.close(self.io);
+            var writer = f.writer(self.io, &io_buffer);
             try writer.interface.writeAll("fj-autogenerated");
             try writer.interface.flush();
         }
@@ -266,17 +270,17 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
 
     // now that we have an fj_home, also archive the json_config there
     {
-        var fj_home_dir = cwd().openDir(fj_home, .{}) catch |err| {
+        var fj_home_dir = cwd().openDir(self.io, fj_home, .{}) catch |err| {
             try fatal("Cannot open fj_home dir `{s}`: {}", .{ fj_home, err }, err);
         };
-        defer fj_home_dir.close();
+        defer fj_home_dir.close(self.io);
 
-        var fj_config_file = fj_home_dir.createFile("config.json", .{}) catch |err| {
+        var fj_config_file = fj_home_dir.createFile(self.io, "config.json", .{}) catch |err| {
             try fatal("Error creating file `{s}/config.json`: {}", .{ fj_home, err }, err);
         };
-        defer fj_config_file.close();
+        defer fj_config_file.close(self.io);
 
-        var writer = fj_config_file.writer(&io_buffer);
+        var writer = fj_config_file.writer(self.io, &io_buffer);
         std.json.Stringify.value(json_config, .{ .whitespace = .indent_4 }, &writer.interface) catch |err| {
             try fatal("Error writing to file `{s}/config.json`: {}", .{ fj_home, err }, err);
         };
@@ -295,9 +299,9 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
         for (dirs) |dir| {
             // write id file
             const id_filename = try path.join(self.arena, &[_][]const u8{ fj_home, dir, ".id" });
-            const f = try cwd().createFile(id_filename, .{});
-            defer f.close();
-            var writer = f.writer(&io_buffer);
+            const f = try cwd().createFile(self.io, id_filename, .{});
+            defer f.close(self.io);
+            var writer = f.writer(self.io, &io_buffer);
             try writer.interface.print("{d}-000\n", .{try self.year()});
             try writer.interface.flush();
         }
@@ -306,9 +310,9 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
     // write .current_year file
     {
         const id_filename = try path.join(self.arena, &[_][]const u8{ fj_home, ".current_year" });
-        const f = try cwd().createFile(id_filename, .{});
-        defer f.close();
-        var writer = f.writer(&io_buffer);
+        const f = try cwd().createFile(self.io, id_filename, .{});
+        defer f.close(self.io);
+        var writer = f.writer(self.io, &io_buffer);
         try writer.interface.print("{d}\n", .{try self.year()});
         try writer.interface.flush();
     }
@@ -322,9 +326,9 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
                 self.arena,
                 &[_][]const u8{ fj_home, "templates", file.filename },
             );
-            const f = try cwd().createFile(dest_path, .{});
-            defer f.close();
-            var writer = f.writer(&io_buffer);
+            const f = try cwd().createFile(self.io, dest_path, .{});
+            defer f.close(self.io);
+            var writer = f.writer(self.io, &io_buffer);
             try writer.interface.writeAll(file.content);
             try writer.interface.flush();
         }
@@ -339,18 +343,18 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
             self.arena,
             &[_][]const u8{ fj_home, "templates", ofilename },
         );
-        const f = cwd().openFile(dest_path, .{ .mode = .read_write }) catch |err| {
+        const f = cwd().openFile(self.io, dest_path, .{ .mode = .read_write }) catch |err| {
             try fatal(
                 "Unable to create {s}: {}",
                 .{ dest_path, err },
                 err,
             );
         };
-        defer f.close();
+        defer f.close(self.io);
 
-        var writer = f.writer(&io_buffer);
+        var writer = f.writer(self.io, &io_buffer);
         // goto end
-        try writer.seekTo(try f.getEndPos());
+        try writer.seekTo((try f.stat(self.io)).size);
         writer.interface.print(
             \\
             \\ \makeatletter\@ifundefined{{greeting}}{{
@@ -420,15 +424,15 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
             &[_][]const u8{ fj_home, "templates" },
         );
 
-        var dest_dir = cwd().openDir(dest_path, .{}) catch |err| {
+        var dest_dir = cwd().openDir(self.io, dest_path, .{}) catch |err| {
             try fatal(
                 "Unable to open dir {s}: {}",
                 .{ dest_path, err },
                 err,
             );
         };
-        defer dest_dir.close();
-        cwd().copyFile(json_config.Logo, dest_dir, "logo.png", .{}) catch |err| {
+        defer dest_dir.close(self.io);
+        cwd().copyFile(json_config.Logo, dest_dir, "logo.png", self.io, .{}) catch |err| {
             try fatal(
                 "Error copying logo file {s}: {}",
                 .{ json_config.Logo, err },
@@ -439,7 +443,7 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
 
     // time to call git init, then do the initial commit
     {
-        var git: Git = .{ .arena = self.arena, .repo_dir = fj_home };
+        var git: Git = .{ .arena = self.arena, .io = self.io, .repo_dir = fj_home };
         if (!try git.init()) {
             try fatal("Aborting git init!", .{}, error.Abort);
         }
@@ -456,7 +460,7 @@ pub fn cmd_init(self: *Fj, args: Cli.InitCommand) !void {
 
 pub fn cmd_git(self: *Fj, args: Cli.GitCommand) !void {
     const fj_home = try self.fjHomeTest(args.fj_home);
-    var git: Git = .{ .arena = self.arena, .repo_dir = fj_home };
+    var git: Git = .{ .arena = self.arena, .io = self.io, .repo_dir = fj_home };
 
     switch (args.positional.subcommand) {
         .remote => {
@@ -612,7 +616,7 @@ pub fn recordPath(self: *const Fj, RecordType: type, shortname: []const u8, cust
 fn recordExists(self: *const Fj, RecordType: type, shortname: []const u8) !bool {
     var path_buf: [max_path_bytes]u8 = undefined;
     const json_path = try self.recordPath(RecordType, shortname, null, &path_buf);
-    return fsutil.fileExists(json_path);
+    return fsutil.fileExists(self.io, json_path);
 }
 
 fn recordDir(self: *const Fj, RecordType: type, dir_out: []u8) ![]const u8 {
@@ -648,12 +652,12 @@ pub fn loadRecord(self: *const Fj, RecordType: type, shortname: []const u8, opts
     log.debug("json_path = {s}", .{json_path});
 
     // now load it
-    var json_file = cwd().openFile(json_path, .{}) catch |err| {
+    var json_file = cwd().openFile(self.io, json_path, .{}) catch |err| {
         try fatal("Error opening {s}: {}", .{ json_path, err }, err);
     };
-    defer json_file.close();
+    defer json_file.close(self.io);
 
-    const json_string = json_file.readToEndAlloc(self.arena, self.max_json_file_size) catch |err| {
+    const json_string = fsutil.readToEndAlloc(self.io, json_file, self.arena, self.max_json_file_size) catch |err| {
         switch (err) {
             error.OutOfMemory => try fatal(
                 "File {s} too large: > {d} bytes!",
@@ -681,17 +685,17 @@ pub fn writeRecord(self: *const Fj, shortname: []const u8, obj: anytype, opts: s
     var path_buf: [max_path_bytes]u8 = undefined;
     const json_path = try self.recordPath(@TypeOf(obj), shortname, opts.custom_path, &path_buf);
 
-    if (!opts.allow_overwrite and fsutil.fileExists(json_path)) {
+    if (!opts.allow_overwrite and fsutil.fileExists(self.io, json_path)) {
         try fatal("File `{s}` exists! Refusing to overwrite!", .{json_path}, error.PathAlreadyExists);
     }
 
-    const f = cwd().createFile(json_path, .{ .exclusive = !opts.allow_overwrite }) catch |err| {
+    const f = cwd().createFile(self.io, json_path, .{ .exclusive = !opts.allow_overwrite }) catch |err| {
         try fatal("Error creating file {s}.json: {}", .{ shortname, err }, err);
     };
 
-    defer f.close();
+    defer f.close(self.io);
     var io_buffer: [1024]u8 = undefined;
-    var writer = f.writer(&io_buffer);
+    var writer = f.writer(self.io, &io_buffer);
 
     std.json.Stringify.value(obj, .{ .whitespace = .indent_4 }, &writer.interface) catch |err| {
         try fatal("Error writing to file {s}.json: {}", .{ shortname, err }, err);
@@ -805,7 +809,7 @@ pub fn handleRecordCommand(self: *Fj, args: anytype) !HandleRecordCommandResult 
                 }
             };
             var stdout_buffer: [1024]u8 = undefined;
-            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            var stdout_writer = std.Io.File.stdout().writer(self.io, &stdout_buffer);
             const stdout = &stdout_writer.interface;
             stdout.print("{s}\n", .{json_string}) catch unreachable;
             stdout.flush() catch unreachable;
@@ -846,7 +850,7 @@ pub fn handleRecordCommand(self: *Fj, args: anytype) !HandleRecordCommandResult 
             var path_buf: [max_path_bytes]u8 = undefined;
             const json_path = try self.recordPath(RecordType, shortname, null, &path_buf);
             const new_revision: usize = blk: {
-                if (fsutil.fileExists(json_path)) {
+                if (fsutil.fileExists(self.io, json_path)) {
                     const existing = try self.loadRecord(RecordType, shortname, .{});
                     break :blk existing.revision + 1;
                 } else {
@@ -864,7 +868,7 @@ pub fn handleRecordCommand(self: *Fj, args: anytype) !HandleRecordCommandResult 
 
             // now, delete the provided one.
             const provided_json_file = try self.recordPath(RecordType, shortname, ".", &path_buf);
-            cwd().deleteFile(provided_json_file) catch |err| {
+            cwd().deleteFile(self.io, provided_json_file) catch |err| {
                 log.warn("Unable to delete `{s}`: {}", .{ provided_json_file, err });
             };
 
@@ -874,20 +878,20 @@ pub fn handleRecordCommand(self: *Fj, args: anytype) !HandleRecordCommandResult 
         .list => {
             var path_buf: [max_path_bytes]u8 = undefined;
             const json_dir_str = try self.recordDir(RecordType, &path_buf);
-            var json_dir = cwd().openDir(json_dir_str, .{ .iterate = true }) catch |err| {
+            var json_dir = cwd().openDir(self.io, json_dir_str, .{ .iterate = true }) catch |err| {
                 try fatal("Unable to enter directory `{s}`: {}", .{ json_dir_str, err }, err);
             };
-            defer json_dir.close();
+            defer json_dir.close(self.io);
 
             var it = json_dir.iterate();
 
             var alist = std.ArrayListUnmanaged([]const u8).empty;
             var stdout_buffer: [1024]u8 = undefined;
-            var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+            var stdout_writer = std.Io.File.stdout().writer(self.io, &stdout_buffer);
             const stdout = &stdout_writer.interface;
 
             var count: usize = 0;
-            while (it.next() catch |err|
+            while (it.next(self.io) catch |err|
                 {
                     try fatal("Cannot iterate a step in dir `{s}`: {}", .{ json_dir_str, err }, err);
                 }) |element|
@@ -951,7 +955,7 @@ pub fn cmdKeys(self: *Fj, args: Cli.KeysCommand) !void {
     const fj_home = self.fj_home orelse return error.FjHomeNotSet;
 
     var stdout_buffer: [1024]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    var stdout_writer = std.Io.File.stdout().writer(self.io, &stdout_buffer);
     const stdout = &stdout_writer.interface;
 
     switch (args.positional.subcommand) {
@@ -959,7 +963,7 @@ pub fn cmdKeys(self: *Fj, args: Cli.KeysCommand) !void {
             const label = args.positional.arg orelse {
                 try fatal("Label required for 'keys create'\n", .{}, error.MissingArgument);
             };
-            const token = keys_mod.createKey(self.arena, fj_home, label, args.expires) catch |err| {
+            const token = keys_mod.createKey(self.io, self.arena, fj_home, label, args.expires) catch |err| {
                 switch (err) {
                     error.LabelAlreadyExists => try fatal("Key with label '{s}' already exists\n", .{label}, err),
                     else => return err,
@@ -970,7 +974,7 @@ pub fn cmdKeys(self: *Fj, args: Cli.KeysCommand) !void {
             stdout.flush() catch unreachable;
         },
         .list => {
-            const store = try keys_mod.loadKeys(self.arena, fj_home);
+            const store = try keys_mod.loadKeys(self.io, self.arena, fj_home);
             stdout.print("{s:<20} {s:<20} {s:<12} {s:<20}\n", .{
                 "LABEL", "CREATED", "EXPIRES", "LAST USED",
             }) catch unreachable;
@@ -993,7 +997,7 @@ pub fn cmdKeys(self: *Fj, args: Cli.KeysCommand) !void {
             const label = args.positional.arg orelse {
                 try fatal("Label required for 'keys delete'\n", .{}, error.MissingArgument);
             };
-            keys_mod.deleteKey(self.arena, fj_home, label) catch |err| {
+            keys_mod.deleteKey(self.io, self.arena, fj_home, label) catch |err| {
                 switch (err) {
                     error.KeyNotFound => try fatal("Key '{s}' not found\n", .{label}, err),
                     else => return err,
@@ -1010,7 +1014,7 @@ pub fn cmdImport(self: *Fj, args: Cli.ImportCommand) !void {
     const fj_home = try self.fjHomeTest(args.fj_home);
 
     var stdout_buffer: [4096]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    var stdout_writer = std.Io.File.stdout().writer(self.io, &stdout_buffer);
     const stdout = &stdout_writer.interface;
 
     switch (args.positional.subcommand) {
@@ -1020,12 +1024,12 @@ pub fn cmdImport(self: *Fj, args: Cli.ImportCommand) !void {
             };
 
             // 1. Read CSV file
-            var file = cwd().openFile(file_path, .{}) catch |err| {
+            var file = cwd().openFile(self.io, file_path, .{}) catch |err| {
                 try fatal("Error opening {s}: {}", .{ file_path, err }, err);
             };
-            defer file.close();
+            defer file.close(self.io);
 
-            const content = file.readToEndAlloc(self.arena, 10 * 1024 * 1024) catch |err| {
+            const content = fsutil.readToEndAlloc(self.io, file, self.arena, 10 * 1024 * 1024) catch |err| {
                 try fatal("Error reading {s}: {}", .{ file_path, err }, err);
             };
 
@@ -1061,7 +1065,7 @@ pub fn cmdImport(self: *Fj, args: Cli.ImportCommand) !void {
             }
 
             // 5. Load existing transactions
-            var store = bank.TransactionStore.init(self.arena, fj_home);
+            var store = bank.TransactionStore.init(self.io, self.arena, fj_home);
             const txn_file = try store.load();
 
             // 6. Deduplicate and add new transactions
@@ -1217,14 +1221,14 @@ pub fn loadUnpaidInvoices(self: *Fj) ![]const fj_json.Invoice {
 
     // Get list of invoice directories
     const invoices_dir = try path.join(self.arena, &.{ self.fj_home.?, "invoices" });
-    var dir = cwd().openDir(invoices_dir, .{ .iterate = true }) catch |err| {
+    var dir = cwd().openDir(self.io, invoices_dir, .{ .iterate = true }) catch |err| {
         if (err == error.FileNotFound) return &[_]fj_json.Invoice{};
         return err;
     };
-    defer dir.close();
+    defer dir.close(self.io);
 
     var it = dir.iterate();
-    while (try it.next()) |entry| {
+    while (try it.next(self.io)) |entry| {
         if (entry.kind != .directory) continue;
         if (!std.mem.startsWith(u8, entry.name, "invoice--")) continue;
 
@@ -1234,10 +1238,10 @@ pub fn loadUnpaidInvoices(self: *Fj) ![]const fj_json.Invoice {
 
         // Load invoice JSON
         const json_path = try path.join(self.arena, &.{ invoices_dir, entry.name, "invoice.json" });
-        var json_file = cwd().openFile(json_path, .{}) catch continue;
-        defer json_file.close();
+        var json_file = cwd().openFile(self.io, json_path, .{}) catch continue;
+        defer json_file.close(self.io);
 
-        const json_content = json_file.readToEndAlloc(self.arena, 1024 * 1024) catch continue;
+        const json_content = fsutil.readToEndAlloc(self.io, json_file, self.arena, 1024 * 1024) catch continue;
         const inv = std.json.parseFromSliceLeaky(fj_json.Invoice, self.arena, json_content, .{
             .ignore_unknown_fields = true,
         }) catch continue;
@@ -1259,9 +1263,9 @@ pub fn markInvoicePaidById(self: *Fj, invoice_id: []const u8, paid_date: []const
 
     // Load the invoice JSON directly (without printing)
     const json_path = path.join(self.arena, &.{ document_base, document_dir_name, "invoice.json" }) catch return;
-    var json_file = cwd().openFile(json_path, .{}) catch return;
-    defer json_file.close();
-    const json_content = json_file.readToEndAlloc(self.arena, 1024 * 1024) catch return;
+    var json_file = cwd().openFile(self.io, json_path, .{}) catch return;
+    defer json_file.close(self.io);
+    const json_content = fsutil.readToEndAlloc(self.io, json_file, self.arena, 1024 * 1024) catch return;
 
     var inv = std.json.parseFromSliceLeaky(fj_json.Invoice, self.arena, json_content, .{
         .ignore_unknown_fields = true,
@@ -1354,12 +1358,12 @@ fn documentTypeCreateSubdir(self: *const Fj, DocumentType: type, id: []const u8,
         try fatal("OOM creating subdir_name_buf!: {}", .{err}, err);
     };
     const subdir_name = try createDocumentName(DocumentType, id, client, subdir_name_buf);
-    cwd().makeDir(subdir_name) catch |err| {
+    cwd().createDir(self.io, subdir_name, .default_dir) catch |err| {
         try fatal("Cannot create directory `{s}/`: {}", .{ subdir_name, err }, err);
     };
 
     // now open the dir
-    const subdir = cwd().openDir(subdir_name, .{}) catch |err| {
+    const subdir = cwd().openDir(self.io, subdir_name, .{}) catch |err| {
         try fatal("Cannot open subdir {s}: {}", .{ subdir_name, err }, err);
     };
 
@@ -1369,13 +1373,13 @@ fn documentTypeCreateSubdir(self: *const Fj, DocumentType: type, id: []const u8,
     };
 }
 
-fn documentCreateJsonFile(DocumentType: type, subdir_spec: DocumentSubdirSpec) !File {
+fn documentCreateJsonFile(io: std.Io, DocumentType: type, subdir_spec: DocumentSubdirSpec) !File {
     var filename_buf: [max_name_bytes]u8 = undefined;
     const json_file_stem = documentTypeHumanName(DocumentType);
     const filename = std.fmt.bufPrint(&filename_buf, "{s}.json", .{json_file_stem}) catch |err| {
         try fatal("Unable to create filename `{s}.json`: {}", .{ json_file_stem, err }, err);
     };
-    const file = subdir_spec.dir.createFile(filename, .{ .exclusive = true }) catch |err| {
+    const file = subdir_spec.dir.createFile(io, filename, .{ .exclusive = true }) catch |err| {
         try fatal("Unable to create file `{s}`: {}", .{ filename, err }, err);
     };
     return file;
@@ -1394,12 +1398,12 @@ pub fn loadDocumentMeta(self: *const Fj, subdir_spec: DocumentSubdirSpec, Docume
     };
 
     // now load it
-    var json_file = subdir_spec.dir.openFile(json_path, .{}) catch |err| {
+    var json_file = subdir_spec.dir.openFile(self.io, json_path, .{}) catch |err| {
         try fatal("Error opening {s}/{s}: {}", .{ subdir_spec.name, json_path, err }, err);
     };
-    defer json_file.close();
+    defer json_file.close(self.io);
 
-    const json_string = json_file.readToEndAlloc(self.arena, self.max_json_file_size) catch |err| {
+    const json_string = fsutil.readToEndAlloc(self.io, json_file, self.arena, self.max_json_file_size) catch |err| {
         switch (err) {
             error.OutOfMemory => try fatal(
                 "File {s} too large: > {d} bytes!",
@@ -1420,7 +1424,7 @@ pub fn loadDocumentMeta(self: *const Fj, subdir_spec: DocumentSubdirSpec, Docume
     };
 }
 
-fn saveDocumentMeta(_: *const Fj, DocumentType: type, subdir_spec: DocumentSubdirSpec, obj: anytype) !void {
+fn saveDocumentMeta(self: *const Fj, DocumentType: type, subdir_spec: DocumentSubdirSpec, obj: anytype) !void {
     var filename_buf: [max_name_bytes]u8 = undefined;
 
     const document_type_name = documentTypeHumanName(DocumentType);
@@ -1434,12 +1438,12 @@ fn saveDocumentMeta(_: *const Fj, DocumentType: type, subdir_spec: DocumentSubdi
 
     // now rewrite it
     // TODO: do that to a temp file, then delete orig and rename temp file
-    var json_file = subdir_spec.dir.createFile(json_path, .{}) catch |err| {
+    var json_file = subdir_spec.dir.createFile(self.io, json_path, .{}) catch |err| {
         try fatal("Error creating {s}/{s}: {}", .{ subdir_spec.name, json_path, err }, err);
     };
-    defer json_file.close();
+    defer json_file.close(self.io);
     var io_buffer: [1024]u8 = undefined;
-    var io_writer = json_file.writer(&io_buffer);
+    var io_writer = json_file.writer(self.io, &io_buffer);
     const writer = &io_writer.interface;
 
     std.json.Stringify.value(obj, .{ .whitespace = .indent_4 }, writer) catch |err| {
@@ -1485,33 +1489,33 @@ fn copyTemplateFile(self: *const Fj, filename: []const u8, dest_dir_spec: Docume
             err,
         );
     };
-    var ifile = cwd().openFile(ifile_path, .{}) catch |err| {
+    var ifile = cwd().openFile(self.io, ifile_path, .{}) catch |err| {
         try fatal(
             "Unable to open {s}: {}",
             .{ filename, err },
             err,
         );
     };
-    defer ifile.close();
+    defer ifile.close(self.io);
 
-    const ifile_content = ifile.readToEndAlloc(self.arena, self.max_bin_file_size) catch |err| {
+    const ifile_content = fsutil.readToEndAlloc(self.io, ifile, self.arena, self.max_bin_file_size) catch |err| {
         try fatal(
             "Unable to read {s}: {}",
             .{ ifile_path, err },
             err,
         );
     };
-    var document_file = dest_dir_spec.dir.createFile(filename, .{ .exclusive = true }) catch |err| {
+    var document_file = dest_dir_spec.dir.createFile(self.io, filename, .{ .exclusive = true }) catch |err| {
         try fatal(
             "Could not create `{s}/{s}`: {}",
             .{ dest_dir_spec.name, filename, err },
             err,
         );
     };
-    defer document_file.close();
+    defer document_file.close(self.io);
 
     var document_io_buffer: [1024]u8 = undefined;
-    var document_io_writer = document_file.writer(&document_io_buffer);
+    var document_io_writer = document_file.writer(self.io, &document_io_buffer);
 
     document_io_writer.interface.writeAll(ifile_content) catch |err| {
         try fatal(
@@ -1642,15 +1646,15 @@ pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentComma
     // create new subdir
     var subdir_spec = try self.documentTypeCreateSubdir(DocumentType, temp_id, client_name);
     log.info("Creating {s} in {s}/", .{ documentTypeHumanName(DocumentType), subdir_spec.name });
-    defer subdir_spec.dir.close();
+    defer subdir_spec.dir.close(self.io);
 
     //
     // in subdir:
     //
     {
-        var json_file = try documentCreateJsonFile(DocumentType, subdir_spec);
-        defer json_file.close();
-        var json_writer = json_file.writer(&io_buffer);
+        var json_file = try documentCreateJsonFile(self.io, DocumentType, subdir_spec);
+        defer json_file.close(self.io);
+        var json_writer = json_file.writer(self.io, &io_buffer);
         const writer = &json_writer.interface;
 
         std.json.Stringify.value(obj, .{ .whitespace = .indent_4 }, writer) catch |err| {
@@ -1671,12 +1675,12 @@ pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentComma
 
     // if !letter: generate default billables.csv
     if (DocumentType != fj_json.Letter) {
-        var billables_file = subdir_spec.dir.createFile("billables.csv", .{ .exclusive = true }) catch |err| {
+        var billables_file = subdir_spec.dir.createFile(self.io, "billables.csv", .{ .exclusive = true }) catch |err| {
             try fatal("Cannot create `billables.csv` in `{s}/`: {}", .{ subdir_spec.name, err }, err);
         };
-        defer billables_file.close();
+        defer billables_file.close(self.io);
 
-        var billables_writer = billables_file.writer(&io_buffer);
+        var billables_writer = billables_file.writer(self.io, &io_buffer);
         const writer = &billables_writer.interface;
 
         writer.writeAll(
@@ -1723,9 +1727,11 @@ pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentComma
         };
     }
 
-    // if !letter: generate rates.tex
+    // if !letter: generate rates.tex (number format is a client property)
     if (DocumentType != fj_json.Letter) {
-        self.generateRatesTex(subdir_spec, rates_name) catch |err| {
+        const client = try self.loadRecord(fj_json.Client, client_name, .{});
+        const number_opts = format.Opts.fromName(client.number_format);
+        self.generateRatesTex(subdir_spec, rates_name, number_opts) catch |err| {
             try fatal(
                 "Error writing `{s}/rates.tex`: {}",
                 .{ subdir_spec.name, err },
@@ -1753,7 +1759,7 @@ pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentComma
 
     // generate default config.tex
     {
-        var tex_config_file = subdir_spec.dir.createFile("config.tex", .{ .exclusive = true }) catch |err| {
+        var tex_config_file = subdir_spec.dir.createFile(self.io, "config.tex", .{ .exclusive = true }) catch |err| {
             try fatal(
                 "Could not create `{s}/config.tex`: {}",
                 .{ subdir_spec.name, err },
@@ -1767,7 +1773,7 @@ pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentComma
                 err,
             );
         };
-        defer tex_config_file.close();
+        defer tex_config_file.close(self.io);
     }
 
     // DONE!
@@ -1789,16 +1795,16 @@ pub fn readDocumentFiles(self: *const Fj, DocumentType: type, subdir_spec: Docum
             "{s}.json",
             .{document_type_name},
         );
-        var json_file = subdir_spec.dir.openFile(json_path, .{}) catch |err| {
+        var json_file = subdir_spec.dir.openFile(self.io, json_path, .{}) catch |err| {
             try fatal(
                 "Error opening `{s}.json`: {}",
                 .{ document_type_name, err },
                 err,
             );
         };
-        defer json_file.close();
+        defer json_file.close(self.io);
 
-        break :blk try json_file.readToEndAlloc(self.arena, self.max_json_file_size);
+        break :blk try fsutil.readToEndAlloc(self.io, json_file, self.arena, self.max_json_file_size);
     };
 
     const tex_string = blk: {
@@ -1807,10 +1813,10 @@ pub fn readDocumentFiles(self: *const Fj, DocumentType: type, subdir_spec: Docum
             "{s}.tex",
             .{document_type_name},
         );
-        var tex_file = try subdir_spec.dir.openFile(tex_path, .{});
-        defer tex_file.close();
+        var tex_file = try subdir_spec.dir.openFile(self.io, tex_path, .{});
+        defer tex_file.close(self.io);
 
-        break :blk try tex_file.readToEndAlloc(self.arena, self.max_json_file_size);
+        break :blk try fsutil.readToEndAlloc(self.io, tex_file, self.arena, self.max_json_file_size);
     };
 
     const billables_string = blk: {
@@ -1822,10 +1828,10 @@ pub fn readDocumentFiles(self: *const Fj, DocumentType: type, subdir_spec: Docum
                 "billables.csv",
                 .{},
             );
-            var billables_file = try subdir_spec.dir.openFile(billables_path, .{});
-            defer billables_file.close();
+            var billables_file = try subdir_spec.dir.openFile(self.io, billables_path, .{});
+            defer billables_file.close(self.io);
 
-            break :blk try billables_file.readToEndAlloc(self.arena, self.max_json_file_size);
+            break :blk try fsutil.readToEndAlloc(self.io, billables_file, self.arena, self.max_json_file_size);
         }
     };
 
@@ -1849,10 +1855,10 @@ pub fn findDocumentById(self: *const Fj, DocumentType: type, id: []const u8) ![]
 
     log.debug("Searching for {s} in {s}", .{ pattern, base_dir_name });
 
-    var base_dir = try cwd().openDir(base_dir_name, .{ .iterate = true });
-    defer base_dir.close();
+    var base_dir = try cwd().openDir(self.io, base_dir_name, .{ .iterate = true });
+    defer base_dir.close(self.io);
     var it = base_dir.iterate();
-    while (try it.next()) |entry| {
+    while (try it.next(self.io)) |entry| {
         if (startsWithIC(entry.name, pattern)) {
             log.debug("Found {s} in {s}", .{ entry.name, base_dir_name });
             return self.arena.dupe(u8, entry.name);
@@ -1876,13 +1882,13 @@ pub fn writeDocumentJson(self: *Fj, DocumentType: type, id: []const u8, obj: Doc
         &[_][]const u8{ document_base, document_dir_name, json_filename },
     );
 
-    const f = cwd().createFile(json_path, .{}) catch |err| {
+    const f = cwd().createFile(self.io, json_path, .{}) catch |err| {
         try fatal("Error creating file {s}: {}", .{ json_path, err }, err);
     };
-    defer f.close();
+    defer f.close(self.io);
 
     var io_buffer: [1024]u8 = undefined;
-    var writer = f.writer(&io_buffer);
+    var writer = f.writer(self.io, &io_buffer);
 
     std.json.Stringify.value(obj, .{ .whitespace = .indent_4 }, &writer.interface) catch |err| {
         try fatal("Error writing to file {s}: {}", .{ json_path, err }, err);
@@ -1899,7 +1905,7 @@ pub fn cmdMarkInvoicePaid(self: *Fj, args: Cli.InvoiceCommand) !HandleDocumentCo
     };
 
     var stdout_buffer: [1024]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    var stdout_writer = std.Io.File.stdout().writer(self.io, &stdout_buffer);
     const stdout = &stdout_writer.interface;
     defer stdout.flush() catch {};
 
@@ -1934,7 +1940,7 @@ pub fn cmdMarkOfferAccepted(self: *Fj, args: Cli.OfferCommand) !HandleDocumentCo
     };
 
     var stdout_buffer: [1024]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    var stdout_writer = std.Io.File.stdout().writer(self.io, &stdout_buffer);
     const stdout = &stdout_writer.interface;
     defer stdout.flush() catch {};
 
@@ -1972,7 +1978,7 @@ pub fn cmdMarkOfferRejected(self: *Fj, args: Cli.OfferCommand) !HandleDocumentCo
     };
 
     var stdout_buffer: [1024]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    var stdout_writer = std.Io.File.stdout().writer(self.io, &stdout_buffer);
     const stdout = &stdout_writer.interface;
     defer stdout.flush() catch {};
 
@@ -2032,7 +2038,7 @@ pub fn cmdCheckoutDocument(self: *Fj, args: anytype) !HandleDocumentCommandResul
     };
 
     const dest_path = document_dir_name;
-    cwd().makeDir(dest_path) catch |err| {
+    cwd().createDir(self.io, dest_path, .default_dir) catch |err| {
         try fatal(
             "Cannot create document dir {s}: {}",
             .{ dest_path, err },
@@ -2040,32 +2046,32 @@ pub fn cmdCheckoutDocument(self: *Fj, args: anytype) !HandleDocumentCommandResul
         );
     };
 
-    var dest_dir = cwd().openDir(dest_path, .{}) catch |err| {
+    var dest_dir = cwd().openDir(self.io, dest_path, .{}) catch |err| {
         try fatal(
             "Cannot open destination document dir {s}: {}",
             .{ dest_path, err },
             err,
         );
     };
-    defer dest_dir.close();
+    defer dest_dir.close(self.io);
 
     const source_path = try path.join(self.arena, &[_][]const u8{ document_base, document_dir_name });
-    var source_dir = cwd().openDir(source_path, .{ .iterate = true }) catch |err| {
+    var source_dir = cwd().openDir(self.io, source_path, .{ .iterate = true }) catch |err| {
         try fatal(
             "Cannot open source document dir {s}: {}",
             .{ source_path, err },
             err,
         );
     };
-    defer source_dir.close();
+    defer source_dir.close(self.io);
 
     var file_it = source_dir.iterate();
-    while (try file_it.next()) |entry| {
+    while (try file_it.next(self.io)) |entry| {
         log.info(
             "    {s}/{s} -> {s}/{s}",
             .{ source_path, entry.name, dest_path, entry.name },
         );
-        try source_dir.copyFile(entry.name, dest_dir, entry.name, .{});
+        try source_dir.copyFile(entry.name, dest_dir, entry.name, self.io, .{});
     }
     log.info("✅ created in `{s}/`!", .{dest_path});
     return .{ .checkout = try self.readDocumentFiles(
@@ -2104,7 +2110,7 @@ pub fn cmdShowDocument(self: *Fj, args: anytype) !HandleDocumentCommandResult {
     };
 
     var stdout_buffer: [1024]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    var stdout_writer = std.Io.File.stdout().writer(self.io, &stdout_buffer);
     const stdout = &stdout_writer.interface;
     defer stdout.flush() catch {};
 
@@ -2114,15 +2120,15 @@ pub fn cmdShowDocument(self: *Fj, args: anytype) !HandleDocumentCommandResult {
             self.arena,
             &[_][]const u8{ document_base, document_dir_name, json_filename },
         );
-        var json_file = cwd().openFile(json_path, .{}) catch |err| {
+        var json_file = cwd().openFile(self.io, json_path, .{}) catch |err| {
             try fatal(
                 "Unable to load JSON file {s}: {}",
                 .{ json_path, err },
                 err,
             );
         };
-        defer json_file.close();
-        const json_string = try json_file.readToEndAlloc(self.arena, self.max_json_file_size);
+        defer json_file.close(self.io);
+        const json_string = try fsutil.readToEndAlloc(self.io, json_file, self.arena, self.max_json_file_size);
         try stdout.print("{s}\n", .{json_string});
         break :blk json_string;
     };
@@ -2134,15 +2140,15 @@ pub fn cmdShowDocument(self: *Fj, args: anytype) !HandleDocumentCommandResult {
                 self.arena,
                 &[_][]const u8{ document_base, document_dir_name, billables_filename },
             );
-            var billables_file = cwd().openFile(billables_path, .{}) catch |err| {
+            var billables_file = cwd().openFile(self.io, billables_path, .{}) catch |err| {
                 try fatal(
                     "Unable to load billables file {s}: {}",
                     .{ billables_path, err },
                     err,
                 );
             };
-            defer billables_file.close();
-            const billables_string = try billables_file.readToEndAlloc(self.arena, self.max_json_file_size);
+            defer billables_file.close(self.io);
+            const billables_string = try fsutil.readToEndAlloc(self.io, billables_file, self.arena, self.max_json_file_size);
             try stdout.print("{s}\n", .{billables_string});
             break :blk billables_string;
         } else {
@@ -2156,15 +2162,15 @@ pub fn cmdShowDocument(self: *Fj, args: anytype) !HandleDocumentCommandResult {
             self.arena,
             &[_][]const u8{ document_base, document_dir_name, tex_filename },
         );
-        var tex_file = cwd().openFile(tex_path, .{}) catch |err| {
+        var tex_file = cwd().openFile(self.io, tex_path, .{}) catch |err| {
             try fatal(
                 "Unable to load tex file {s}: {}",
                 .{ tex_path, err },
                 err,
             );
         };
-        defer tex_file.close();
-        const tex_string = try tex_file.readToEndAlloc(self.arena, self.max_json_file_size);
+        defer tex_file.close(self.io);
+        const tex_string = try fsutil.readToEndAlloc(self.io, tex_file, self.arena, self.max_json_file_size);
         break :blk tex_string;
     };
 
@@ -2212,7 +2218,7 @@ fn cmdOpenDocument(self: *Fj, args: anytype) !HandleDocumentCommandResult {
         &[_][]const u8{ document_base, document_dir_name, pdf_filename },
     );
     log.info("Opening {s}", .{pdf_path});
-    const open: OpenCommand = .{ .arena = self.arena };
+    const open: OpenCommand = .{ .arena = self.arena, .io = self.io };
     _ = try open.openDocument(pdf_path);
     return .{ .open = {} };
 }
@@ -2226,18 +2232,18 @@ pub fn cmdListDocuments(self: *Fj, args: anytype) !HandleDocumentCommandResult {
     };
     const human_doctype = documentTypeHumanName(DocumentType);
     const documents_path = try self.documentBaseDir(DocumentType);
-    var documents_dir = try cwd().openDir(documents_path, .{ .iterate = true });
+    var documents_dir = try cwd().openDir(self.io, documents_path, .{ .iterate = true });
     var it = documents_dir.iterate();
 
     var alist = std.ArrayListUnmanaged([]const u8).empty;
 
     var stdout_buffer: [1024]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    var stdout_writer = std.Io.File.stdout().writer(self.io, &stdout_buffer);
     const stdout = &stdout_writer.interface;
     defer stdout.flush() catch {};
 
     var count: usize = 0;
-    while (try it.next()) |entry| {
+    while (try it.next(self.io)) |entry| {
         if (startsWithIC(entry.name, human_doctype)) {
             count += 1;
             try stdout.print("  - {s}\n", .{entry.name});
@@ -2252,30 +2258,30 @@ fn generateRatesTex(
     self: *const Fj,
     subdir_spec: DocumentSubdirSpec,
     rates_name: []const u8,
+    opts: format.Opts,
 ) !void {
     const rates = try self.loadRecord(fj_json.Rate, rates_name, .{});
-    var rates_file = subdir_spec.dir.createFile("rates.tex", .{ .exclusive = false }) catch |err| {
+    var rates_file = subdir_spec.dir.createFile(self.io, "rates.tex", .{ .exclusive = false }) catch |err| {
         try fatal("Cannot create `rates.tex` in `{s}/`: {}", .{ subdir_spec.name, err }, err);
     };
-    defer rates_file.close();
-
-    var number_format_buffer: [32]u8 = undefined;
+    defer rates_file.close(self.io);
 
     var io_buffer: [1024]u8 = undefined;
-    var io_writer = rates_file.writer(&io_buffer);
+    var io_writer = rates_file.writer(self.io, &io_buffer);
     const writer = &io_writer.interface;
     try writer.print(
-        \\ \def\FjRateHourly{{{s},00}}
-        \\ \def\FjRateHoursPerDay{{{d},00}}
-        \\ \def\FjRateDaily{{{s},00}}
-        \\ \def\FjRateWeekly{{{s},00}}
+        \\ \def\FjRateHourly{{{s}{[c]c}00}}
+        \\ \def\FjRateHoursPerDay{{{[hpd]d}{[c]c}00}}
+        \\ \def\FjRateDaily{{{[daily]s}{[c]c}00}}
+        \\ \def\FjRateWeekly{{{[weekly]s}{[c]c}00}}
         \\
         \\
     , .{
-        try format.intThousands(rates.hourly, .german, &number_format_buffer),
-        rates.hours_per_day,
-        try format.intThousands(rates.daily, .german, &number_format_buffer),
-        try format.intThousands(rates.weekly, .german, &number_format_buffer),
+        .hourly = try format.intThousandsAlloc(self.arena, rates.hourly, opts),
+        .hpd = rates.hours_per_day,
+        .daily = try format.intThousandsAlloc(self.arena, rates.daily, opts),
+        .weekly = try format.intThousandsAlloc(self.arena, rates.weekly, opts),
+        .c = opts.comma,
     });
     try writer.flush();
 }
@@ -2306,7 +2312,7 @@ fn generateTexConfig(self: *const Fj, file: File, id: []const u8, opts: anytype)
     // \def\devtime
 
     var io_buffer: [1024]u8 = undefined;
-    var io_writer = file.writer(&io_buffer);
+    var io_writer = file.writer(self.io, &io_buffer);
     const writer = &io_writer.interface;
 
     switch (DocumentType) {
@@ -2521,17 +2527,17 @@ fn documentDir(self: *const Fj, DocumentType: type, doc_dir_: ?[]const u8, dir_o
 }
 
 /// returns the grand total
-fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: anytype) !i64 {
-    var bfile = try subdir_spec.dir.openFile("billables.csv", .{});
-    defer bfile.close();
+fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: anytype, opts: format.Opts) !i64 {
+    var bfile = try subdir_spec.dir.openFile(self.io, "billables.csv", .{});
+    defer bfile.close(self.io);
 
     const friendly_filename = try std.fmt.allocPrint(self.arena, "{s}/billables.csv", .{subdir_spec.name});
 
-    var billables_writer = std.io.Writer.Allocating.init(self.arena);
+    var billables_writer = std.Io.Writer.Allocating.init(self.arena);
 
     const rates = try self.loadRecord(fj_json.Rate, obj.applicable_rates, .{});
 
-    const lines = try bfile.readToEndAlloc(self.arena, self.max_json_file_size);
+    const lines = try fsutil.readToEndAlloc(self.io, bfile, self.arena, self.max_json_file_size);
     var it = std.mem.splitScalar(u8, lines, '\n');
     var line_count: usize = 0;
     var item_count: usize = 0;
@@ -2613,14 +2619,15 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
                 group_sum.* += line_price;
             }
 
-            try billables_writer.writer.print("\\itemrow{{{d}}}{{{s}}}{{{s}}}{{{s}}}{{{s},00 €}}{{{s},00 €}}{{\\grayit{{{s}}}}}\n", .{
-                item_count,
-                description,
-                try format.floatThousandsAlloc(self.arena, amount, .german),
-                rate_name,
-                try format.intThousandsAlloc(self.arena, price_per_unit, .german),
-                try format.intThousandsAlloc(self.arena, line_price, .german),
-                remarks,
+            try billables_writer.writer.print("\\itemrow{{{[n]d}}}{{{[desc]s}}}{{{[amount]s}}}{{{[rate]s}}}{{{[ppu]s}{[c]c}00 €}}{{{[line]s}{[c]c}00 €}}{{\\grayit{{{[remarks]s}}}}}\n", .{
+                .n = item_count,
+                .desc = description,
+                .amount = try format.floatThousandsAlloc(self.arena, amount, opts),
+                .rate = rate_name,
+                .ppu = try format.intThousandsAlloc(self.arena, price_per_unit, opts),
+                .line = try format.intThousandsAlloc(self.arena, line_price, opts),
+                .remarks = remarks,
+                .c = opts.comma,
             });
         } else {
             if (line.len >= 3) {
@@ -2647,7 +2654,7 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
     }
 
     // now write the sums.tex
-    var groups_tex_writer = std.io.Writer.Allocating.init(self.arena);
+    var groups_tex_writer = std.Io.Writer.Allocating.init(self.arena);
 
     // TODO: Mit und ohne "Optionen" sections
 
@@ -2658,9 +2665,10 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
         while (group_it.next()) |kv| {
             const group_name = kv.key_ptr.*;
             const value = kv.value_ptr.*;
-            try groups_tex_writer.writer.print("\\textbf{{{s}}} & {{{s},00 €}} \\\\\n", .{
-                group_name,
-                try format.intThousandsAlloc(self.arena, value, .german),
+            try groups_tex_writer.writer.print("\\textbf{{{[name]s}}} & {{{[value]s}{[c]c}00 €}} \\\\\n", .{
+                .name = group_name,
+                .value = try format.intThousandsAlloc(self.arena, value, opts),
+                .c = opts.comma,
             });
         }
     }
@@ -2668,15 +2676,16 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
     var io_buffer: [1024]u8 = undefined;
 
     //write the grand total(s)
-    var totals_tex_file = try subdir_spec.dir.createFile("totals.tex", .{ .exclusive = false });
-    defer totals_tex_file.close();
-    var totals_tex_file_writer = totals_tex_file.writer(&io_buffer);
+    var totals_tex_file = try subdir_spec.dir.createFile(self.io, "totals.tex", .{ .exclusive = false });
+    defer totals_tex_file.close(self.io);
+    var totals_tex_file_writer = totals_tex_file.writer(self.io, &io_buffer);
     const totals_tex_writer = &totals_tex_file_writer.interface;
 
     try totals_tex_writer.print(
-        "\\def\\FjGrandTotal{{{s},00}}\n",
+        "\\def\\FjGrandTotal{{{[total]s}{[c]c}00}}\n",
         .{
-            try format.intThousandsAlloc(self.arena, grand_total, .german),
+            .total = try format.intThousandsAlloc(self.arena, grand_total, opts),
+            .c = opts.comma,
         },
     );
 
@@ -2685,40 +2694,44 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
     const vat_amount: i64 = @divTrunc(grand_total * @as(i64, @intCast(obj.vat.percent)), 100);
     grand_total += vat_amount;
     try totals_tex_writer.print(
-        "\\def\\FjVatAmount{{{s},00}}\n" ++
-            "\\def\\FjGrandTotalPlusVat{{{s},00}}\n",
+        "\\def\\FjVatAmount{{{[vat]s}{[c]c}00}}\n" ++
+            "\\def\\FjGrandTotalPlusVat{{{[total]s}{[c]c}00}}\n",
 
         .{
-            try format.intThousandsAlloc(self.arena, vat_amount, .german),
-            try format.intThousandsAlloc(self.arena, grand_total, .german),
+            .vat = try format.intThousandsAlloc(self.arena, vat_amount, opts),
+            .total = try format.intThousandsAlloc(self.arena, grand_total, opts),
+            .c = opts.comma,
         },
     );
     try totals_tex_writer.flush();
 
     // now read invoice.tex and replace
     const input_tex_name = try std.fmt.allocPrint(self.arena, "{s}.tex", .{documentTypeHumanName(DocumentType)});
-    var input_tex_file = try subdir_spec.dir.openFile(input_tex_name, .{ .mode = .read_write });
-    defer input_tex_file.close();
+    var input_tex_file = try subdir_spec.dir.openFile(self.io, input_tex_name, .{ .mode = .read_write });
+    defer input_tex_file.close(self.io);
 
-    const orig_tex = try input_tex_file.readToEndAlloc(self.arena, 1024 * 1024);
+    const orig_tex = try fsutil.readToEndAlloc(self.io, input_tex_file, self.arena, 1024 * 1024);
     const temp_tex_billables = try self.replaceSection(orig_tex, "BILLABLES", billables_writer.written());
     const new_tex = try self.replaceSection(temp_tex_billables, "GROUPSUMS", groups_tex_writer.written());
-    try input_tex_file.seekTo(0);
-    try input_tex_file.writeAll(new_tex);
-    // Truncate file to prevent old content from remaining if new content is shorter
-    try input_tex_file.setEndPos(new_tex.len);
+    var input_tex_buf: [4096]u8 = undefined;
+    var input_tex_writer = input_tex_file.writer(self.io, &input_tex_buf);
+    try input_tex_writer.seekTo(0);
+    try input_tex_writer.interface.writeAll(new_tex);
+    // end() flushes and truncates the file to the current position, preventing
+    // old content from remaining if the new content is shorter.
+    try input_tex_writer.end();
     return grand_total;
 }
 
 fn replaceSection(self: *const Fj, input: []const u8, section: []const u8, replacement: []const u8) ![]const u8 {
-    var allocating_writer = std.io.Writer.Allocating.init(self.arena);
+    var allocating_writer = std.Io.Writer.Allocating.init(self.arena);
     var writer = &allocating_writer.writer;
 
     const section_marker_start = try std.fmt.allocPrint(self.arena, "% <BEGIN {s}>", .{section});
     const section_marker_end = try std.fmt.allocPrint(self.arena, "% <END {s}>", .{section});
 
     // Trim trailing newlines to prevent accumulation, but preserve internal blank lines
-    const trimmed_input = std.mem.trimRight(u8, input, "\n");
+    const trimmed_input = std.mem.trimEnd(u8, input, "\n");
 
     var it = std.mem.splitScalar(u8, trimmed_input, '\n');
     while (it.next()) |line_untrimmed| {
@@ -2767,23 +2780,23 @@ pub fn cmdCompileDocument(self: *const Fj, args: anytype, work_dir: ?[]const u8)
         }
     };
 
-    if (!fsutil.isDirPresent(subdir_name)) {
+    if (!fsutil.isDirPresent(self.io, subdir_name)) {
         try fatal("Directory `{s}` does not exist!", .{subdir_name}, error.NotFound);
     }
-    const subdir = cwd().openDir(subdir_name, .{ .iterate = true }) catch |err| {
+    const subdir = cwd().openDir(self.io, subdir_name, .{ .iterate = true }) catch |err| {
         try fatal("Unable to enter directory `{s}`: {}", .{ subdir_name, err }, err);
     };
     var subdir_spec: DocumentSubdirSpec = .{
         .dir = subdir,
         .name = subdir_name,
     };
-    defer subdir_spec.dir.close();
+    defer subdir_spec.dir.close(self.io);
 
     var obj = try self.loadDocumentMeta(subdir_spec, DocumentType);
 
     // generate config.tex
     {
-        var tex_config_file = subdir_spec.dir.createFile("config.tex", .{ .exclusive = false }) catch |err| {
+        var tex_config_file = subdir_spec.dir.createFile(self.io, "config.tex", .{ .exclusive = false }) catch |err| {
             try fatal(
                 "Could not create `{s}/config.tex`: {}",
                 .{ subdir_spec.name, err },
@@ -2797,24 +2810,25 @@ pub fn cmdCompileDocument(self: *const Fj, args: anytype, work_dir: ?[]const u8)
                 err,
             );
         };
-        defer tex_config_file.close();
+        defer tex_config_file.close(self.io);
     }
 
-    // if !letter: generate rates.tex
+    var grand_total: i64 = 0;
+    // if !letter: generate rates.tex + billables. The number format used for
+    // generated amounts is a property of the client.
     if (DocumentType != fj_json.Letter) {
-        self.generateRatesTex(subdir_spec, obj.applicable_rates) catch |err| {
+        const client = try self.loadRecord(fj_json.Client, obj.client_shortname, .{});
+        const number_opts = format.Opts.fromName(client.number_format);
+
+        self.generateRatesTex(subdir_spec, obj.applicable_rates, number_opts) catch |err| {
             try fatal(
                 "Error writing `{s}/rates.tex`: {}",
                 .{ subdir_spec.name, err },
                 err,
             );
         };
-    }
 
-    var grand_total: i64 = 0;
-    // generate billables if ! letter
-    if (DocumentType != fj_json.Letter) {
-        grand_total = self.generateBillablesTex(subdir_spec, obj) catch |err| {
+        grand_total = self.generateBillablesTex(subdir_spec, obj, number_opts) catch |err| {
             try fatal(
                 "Error generating billables: {}",
                 .{err},
@@ -2829,7 +2843,7 @@ pub fn cmdCompileDocument(self: *const Fj, args: anytype, work_dir: ?[]const u8)
     try self.saveDocumentMeta(DocumentType, subdir_spec, obj);
 
     // compile
-    const pdflatex: PdfLatex = .{ .arena = self.arena, .work_dir = subdir_spec.name };
+    const pdflatex: PdfLatex = .{ .arena = self.arena, .io = self.io, .work_dir = subdir_spec.name };
     const input_tex = try std.fmt.allocPrint(self.arena, "{s}.tex", .{documentTypeHumanName(DocumentType)});
     const temp_pdf = try std.fmt.allocPrint(self.arena, "{s}.pdf", .{documentTypeHumanName(DocumentType)});
     var filename_buf: [max_name_bytes]u8 = undefined;
@@ -2842,7 +2856,7 @@ pub fn cmdCompileDocument(self: *const Fj, args: anytype, work_dir: ?[]const u8)
         // 2nd run
         if (try pdflatex.run(input_tex)) {
             // rename pdf
-            try subdir_spec.dir.rename(temp_pdf, final_pdf);
+            try subdir_spec.dir.rename(temp_pdf, subdir_spec.dir, final_pdf, self.io);
         }
     }
     log.info("✅ compiled to `{s}/{s}`!", .{ subdir_spec.name, final_pdf });
@@ -2875,17 +2889,17 @@ pub fn cmdCommitDocument(self: *Fj, args: anytype, work_dir: ?[]const u8, delete
         }
     };
 
-    if (!fsutil.isDirPresent(subdir_name)) {
+    if (!fsutil.isDirPresent(self.io, subdir_name)) {
         try fatal("Directory `{s}` does not exist!", .{subdir_name}, error.NotFound);
     }
-    const subdir = cwd().openDir(subdir_name, .{ .iterate = true }) catch |err| {
+    const subdir = cwd().openDir(self.io, subdir_name, .{ .iterate = true }) catch |err| {
         try fatal("Unable to enter directory `{s}`: {}", .{ subdir_name, err }, err);
     };
     var subdir_spec: DocumentSubdirSpec = .{
         .dir = subdir,
         .name = subdir_name,
     };
-    defer subdir_spec.dir.close();
+    defer subdir_spec.dir.close(self.io);
 
     // automatically validates the json
     var obj = try self.loadDocumentMeta(subdir_spec, DocumentType);
@@ -2922,13 +2936,13 @@ pub fn cmdCommitDocument(self: *Fj, args: anytype, work_dir: ?[]const u8, delete
         const filename = std.fmt.bufPrint(&filename_buf, "{s}.json", .{json_file_stem}) catch |err| {
             try fatal("Unable to create filename `{s}.json`: {}", .{ json_file_stem, err }, err);
         };
-        const file = subdir_spec.dir.createFile(filename, .{ .exclusive = false }) catch |err| {
+        const file = subdir_spec.dir.createFile(self.io, filename, .{ .exclusive = false }) catch |err| {
             try fatal("Unable to update file `{s}`: {}", .{ filename, err }, err);
         };
 
-        defer file.close();
+        defer file.close(self.io);
         var buffer: [1024]u8 = undefined;
-        var file_buffered_writer = file.writer(&buffer);
+        var file_buffered_writer = file.writer(self.io, &buffer);
         const writer = &file_buffered_writer.interface;
         std.json.Stringify.value(obj, .{ .whitespace = .indent_4 }, writer) catch |err| {
             try fatal("Error writing to file {s}.json: {}", .{ filename, err }, err);
@@ -2949,7 +2963,7 @@ pub fn cmdCommitDocument(self: *Fj, args: anytype, work_dir: ?[]const u8, delete
             "{s}.pdf",
             .{try createDocumentName(DocumentType, old_id, obj.client_shortname, &dest_path_buf)},
         );
-        subdir_spec.dir.deleteFile(temp_pdf) catch {};
+        subdir_spec.dir.deleteFile(self.io, temp_pdf) catch {};
     }
 
     // only if all went well, we'll commit to fj_home
@@ -2957,12 +2971,12 @@ pub fn cmdCommitDocument(self: *Fj, args: anytype, work_dir: ?[]const u8, delete
     const document_dir_name = try createDocumentName(DocumentType, obj.id, obj.client_shortname, &dir_name_buf);
     const dest_path = try self.documentDir(DocumentType, document_dir_name, &dest_path_buf);
     if (has_temp_id) {
-        cwd().makeDir(dest_path) catch |err| {
+        cwd().createDir(self.io, dest_path, .default_dir) catch |err| {
             try fatal("Error creating dir `{s}`: {}", .{ dest_path, err }, err);
         };
     }
-    var dest_dir = try cwd().openDir(dest_path, .{});
-    defer dest_dir.close();
+    var dest_dir = try cwd().openDir(self.io, dest_path, .{});
+    defer dest_dir.close(self.io);
     {
         // const document_dir_name = try std.fmt.allocPrint(
         //     self.arena,
@@ -2971,20 +2985,20 @@ pub fn cmdCommitDocument(self: *Fj, args: anytype, work_dir: ?[]const u8, delete
         // );
 
         var file_it = subdir_spec.dir.iterate();
-        while (try file_it.next()) |entry| {
+        while (try file_it.next(self.io)) |entry| {
             log.info("    {s} -> {s}/{s}", .{ entry.name, dest_path, entry.name });
-            try subdir_spec.dir.copyFile(entry.name, dest_dir, entry.name, .{});
+            try subdir_spec.dir.copyFile(entry.name, dest_dir, entry.name, self.io, .{});
         }
 
         // at the end, delete the temp copy if requested
         if (delete_working_copy) {
-            try cwd().deleteTree(subdir_spec.name);
+            try cwd().deleteTree(self.io, subdir_spec.name);
         }
     }
 
     // git commit
     {
-        var git: Git = .{ .arena = self.arena, .repo_dir = self.fj_home.? };
+        var git: Git = .{ .arena = self.arena, .io = self.io, .repo_dir = self.fj_home.? };
         if (!try git.stage(.all, null)) {
             try fatal("Aborting Git commit!", .{}, error.Abort);
         }
@@ -3025,7 +3039,7 @@ fn getDocumentTypeId(self: *const Fj, DocumentType: type, lock_ptr: ?*fsutil.Fil
         if (lock_ptr) |ptr| {
             break :blk ptr.*;
         } else {
-            break :blk try fsutil.FileLock.acquire(self.arena, id_filename);
+            break :blk try fsutil.FileLock.acquire(self.io, self.arena, id_filename);
         }
     };
 
@@ -3033,9 +3047,9 @@ fn getDocumentTypeId(self: *const Fj, DocumentType: type, lock_ptr: ?*fsutil.Fil
         if (lock_ptr == null) lock.release();
     }
 
-    var f = try cwd().openFile(id_filename, .{});
-    defer f.close();
-    const line = format.strip(try f.readToEndAlloc(self.arena, 1024));
+    var f = try cwd().openFile(self.io, id_filename, .{});
+    defer f.close(self.io);
+    const line = format.strip(try fsutil.readToEndAlloc(self.io, f, self.arena, 1024));
     if (line.len != "2025-XXX".len) {
         lock.release();
         try fatal(
@@ -3060,7 +3074,7 @@ fn incrementDocumentTypeId(self: *const Fj, DocumentType: type) ![]const u8 {
     const id_filename = try path.join(self.arena, &[_][]const u8{ fj_home, subdir, ".id" });
 
     // lock the id
-    var lock: fsutil.FileLock = try fsutil.FileLock.acquire(self.arena, id_filename);
+    var lock: fsutil.FileLock = try fsutil.FileLock.acquire(self.io, self.arena, id_filename);
     defer lock.release();
 
     // get current id, locked
@@ -3078,10 +3092,10 @@ fn incrementDocumentTypeId(self: *const Fj, DocumentType: type) ![]const u8 {
         .{ current_id_str[0..5], numeric_id },
     );
 
-    const f = try cwd().createFile(id_filename, .{});
-    defer f.close();
+    const f = try cwd().createFile(self.io, id_filename, .{});
+    defer f.close(self.io);
     var io_buffer: [1024]u8 = undefined;
-    var io_writer = f.writer(&io_buffer);
+    var io_writer = f.writer(self.io, &io_buffer);
     const writer = &io_writer.interface;
     try writer.print("{s}\n", .{new_id_str});
     try writer.flush();
@@ -3090,6 +3104,7 @@ fn incrementDocumentTypeId(self: *const Fj, DocumentType: type) ![]const u8 {
 
 test "file truncation prevents residual content" {
     const testing = std.testing;
+    const io = std.Io.Threaded.global_single_threaded.io();
     const tmpDir = testing.tmpDir(.{});
     defer tmpDir.cleanup();
 
@@ -3100,36 +3115,43 @@ test "file truncation prevents residual content" {
         "with something much shorter.\n";
 
     {
-        const file = try tmpDir.dir.createFile(filename, .{});
-        defer file.close();
-        try file.writeAll(original_content);
+        const file = try tmpDir.dir.createFile(io, filename, .{});
+        defer file.close(io);
+        var wbuf: [256]u8 = undefined;
+        var fw = file.writer(io, &wbuf);
+        try fw.interface.writeAll(original_content);
+        try fw.interface.flush();
     }
 
     // Now open for read_write and replace with shorter content
     const new_content = "Short content\n";
 
     {
-        var file = try tmpDir.dir.openFile(filename, .{ .mode = .read_write });
-        defer file.close();
+        var file = try tmpDir.dir.openFile(io, filename, .{ .mode = .read_write });
+        defer file.close(io);
 
-        const orig = try file.readToEndAlloc(testing.allocator, 1024);
+        const orig = try fsutil.readToEndAlloc(io, file, testing.allocator, 1024);
         defer testing.allocator.free(orig);
 
         // Verify we read the original content
         try testing.expectEqualStrings(original_content, orig);
 
         // Write new shorter content with truncation (this is the fix!)
-        try file.seekTo(0);
-        try file.writeAll(new_content);
-        try file.setEndPos(new_content.len);
+        var wbuf: [256]u8 = undefined;
+        var fw = file.writer(io, &wbuf);
+        try fw.seekTo(0);
+        try fw.interface.writeAll(new_content);
+        // end() flushes and sets the file length to the current position,
+        // truncating any residual bytes.
+        try fw.end();
     }
 
     // Read back and verify no residual content
     {
-        const file = try tmpDir.dir.openFile(filename, .{});
-        defer file.close();
+        const file = try tmpDir.dir.openFile(io, filename, .{});
+        defer file.close(io);
 
-        const final_content = try file.readToEndAlloc(testing.allocator, 1024);
+        const final_content = try fsutil.readToEndAlloc(io, file, testing.allocator, 1024);
         defer testing.allocator.free(final_content);
 
         try testing.expectEqualStrings(new_content, final_content);
@@ -3143,7 +3165,7 @@ test "replaceSection does not accumulate newlines" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
 
-    const fj = Fj{ .arena = arena.allocator() };
+    const fj = Fj{ .arena = arena.allocator(), .io = std.Io.Threaded.global_single_threaded.io() };
 
     // Simulate a LaTeX file with a section and internal blank lines
     const input =

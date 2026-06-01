@@ -24,7 +24,7 @@ pub fn get(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !void
         log.info("GET {s}", .{path});
         if (std.mem.eql(u8, path, ep.path)) {
             log.info("Using FJ_HOME = `{s}`", .{context.fj_home});
-            if (fsutil.isDirPresent(context.fj_home)) {
+            if (fsutil.isDirPresent(context.io, context.fj_home)) {
                 const message = try std.fmt.allocPrint(
                     arena,
                     "Error: FJ_HOME {s} already exists!",
@@ -71,7 +71,7 @@ pub fn post(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !voi
         log.info("POST {s}", .{path});
         if (std.mem.eql(u8, path, ep.path)) {
             log.info("Using FJ_HOME = `{s}`", .{context.fj_home});
-            if (fsutil.isDirPresent(context.fj_home)) {
+            if (fsutil.isDirPresent(context.io, context.fj_home)) {
                 const message = try std.fmt.allocPrint(
                     arena,
                     "Error: FJ_HOME {s} already exists!",
@@ -102,15 +102,15 @@ pub fn post(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !voi
                 return;
             }
 
-            var cwd = try std.fs.cwd().openDir(context.work_dir, .{});
-            defer cwd.close();
+            var cwd = try std.Io.Dir.cwd().openDir(context.io, context.work_dir, .{});
+            defer cwd.close(context.io);
             const json = try r.getParamStr(arena, "json") orelse return error.Json;
-            var json_file = try cwd.createFile("init.json", .{});
+            var json_file = try cwd.createFile(context.io, "init.json", .{});
             {
                 // block scope for immediate defer
-                defer json_file.close();
+                defer json_file.close(context.io);
                 const fixedup_json = try fixLogoFilenameInJson(arena, json);
-                try json_file.writeAll(fixedup_json);
+                try fsutil.writeAll(context.io, json_file, fixedup_json);
             }
             log.debug("Wrote init.json", .{});
 
@@ -142,11 +142,11 @@ pub fn post(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !voi
             };
 
             // logo filename got fixed to logo.png in input json
-            var logo_file = try cwd.createFile("logo.png", .{});
+            var logo_file = try cwd.createFile(context.io, "logo.png", .{});
             {
                 // block scope for immediate defer
-                defer logo_file.close();
-                try logo_file.writeAll(logo_png_data);
+                defer logo_file.close(context.io);
+                try fsutil.writeAll(context.io, logo_file, logo_png_data);
             }
 
             const command: Cli.InitCommand = .{
@@ -157,8 +157,8 @@ pub fn post(ep: *Init, arena: Allocator, context: *Context, r: zap.Request) !voi
             try fj.cmd_init(command);
 
             // cleanup the workdir/init.json and the workdir/logo.png
-            try cwd.deleteFile("init.json");
-            try cwd.deleteFile("logo.png");
+            try cwd.deleteFile(context.io, "init.json");
+            try cwd.deleteFile(context.io, "logo.png");
 
             context.gpa.free(context.logo_imgdata);
             context.logo_imgdata = try context.gpa.dupe(u8, logo_png_data);

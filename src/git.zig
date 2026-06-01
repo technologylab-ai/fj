@@ -5,6 +5,7 @@ const CommandUtils = @import("commandutils.zig");
 const showResultMessages = CommandUtils.showResultMessages;
 
 arena: std.mem.Allocator,
+io: std.Io,
 repo_dir: []const u8,
 
 const Git = @This();
@@ -13,55 +14,55 @@ const log = std.log.scoped(.git);
 
 const max_output_bytes: usize = 200 * 1024;
 
-fn cmd(self: *const Git, argv: []const []const u8, writer: ?*std.io.Writer) !bool {
+fn cmd(self: *const Git, argv: []const []const u8, writer: ?*std.Io.Writer) !bool {
     const arglist = std.mem.join(self.arena, " ", argv) catch {
         return false;
     };
 
     var io_buffer: [1024]u8 = undefined;
-    var stderr_writer = std.fs.File.stderr().writer(&io_buffer);
+    var stderr_writer = std.Io.File.stderr().writer(self.io, &io_buffer);
     const stderr = &stderr_writer.interface;
     defer stderr.flush() catch unreachable;
 
     stderr.writeAll("\n" ++ "-" ** 80 ++ "\n") catch unreachable;
     defer stderr.writeAll("-" ** 80 ++ "\n") catch unreachable;
 
-    const result = std.process.Child.run(.{
-        .allocator = self.arena,
+    const result = std.process.run(self.arena, self.io, .{
         .argv = argv,
-        .cwd = self.repo_dir,
-        .max_output_bytes = max_output_bytes,
+        .cwd = .{ .path = self.repo_dir },
+        .stdout_limit = .limited(max_output_bytes),
+        .stderr_limit = .limited(max_output_bytes),
         .expand_arg0 = .expand,
     }) catch |err| {
         try fatal("Could not launch `git {s}`: {}", .{ arglist, err }, err);
     };
     switch (result.term) {
-        .Exited => |exit_code| {
+        .exited => |exit_code| {
             if (exit_code != 0) {
                 log.err("`git {s}` returned exit code {d}.", .{ arglist, exit_code });
-                showResultMessages(result, writer);
+                showResultMessages(self.io, result, writer);
                 return false;
             }
             log.info("{s} OK:", .{arglist});
-            showResultMessages(result, writer);
+            showResultMessages(self.io, result, writer);
             return true;
         },
-        .Signal => |signal| {
+        .signal => |signal| {
             // show stdout, stderr
-            log.err("`git {s}` received signal: {d}!", .{ arglist, signal });
-            showResultMessages(result, writer);
+            log.err("`git {s}` received signal: {d}!", .{ arglist, @intFromEnum(signal) });
+            showResultMessages(self.io, result, writer);
             return false;
         },
-        .Stopped => |stopped| {
+        .stopped => |stopped| {
             // show stdout, stderr
-            log.err("`git {s}` was stopped with code: {d}!", .{ arglist, stopped });
-            showResultMessages(result, writer);
+            log.err("`git {s}` was stopped with code: {d}!", .{ arglist, @intFromEnum(stopped) });
+            showResultMessages(self.io, result, writer);
             return false;
         },
-        .Unknown => |unk| {
+        .unknown => |unk| {
             // show stdout, stderr
             log.err("`git {s}` caused unknown code: {d}!", .{ arglist, unk });
-            showResultMessages(result, writer);
+            showResultMessages(self.io, result, writer);
             return false;
         },
     }
@@ -71,14 +72,14 @@ pub fn init(self: *const Git) !bool {
     return self.cmd(&[_][]const u8{ "git", "init" }, null);
 }
 
-pub fn status(self: *const Git, writer: ?*std.io.Writer) !bool {
+pub fn status(self: *const Git, writer: ?*std.Io.Writer) !bool {
     return self.cmd(&[_][]const u8{ "git", "status" }, writer);
 }
 
 pub fn stage(
     self: *const Git,
     opts: union(enum) { file: []const u8, files: []const []const u8, all },
-    writer: ?*std.io.Writer,
+    writer: ?*std.Io.Writer,
 ) !bool {
     var args: std.ArrayListUnmanaged([]const u8) = .empty;
     args.append(self.arena, "git") catch try fatal("OOM!", .{}, error.OutOfMemory);
@@ -95,15 +96,15 @@ pub fn stage(
     return self.cmd(args.items, writer);
 }
 
-pub fn commit(self: *const Git, commit_message: []const u8, writer: ?*std.io.Writer) !bool {
+pub fn commit(self: *const Git, commit_message: []const u8, writer: ?*std.Io.Writer) !bool {
     return self.cmd(&[_][]const u8{ "git", "commit", "-m", commit_message }, writer);
 }
 
-pub fn push(self: *const Git, writer: ?*std.io.Writer) !bool {
+pub fn push(self: *const Git, writer: ?*std.Io.Writer) !bool {
     return self.cmd(&[_][]const u8{ "git", "push", "-u", "origin", "master" }, writer);
 }
 
-pub fn pull(self: *const Git, writer: ?*std.io.Writer) !bool {
+pub fn pull(self: *const Git, writer: ?*std.Io.Writer) !bool {
     return self.cmd(&[_][]const u8{ "git", "pull" }, writer);
 }
 

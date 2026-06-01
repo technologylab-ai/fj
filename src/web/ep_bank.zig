@@ -54,7 +54,7 @@ fn listTransactions(ep: *EpBank, arena: Allocator, context: *Context, r: zap.Req
     const fj_config = try fj.loadConfigJson();
 
     // Load transactions
-    var store = bank.TransactionStore.init(arena, context.fj_home);
+    var store = bank.TransactionStore.init(context.io, arena, context.fj_home);
     const txn_file = store.load() catch fj_json.TransactionsFile{
         .last_updated = "",
         .transactions = &.{},
@@ -220,7 +220,7 @@ fn uploadCsv(ep: *EpBank, arena: Allocator, context: *Context, r: zap.Request) !
     }
 
     // Import the CSV data
-    const import_result = importBankCsv(arena, context.fj_home, file_data) catch |err| {
+    const import_result = importBankCsv(context.io, arena, context.fj_home, file_data) catch |err| {
         log.err("Import error: {}", .{err});
         return r.redirectTo("/bank?error=import_failed", null);
     };
@@ -240,7 +240,7 @@ const ImportResult = struct {
     matched_invoices: []const bank.MatchedInvoice,
 };
 
-fn importBankCsv(arena: Allocator, fj_home: []const u8, content: []const u8) !ImportResult {
+fn importBankCsv(io: std.Io, arena: Allocator, fj_home: []const u8, content: []const u8) !ImportResult {
     // Convert ISO-8859-1 to UTF-8
     const utf8_content = try bank.latin1ToUtf8(arena, content);
 
@@ -250,7 +250,7 @@ fn importBankCsv(arena: Allocator, fj_home: []const u8, content: []const u8) !Im
     const result = try p.parse(utf8_content, arena);
 
     // Load existing transactions
-    var store = bank.TransactionStore.init(arena, fj_home);
+    var store = bank.TransactionStore.init(io, arena, fj_home);
     const txn_file = try store.load();
 
     // Deduplicate and add new transactions
@@ -259,7 +259,7 @@ fn importBankCsv(arena: Allocator, fj_home: []const u8, content: []const u8) !Im
     try new_txns.appendSlice(arena, txn_file.transactions);
 
     // Get current timestamp
-    const timestamp: i64 = std.time.timestamp();
+    const timestamp: i64 = std.Io.Timestamp.now(io, .real).toSeconds();
     const epoch_secs: u64 = @intCast(timestamp);
     const epoch = std.time.epoch.EpochSeconds{ .secs = epoch_secs };
     const day = epoch.getEpochDay();
@@ -313,6 +313,7 @@ fn importBankCsv(arena: Allocator, fj_home: []const u8, content: []const u8) !Im
         // Load unpaid invoices for reconciliation
         var fj_inst: Fj = .{
             .arena = arena,
+            .io = io,
             .fj_home = fj_home,
         };
         const unpaid = fj_inst.loadUnpaidInvoices() catch &[_]fj_json.Invoice{};

@@ -36,7 +36,7 @@ pub fn get(_: *Dashboard, arena: Allocator, context: *Context, r: zap.Request) !
             break :blk std.fmt.parseInt(i32, yp, 10) catch year;
         }
         // Default to .current_year file, fallback to system year
-        break :blk ep_utils.readCurrentYear(arena, context.fj_home) orelse year;
+        break :blk ep_utils.readCurrentYear(context.io, arena, context.fj_home) orelse year;
     };
 
     const available_years = try ep_utils.collectAvailableYears(arena, context);
@@ -54,10 +54,11 @@ pub fn get(_: *Dashboard, arena: Allocator, context: *Context, r: zap.Request) !
 
     const git: Git = .{
         .arena = arena,
+        .io = context.io,
         .repo_dir = context.fj_home,
     };
 
-    var status_writer = std.io.Writer.Allocating.init(arena);
+    var status_writer = std.Io.Writer.Allocating.init(arena);
     _ = try git.status(&status_writer.writer);
 
     const params = .{

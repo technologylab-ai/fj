@@ -175,7 +175,7 @@ pub fn create(DocumentType: type) type {
                     if (std.mem.eql(u8, yp, "all")) break :blk null;
                     break :blk std.fmt.parseInt(i32, yp, 10) catch year;
                 }
-                break :blk ep_utils.readCurrentYear(arena, context.fj_home) orelse year;
+                break :blk ep_utils.readCurrentYear(context.io, arena, context.fj_home) orelse year;
             };
 
             const available_years = try ep_utils.collectAvailableYears(arena, context);
@@ -361,9 +361,9 @@ pub fn create(DocumentType: type) type {
             const document_subdir_name = try fj.findDocumentById(DocumentType, id);
             const document_dir_path = try std.fs.path.join(arena, &.{ context.work_dir, document_subdir_name });
             // we are in workdir
-            if (fsutil.isDirPresent(document_dir_path)) {
+            if (fsutil.isDirPresent(context.io, document_dir_path)) {
                 // delete it!
-                try std.fs.cwd().deleteTree(document_dir_path);
+                try std.Io.Dir.cwd().deleteTree(context.io, document_dir_path);
             }
 
             const Command = switch (DocumentType) {
@@ -457,13 +457,13 @@ pub fn create(DocumentType: type) type {
             // e.g. offer--2025-XXX--CLIENT_A and offer--2025-XXX--CLIENT_B
             // TODO: this uses cwd() instead of workdir
 
-            var iter_dir = try std.fs.cwd().openDir(".", .{ .iterate = true });
-            defer iter_dir.close();
+            var iter_dir = try std.Io.Dir.cwd().openDir(context.io, ".", .{ .iterate = true });
+            defer iter_dir.close(context.io);
             var it = iter_dir.iterate();
-            while (try it.next()) |item| {
+            while (try it.next(context.io)) |item| {
                 if (std.mem.startsWith(u8, item.name, expected_path_prefix)) {
                     if (item.kind == .directory) {
-                        try std.fs.cwd().deleteTree(item.name);
+                        try std.Io.Dir.cwd().deleteTree(context.io, item.name);
                     }
                 }
             }
@@ -564,8 +564,8 @@ pub fn create(DocumentType: type) type {
             var fj = ep_utils.createFj(arena, context);
             const fj_config = try fj.loadConfigJson();
             const document_subdir_name = try fj.findDocumentById(DocumentType, id);
-            var cwd = try std.fs.cwd().openDir(document_subdir_name, .{});
-            defer cwd.close();
+            var cwd = try std.Io.Dir.cwd().openDir(context.io, document_subdir_name, .{});
+            defer cwd.close(context.io);
 
             // Body already parsed in post() handler
             const json = try ep_utils.getBodyStrParam(arena, r, "json");
@@ -583,23 +583,23 @@ pub fn create(DocumentType: type) type {
             const billables_filename = "billables.csv";
             const tex_filename = try std.fmt.allocPrint(arena, "{s}.tex", .{doc_type});
 
-            var json_file = try cwd.createFile(json_filename, .{});
+            var json_file = try cwd.createFile(context.io, json_filename, .{});
             {
                 // block scope for immediate defer
-                defer json_file.close();
-                try json_file.writeAll(json);
+                defer json_file.close(context.io);
+                try fsutil.writeAll(context.io, json_file, json);
             }
 
             if (DocumentType != Letter) {
-                var billables_file = try cwd.createFile(billables_filename, .{});
-                defer billables_file.close();
-                try billables_file.writeAll(billables);
+                var billables_file = try cwd.createFile(context.io, billables_filename, .{});
+                defer billables_file.close(context.io);
+                try fsutil.writeAll(context.io, billables_file, billables);
             }
 
-            var tex_file = try cwd.createFile(tex_filename, .{});
+            var tex_file = try cwd.createFile(context.io, tex_filename, .{});
             {
-                defer tex_file.close();
-                try tex_file.writeAll(tex);
+                defer tex_file.close(context.io);
+                try fsutil.writeAll(context.io, tex_file, tex);
             }
 
             const CompileCommand = switch (DocumentType) {
@@ -753,8 +753,8 @@ pub fn create(DocumentType: type) type {
             // we need to find the subdir of the checked out invoice
             const document_subdir_name = std.fs.path.basename(try fj.findDocumentById(DocumentType, id));
 
-            var cwd = try std.fs.cwd().openDir(document_subdir_name, .{});
-            defer cwd.close();
+            var cwd = try std.Io.Dir.cwd().openDir(context.io, document_subdir_name, .{});
+            defer cwd.close(context.io);
 
             // Body already parsed in post() handler
             const json = try ep_utils.getBodyStrParam(arena, r, "json");
@@ -772,23 +772,23 @@ pub fn create(DocumentType: type) type {
             const billables_filename = "billables.csv";
             const tex_filename = try std.fmt.allocPrint(arena, "{s}.tex", .{doc_type});
 
-            var json_file = try cwd.createFile(json_filename, .{});
+            var json_file = try cwd.createFile(context.io, json_filename, .{});
             {
                 // block scope so file is closed immediately
-                defer json_file.close();
-                try json_file.writeAll(json);
+                defer json_file.close(context.io);
+                try fsutil.writeAll(context.io, json_file, json);
             }
 
             if (DocumentType != Letter) {
-                var billables_file = try cwd.createFile(billables_filename, .{});
-                defer billables_file.close();
-                try billables_file.writeAll(billables);
+                var billables_file = try cwd.createFile(context.io, billables_filename, .{});
+                defer billables_file.close(context.io);
+                try fsutil.writeAll(context.io, billables_file, billables);
             }
 
-            var tex_file = try cwd.createFile(tex_filename, .{});
+            var tex_file = try cwd.createFile(context.io, tex_filename, .{});
             {
-                defer tex_file.close();
-                try tex_file.writeAll(tex);
+                defer tex_file.close(context.io);
+                try fsutil.writeAll(context.io, tex_file, tex);
             }
 
             const CommitCommand = switch (DocumentType) {
@@ -917,7 +917,7 @@ pub fn create(DocumentType: type) type {
             log.info("Opening {s}", .{pdf_path});
 
             try r.setHeader("Cache-Control", "no-store");
-            if (fsutil.fileExists(pdf_path)) {
+            if (fsutil.fileExists(context.io, pdf_path)) {
                 try r.sendFile(pdf_path);
             } else {
                 try r.sendBody(try std.fmt.allocPrint(arena, "{s} not found", .{pdf_path}));

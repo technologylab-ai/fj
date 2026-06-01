@@ -225,7 +225,7 @@ pub fn create(ResourceType: type) type {
             // Body already parsed in post() handler
             const shortname = try ep_utils.getBodyStrParam(arena, r, "shortname");
             const expected_filename = try std.fmt.allocPrint(arena, "{s}.json", .{shortname});
-            if (fsutil.fileExists(expected_filename)) {
+            if (fsutil.fileExists(context.io, expected_filename)) {
                 const message = try std.fmt.allocPrint(
                     arena,
                     "Error: {s} {s} already exists!",
@@ -271,7 +271,7 @@ pub fn create(ResourceType: type) type {
             var path_buf: [Fj.max_path_bytes]u8 = undefined;
             const temp_file_path = try fj.recordPath(ResourceType, shortname, context.work_dir, &path_buf);
             log.info("temp_file_path = {s}", .{temp_file_path});
-            try std.fs.cwd().deleteFile(temp_file_path);
+            try std.Io.Dir.cwd().deleteFile(context.io, temp_file_path);
 
             const json = try std.json.Stringify.valueAlloc(arena, obj, .{ .whitespace = .indent_4 });
 
@@ -311,7 +311,7 @@ pub fn create(ResourceType: type) type {
             var path_buf: [Fj.max_path_bytes]u8 = undefined;
             const new_revision = blk: {
                 const json_path = try fj.recordPath(ResourceType, shortname, null, &path_buf);
-                if (fsutil.fileExists(json_path)) {
+                if (fsutil.fileExists(context.io, json_path)) {
                     const existing = try fj.loadRecord(ResourceType, shortname, .{});
                     break :blk existing.revision + 1;
                 } else {

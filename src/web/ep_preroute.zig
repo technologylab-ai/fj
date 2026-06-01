@@ -34,49 +34,49 @@ pub fn Create(pr: *const PreRouter, Endpoint: type) type {
 
         pub fn get(self: *@This(), arena: Allocator, context: *Context, r: zap.Request) !void {
             log.info("GET {s}", .{r.path orelse ""});
-            if (fsutil.isDirPresent(context.fj_home)) {
+            if (fsutil.isDirPresent(context.io, context.fj_home)) {
                 return pr.App.callHandlerIfExist("get", self.ep, arena, context, r);
             }
             try self.redirect(r);
         }
         pub fn post(self: *@This(), arena: Allocator, context: *Context, r: zap.Request) !void {
             log.info("POST {s}", .{r.path orelse ""});
-            if (fsutil.isDirPresent(context.fj_home)) {
+            if (fsutil.isDirPresent(context.io, context.fj_home)) {
                 return pr.App.callHandlerIfExist("post", self.ep, arena, context, r);
             }
             try self.redirect(r);
         }
         pub fn put(self: *@This(), arena: Allocator, context: *Context, r: zap.Request) !void {
             log.info("PUT {s}", .{r.path orelse ""});
-            if (fsutil.isDirPresent(context.fj_home)) {
+            if (fsutil.isDirPresent(context.io, context.fj_home)) {
                 return pr.App.callHandlerIfExist("put", self.ep, arena, context, r);
             }
             try self.redirect(r);
         }
         pub fn delete(self: *@This(), arena: Allocator, context: *Context, r: zap.Request) !void {
             log.info("DELETE {s}", .{r.path orelse ""});
-            if (fsutil.isDirPresent(context.fj_home)) {
+            if (fsutil.isDirPresent(context.io, context.fj_home)) {
                 return pr.App.callHandlerIfExist("delete", self.ep, arena, context, r);
             }
             try self.redirect(r);
         }
         pub fn patch(self: *@This(), arena: Allocator, context: *Context, r: zap.Request) !void {
             log.info("PATCH {s}", .{r.path orelse ""});
-            if (fsutil.isDirPresent(context.fj_home)) {
+            if (fsutil.isDirPresent(context.io, context.fj_home)) {
                 return pr.App.callHandlerIfExist("patch", self.ep, arena, context, r);
             }
             try self.redirect(r);
         }
         pub fn options(self: *@This(), arena: Allocator, context: *Context, r: zap.Request) !void {
             log.info("OPTIONS {s}", .{r.path orelse ""});
-            if (fsutil.isDirPresent(context.fj_home)) {
+            if (fsutil.isDirPresent(context.io, context.fj_home)) {
                 return pr.App.callHandlerIfExist("options", self.ep, arena, context, r);
             }
             try self.redirect(r);
         }
         pub fn head(self: *@This(), arena: Allocator, context: *Context, r: zap.Request) !void {
             log.info("HEAD {s}", .{r.path orelse ""});
-            if (fsutil.isDirPresent(context.fj_home)) {
+            if (fsutil.isDirPresent(context.io, context.fj_home)) {
                 return pr.App.callHandlerIfExist("head", self.ep, arena, context, r);
             }
             try self.redirect(r);

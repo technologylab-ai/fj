@@ -4,26 +4,27 @@ const format = @import("../format.zig");
 const fsutil = @import("../fsutil.zig");
 
 const Allocator = std.mem.Allocator;
-const cwd = std.fs.cwd;
+const cwd = std.Io.Dir.cwd;
 const path = std.fs.path;
 
 pub const TransactionStore = struct {
     arena: Allocator,
+    io: std.Io,
     fj_home: []const u8,
 
     const transactions_rel_path = "bank/transactions.json";
     const imports_rel_path = "bank/imports";
     const max_file_size = 50 * 1024 * 1024; // 50MB
 
-    pub fn init(arena: Allocator, fj_home: []const u8) TransactionStore {
-        return .{ .arena = arena, .fj_home = fj_home };
+    pub fn init(io: std.Io, arena: Allocator, fj_home: []const u8) TransactionStore {
+        return .{ .io = io, .arena = arena, .fj_home = fj_home };
     }
 
     /// Load existing transactions (or empty if file doesn't exist)
     pub fn load(self: *TransactionStore) !json.TransactionsFile {
         const full_path = try path.join(self.arena, &.{ self.fj_home, transactions_rel_path });
 
-        var file = cwd().openFile(full_path, .{}) catch |err| {
+        var file = cwd().openFile(self.io, full_path, .{}) catch |err| {
             if (err == error.FileNotFound) {
                 // Return empty transactions file
                 return .{
@@ -33,9 +34,9 @@ pub const TransactionStore = struct {
             }
             return err;
         };
-        defer file.close();
+        defer file.close(self.io);
 
-        const content = try file.readToEndAlloc(self.arena, max_file_size);
+        const content = try fsutil.readToEndAlloc(self.io, file, self.arena, max_file_size);
 
         return std.json.parseFromSliceLeaky(json.TransactionsFile, self.arena, content, .{
             .ignore_unknown_fields = true,
@@ -49,19 +50,19 @@ pub const TransactionStore = struct {
     pub fn save(self: *TransactionStore, data: json.TransactionsFile) !void {
         // Ensure bank/ directory exists
         const bank_dir = try path.join(self.arena, &.{ self.fj_home, "bank" });
-        cwd().makePath(bank_dir) catch {};
+        cwd().createDirPath(self.io, bank_dir) catch {};
 
         const full_path = try path.join(self.arena, &.{ self.fj_home, transactions_rel_path });
 
-        const file = cwd().createFile(full_path, .{}) catch |err| {
+        const file = cwd().createFile(self.io, full_path, .{}) catch |err| {
             std.log.err("Error creating {s}: {}", .{ full_path, err });
             return err;
         };
-        defer file.close();
+        defer file.close(self.io);
 
         // Use buffered writer for performance
         var io_buffer: [4096]u8 = undefined;
-        var writer = file.writer(&io_buffer);
+        var writer = file.writer(self.io, &io_buffer);
         std.json.Stringify.value(data, .{ .whitespace = .indent_4 }, &writer.interface) catch |err| {
             std.log.err("Error writing transactions.json: {}", .{err});
             return err;
@@ -85,7 +86,7 @@ pub const TransactionStore = struct {
     pub fn archiveImport(self: *TransactionStore, source_path: []const u8, today: []const u8) !void {
         // Ensure bank/imports/ directory exists
         const imports_dir = try path.join(self.arena, &.{ self.fj_home, imports_rel_path });
-        cwd().makePath(imports_dir) catch {};
+        cwd().createDirPath(self.io, imports_dir) catch {};
 
         // Get original filename
         const filename = path.basename(source_path);
@@ -95,7 +96,7 @@ pub const TransactionStore = struct {
         const archive_path = try path.join(self.arena, &.{ imports_dir, archive_name });
 
         // Copy file
-        cwd().copyFile(source_path, cwd(), archive_path, .{}) catch |err| {
+        cwd().copyFile(source_path, cwd(), archive_path, self.io, .{}) catch |err| {
             std.log.warn("Could not archive CSV to {s}: {}", .{ archive_path, err });
             return err;
         };

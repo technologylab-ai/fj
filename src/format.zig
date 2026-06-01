@@ -6,6 +6,14 @@ pub const Opts = struct {
 
     pub const german: Opts = .{ .comma = ',', .sep = '.' };
     pub const english: Opts = .{ .comma = '.', .sep = ',' };
+
+    /// Resolves a client's `number_format` field to an `Opts`. Anything other
+    /// than "en"/"english" (case-insensitive) falls back to German.
+    pub fn fromName(name: []const u8) Opts {
+        if (std.ascii.eqlIgnoreCase(name, "en") or
+            std.ascii.eqlIgnoreCase(name, "english")) return .english;
+        return .german;
+    }
 };
 
 pub fn intThousandsAlloc(alloc: std.mem.Allocator, value: anytype, opts: Opts) ![]const u8 {

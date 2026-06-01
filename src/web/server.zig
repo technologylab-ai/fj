@@ -4,7 +4,8 @@ const zap = @import("zap");
 const Allocator = std.mem.Allocator;
 const Fj = @import("../fj.zig");
 
-const Dir = std.fs.Dir;
+const Dir = std.Io.Dir;
+const fsutil = @import("../fsutil.zig");
 
 const auth_types = @import("auth_types.zig");
 const Authenticator = auth_types.Authenticator;
@@ -44,21 +45,21 @@ pub const InitOpts = struct {
     work_dir: []const u8 = ".",
 };
 
-fn readLogo(allocator: Allocator, fj_home: []const u8) ![]const u8 {
-    var fj_home_dir = try std.fs.cwd().openDir(fj_home, .{});
-    defer fj_home_dir.close();
+fn readLogo(io: std.Io, allocator: Allocator, fj_home: []const u8) ![]const u8 {
+    var fj_home_dir = try std.Io.Dir.cwd().openDir(io, fj_home, .{});
+    defer fj_home_dir.close(io);
 
-    var logo_file = try fj_home_dir.openFile("templates/logo.png", .{});
-    defer logo_file.close();
+    var logo_file = try fj_home_dir.openFile(io, "templates/logo.png", .{});
+    defer logo_file.close(io);
 
-    return logo_file.readToEndAlloc(allocator, 10 * 1024 * 1024);
+    return fsutil.readToEndAlloc(io, logo_file, allocator, 10 * 1024 * 1024);
 }
 
-pub fn start(fj_home: []const u8, opts: InitOpts) !void {
+pub fn start(io: std.Io, fj_home: []const u8, opts: InitOpts) !void {
     //
     // Allocator
     //
-    var gpa: std.heap.GeneralPurposeAllocator(.{
+    var gpa: std.heap.DebugAllocator(.{
         // just to be explicit
         .thread_safe = true,
     }) = .{};
@@ -87,12 +88,13 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     const dashboard_route = "/dashboard";
     var context: Context = .{
         .gpa = allocator,
+        .io = io,
         .auth_lookup = &auth_lookup,
         .authenticator = &authenticator,
         .fj_home = try allocator.dupe(u8, fj_home),
         .work_dir = opts.work_dir,
         .logo_imgdata = blk: {
-            break :blk readLogo(allocator, fj_home) catch |err| {
+            break :blk readLogo(io, allocator, fj_home) catch |err| {
                 log.warn("Unable to read logo from fj home: {}", .{err});
                 break :blk try allocator.dupe(u8, "empty");
             };
@@ -104,14 +106,23 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     defer allocator.free(context.logo_imgdata);
 
     // cd into the working directory
-    std.process.changeCurDir(context.work_dir) catch |err| {
-        std.process.fatal(
-            "Cannot change into working directory `{s}`: {}",
-            .{ context.work_dir, err },
-        );
-    };
+    {
+        var work_dir_handle = std.Io.Dir.cwd().openDir(io, context.work_dir, .{}) catch |err| {
+            std.process.fatal(
+                "Cannot open working directory `{s}`: {}",
+                .{ context.work_dir, err },
+            );
+        };
+        defer work_dir_handle.close(io);
+        std.process.setCurrentDir(io, work_dir_handle) catch |err| {
+            std.process.fatal(
+                "Cannot change into working directory `{s}`: {}",
+                .{ context.work_dir, err },
+            );
+        };
+    }
     // get it back
-    context.work_dir = try std.process.getCwdAlloc(allocator);
+    context.work_dir = try std.process.currentPathAlloc(io, allocator);
     log.info("My working directory is: {s}", .{context.work_dir});
     defer allocator.free(context.work_dir);
 
@@ -126,7 +137,7 @@ pub fn start(fj_home: []const u8, opts: InitOpts) !void {
     defer api_key_set.deinit();
 
     // Load API keys from storage
-    api_key_set.loadFromFile(fj_home) catch |err| {
+    api_key_set.loadFromFile(io, fj_home) catch |err| {
         log.warn("Could not load API keys: {}", .{err});
     };
 

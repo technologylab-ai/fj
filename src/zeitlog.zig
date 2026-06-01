@@ -16,15 +16,16 @@ pub fn deinit() void {
 
 pub fn log(
     comptime level: std.log.Level,
-    comptime scope: @Type(.enum_literal),
+    comptime scope: @EnumLiteral(),
     comptime format: []const u8,
     args: anytype,
 ) void {
     // this might make it thread-safe
-    std.debug.lockStdErr();
-    defer std.debug.unlockStdErr();
+    _ = std.debug.lockStderr(&.{});
+    defer std.debug.unlockStderr();
+    const io = std.Io.Threaded.global_single_threaded.io();
     var stderr_buffer: [1024]u8 = undefined;
-    var stderr_writer = std.fs.File.stderr().writer(&stderr_buffer);
+    var stderr_writer = std.Io.File.stderr().writer(io, &stderr_buffer);
     const stderr = &stderr_writer.interface;
 
     var now = zeit.instant(.{}) catch {

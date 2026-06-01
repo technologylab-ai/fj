@@ -47,13 +47,13 @@ pub const HashedApiKeySet = struct {
     }
 
     /// Load API key hashes from storage file
-    pub fn loadFromFile(self: *HashedApiKeySet, fj_home: []const u8) !void {
+    pub fn loadFromFile(self: *HashedApiKeySet, io: std.Io, fj_home: []const u8) !void {
         // Use a temporary arena for loading - putHash dupes to self.allocator
         var arena = std.heap.ArenaAllocator.init(self.allocator);
         defer arena.deinit();
         const temp_alloc = arena.allocator();
 
-        const store = keys_mod.loadKeys(temp_alloc, fj_home) catch |err| {
+        const store = keys_mod.loadKeys(io, temp_alloc, fj_home) catch |err| {
             if (err == error.FileNotFound) {
                 // No keys file yet, that's fine
                 return;
