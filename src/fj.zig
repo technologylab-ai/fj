@@ -72,8 +72,20 @@ fn fjHome(self: *Fj, from_args: ?[]const u8) ![]const u8 {
     // return cached
     if (self.fj_home) |p| return p;
 
-    // try from -C cmdline arg
-    if (from_args) |p| return p;
+    // try from -C cmdline arg — cache it like the env path so callers that read
+    // self.fj_home directly (e.g. `serve` in main.zig) don't hit a null.
+    if (from_args) |p| {
+        if (p.len >= self.buf_fj_home.len) {
+            try fatal(
+                "Error: -C/--fj_home content is too large: {d} > {d}\n",
+                .{ p.len, self.buf_fj_home.len },
+                error.NoSpaceLeft,
+            );
+        }
+        @memcpy(self.buf_fj_home[0..p.len], p);
+        self.fj_home = self.buf_fj_home[0..p.len];
+        return self.fj_home.?;
+    }
     self.fj_home = blk: {
         // try from env var
         const fj_home_env: ?[]const u8 = if (self.environ) |env| env.get("FJ_HOME") else null;
@@ -493,10 +505,10 @@ pub fn cmd_git(self: *Fj, args: Cli.GitCommand) !void {
 pub fn today(self: *const Fj) ![]const u8 {
     var today_buf: ["2025-12-31".len]u8 = undefined;
 
-    var now = zeit.instant(.{}) catch |err| {
+    var now = zeit.instant(self.io, .{}) catch |err| {
         try fatal("Unable to get current time: {}", .{err}, err);
     };
-    const timezone = zeit.local(self.arena, null) catch |err| {
+    const timezone = zeit.local(self.arena, self.io, null) catch |err| {
         try fatal("Unable to get local timezone: {}", .{err}, err);
     };
     now = now.in(&timezone);
@@ -513,10 +525,10 @@ pub fn today(self: *const Fj) ![]const u8 {
 pub fn isoTime(self: *const Fj) ![]const u8 {
     var today_buf: ["2025-12-31 16:32:00".len]u8 = undefined;
 
-    var now = zeit.instant(.{}) catch |err| {
+    var now = zeit.instant(self.io, .{}) catch |err| {
         try fatal("Unable to get current time: {}", .{err}, err);
     };
-    const timezone = zeit.local(self.arena, null) catch |err| {
+    const timezone = zeit.local(self.arena, self.io, null) catch |err| {
         try fatal("Unable to get local timezone: {}", .{err}, err);
     };
     now = now.in(&timezone);
@@ -536,10 +548,10 @@ pub fn isoTime(self: *const Fj) ![]const u8 {
 pub fn todayString(self: *const Fj) ![]const u8 {
     var date_buf: ["2025-12-31".len]u8 = undefined;
 
-    var now = zeit.instant(.{}) catch |err| {
+    var now = zeit.instant(self.io, .{}) catch |err| {
         try fatal("Unable to get current time: {}", .{err}, err);
     };
-    const timezone = zeit.local(self.arena, null) catch |err| {
+    const timezone = zeit.local(self.arena, self.io, null) catch |err| {
         try fatal("Unable to get local timezone: {}", .{err}, err);
     };
     now = now.in(&timezone);
@@ -554,10 +566,10 @@ pub fn todayString(self: *const Fj) ![]const u8 {
 }
 
 pub fn year(self: *const Fj) !i32 {
-    var now = zeit.instant(.{}) catch |err| {
+    var now = zeit.instant(self.io, .{}) catch |err| {
         try fatal("Unable to get current time: {}", .{err}, err);
     };
-    const timezone = zeit.local(self.arena, null) catch |err| {
+    const timezone = zeit.local(self.arena, self.io, null) catch |err| {
         try fatal("Unable to get local timezone: {}", .{err}, err);
     };
     now = now.in(&timezone);
@@ -3104,7 +3116,9 @@ fn incrementDocumentTypeId(self: *const Fj, DocumentType: type) ![]const u8 {
 
 test "file truncation prevents residual content" {
     const testing = std.testing;
-    const io = std.Io.Threaded.global_single_threaded.io();
+    var threaded: std.Io.Threaded = .init(testing.allocator, .{});
+    defer threaded.deinit();
+    const io = threaded.io();
     const tmpDir = testing.tmpDir(.{});
     defer tmpDir.cleanup();
 
@@ -3165,7 +3179,9 @@ test "replaceSection does not accumulate newlines" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
 
-    const fj = Fj{ .arena = arena.allocator(), .io = std.Io.Threaded.global_single_threaded.io() };
+    var threaded: std.Io.Threaded = .init(testing.allocator, .{});
+    defer threaded.deinit();
+    const fj = Fj{ .arena = arena.allocator(), .io = threaded.io() };
 
     // Simulate a LaTeX file with a section and internal blank lines
     const input =

@@ -87,7 +87,7 @@ pub fn createKey(io: std.Io, allocator: std.mem.Allocator, fj_home: []const u8, 
     const token_hash = try hashToken(allocator, token);
 
     // Get current timestamp
-    const now = try getCurrentTimestamp(allocator);
+    const now = try getCurrentTimestamp(io, allocator);
 
     // Create new key entry
     const new_key = json.ApiKey{
@@ -160,7 +160,7 @@ pub fn verifyToken(io: std.Io, allocator: std.mem.Allocator, fj_home: []const u8
     const token_hash = try hashToken(allocator, token);
     defer allocator.free(token_hash);
 
-    const today_str = try today.getTodayString(allocator);
+    const today_str = try today.getTodayString(io, allocator);
 
     for (store.keys) |key| {
         if (key.deleted) continue;
@@ -176,8 +176,8 @@ pub fn verifyToken(io: std.Io, allocator: std.mem.Allocator, fj_home: []const u8
     return null;
 }
 
-fn getCurrentTimestamp(allocator: std.mem.Allocator) ![]u8 {
-    const ts = zeit.instant(.{}) catch return error.TimeError;
+fn getCurrentTimestamp(io: std.Io, allocator: std.mem.Allocator) ![]u8 {
+    const ts = zeit.instant(io, .{}) catch return error.TimeError;
     const dt = ts.time();
     return std.fmt.allocPrint(allocator, "{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}Z", .{
         dt.year, @intFromEnum(dt.month), dt.day, dt.hour, dt.minute, dt.second,
@@ -186,7 +186,11 @@ fn getCurrentTimestamp(allocator: std.mem.Allocator) ![]u8 {
 
 // Tests
 test "generateToken has correct format" {
-    const token = try generateToken(std.Io.Threaded.global_single_threaded.io(), std.testing.allocator);
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+    const io = threaded.io();
+
+    const token = try generateToken(io, std.testing.allocator);
     defer std.testing.allocator.free(token);
 
     try std.testing.expectEqual(@as(usize, 64), token.len);

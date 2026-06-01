@@ -24,7 +24,7 @@ pub fn main(init: std.process.Init) !void {
     const arena = init.arena.allocator();
 
     // init logging with correct timezone
-    try zeitlog.init(gpa);
+    try zeitlog.init(io, gpa);
     defer zeitlog.deinit();
 
     var pargs: std.process.Args.Iterator = .init(init.minimal.args);

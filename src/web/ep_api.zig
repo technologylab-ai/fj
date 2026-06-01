@@ -295,7 +295,7 @@ fn handleMarkInvoicePaid(arena: Allocator, context: *Context, r: zap.Request, id
     }
 
     // Set paid date to today
-    const today_str = try today.getTodayString(arena);
+    const today_str = try today.getTodayString(context.io, arena);
     obj.paid_date = today_str;
     obj.updated = try fj.isoTime();
 
@@ -390,7 +390,7 @@ fn handleAcceptOffer(arena: Allocator, context: *Context, r: zap.Request, id: []
         return sendError(arena, r, .bad_request, "Offer is already declined");
     }
 
-    const today_str = try today.getTodayString(arena);
+    const today_str = try today.getTodayString(context.io, arena);
     obj.accepted_date = today_str;
     obj.updated = try fj.isoTime();
 
@@ -418,7 +418,7 @@ fn handleRejectOffer(arena: Allocator, context: *Context, r: zap.Request, id: []
         return sendError(arena, r, .bad_request, "Offer is already declined");
     }
 
-    const today_str = try today.getTodayString(arena);
+    const today_str = try today.getTodayString(context.io, arena);
     obj.declined_date = today_str;
     obj.updated = try fj.isoTime();
 
@@ -614,7 +614,7 @@ fn handleBalance(arena: Allocator, context: *Context, r: zap.Request) !void {
             .balance = @as(i64, 0),
             .balance_eur = @as(f64, 0.0),
             .currency = "EUR",
-            .as_of = today.getTodayString(arena) catch "unknown",
+            .as_of = today.getTodayString(context.io, arena) catch "unknown",
             .transaction_count = @as(usize, 0),
             .calculation = "sum_of_all_transactions",
         });
@@ -635,7 +635,7 @@ fn handleBalance(arena: Allocator, context: *Context, r: zap.Request) !void {
     }
 
     const balance_eur: f64 = @as(f64, @floatFromInt(balance)) / 100.0;
-    const as_of = latest_date orelse (today.getTodayString(arena) catch "unknown");
+    const as_of = latest_date orelse (today.getTodayString(context.io, arena) catch "unknown");
 
     return sendJson(arena, r, .{
         .balance = balance,

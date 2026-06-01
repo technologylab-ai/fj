@@ -225,6 +225,43 @@ var sw = std.Io.File.stdout().writer(io, &buf);   // .stdout()/.stderr()/.stdin(
 try sw.interface.print(...);
 ```
 
+### ⚠️ Always `flush()` — and never put two writers on one stream
+
+0.16 writers are **buffered** where 0.15 ones often weren't. Two failure modes
+bit us, both silent (no error, just missing output):
+
+1. **Forgot to flush.** Anything written to a `File.Writer` sits in the buffer
+   until `flush()`. A `print(...)` with no trailing `flush()` prints *nothing*.
+   Every code path that writes must flush before the writer leaves scope:
+   ```zig
+   try w.print("{s}\n", .{x});
+   try w.flush();                 // <- without this, x is never written
+   ```
+   This includes `noreturn`/exit paths (`fatal`) and `catch` branches — flush
+   before you exit.
+
+2. **Two independent writers over the same stream race and clobber.** A custom
+   `std.Io.File.stderr().writer(io, &buf)` and `std.log.defaultLog` each hold
+   their *own* buffered writer over stderr and share position/lock state. Mixing
+   them dropped exactly the leading bytes of every message (the prefix written by
+   one writer was overwritten by the other). The fix is to write **everything
+   through a single locked writer**: lock stderr once with
+   `std.debug.lockStderr(&buffer)`, take `.terminal()`, write your prefix to
+   `term.writer`, then hand that *same* terminal to
+   `std.log.defaultLogFileTerminal(level, scope, fmt, args, term)`.
+   `unlockStderr()` flushes on release, so no explicit flush is needed there.
+   ```zig
+   var buffer: [1024]u8 = undefined;
+   const locked = std.debug.lockStderr(&buffer);
+   defer std.debug.unlockStderr();           // flushes buffer on release
+   const term = locked.terminal();
+   try term.writer.print("{...} | ", .{ ... });           // our prefix
+   std.log.defaultLogFileTerminal(level, scope, fmt, args, term) catch {};
+   ```
+   Do **not** also call `std.debug.lockStderr(&.{})` "for thread-safety" up front
+   — that takes the lock with a zero-length buffer and then a second
+   `lockStderr` (inside `defaultLog`) fights it. One lock, one buffer, one writer.
+
 ---
 
 ## 6. Environment variables: `getEnvVarOwned` removed

@@ -61,7 +61,7 @@ pub const HashedApiKeySet = struct {
             return err;
         };
 
-        const today_str = today.getTodayString(temp_alloc) catch return;
+        const today_str = today.getTodayString(io, temp_alloc) catch return;
 
         for (store.keys) |key| {
             // Skip deleted and expired keys

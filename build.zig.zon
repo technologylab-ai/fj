@@ -13,8 +13,8 @@
             .hash = "zap-0.10.6-GoeB8wOLJAAxo6uwFZ-rFidsMzywA35GHZKWWSnyiaqz",
         },
         .zeit = .{
-            .url = "git+https://github.com/renerocksai/zeit#e04fe6b31d3e71588eec1336c8bf27a49597c243",
-            .hash = "zeit-0.6.0-5I6bk2J5AgCkhraR0HbSSA4JIwVBfDSKBThOmUTvmo7M",
+            .url = "git+https://github.com/renerocksai/zeit#67b980b1f0c0bcb27e120cc7fc40e27eb5330dbb",
+            .hash = "zeit-0.6.0-5I6bkwV8AgBSRS7m-5jMwF3_3IQ4mOgp7D2FmDRtBNYw",
         },
     },
     .paths = .{
