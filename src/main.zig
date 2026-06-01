@@ -29,7 +29,7 @@ pub fn main(init: std.process.Init) !void {
 
     var pargs: std.process.Args.Iterator = .init(init.minimal.args);
 
-    const result = zli.parse(&pargs, Cli.Cli);
+    const result = zli.parse(io, &pargs, Cli.Cli);
 
     var fj: Fj = .{ .arena = arena, .io = io, .environ = init.environ_map };
     defer fj.deinit();

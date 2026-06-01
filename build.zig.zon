@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .zli = .{
-            .url = "git+https://github.com/renerocksai/zli#1b584f9cc22be75c48f41c65835ddcd77a03a3d0",
-            .hash = "zli-0.1.1-pechgnWIAAD7CgUkGZrezU0c_eOZr7Y43CEaNhz0Ksbd",
+            .url = "git+https://github.com/renerocksai/zli#b78f7b79145de7f6be53df44844019aa27b88cfd",
+            .hash = "zli-0.1.1-pechggmKAABbJUkYYeBrjVXajpqe2ojyrIToZqzkQ13F",
         },
         .zap = .{
             .url = "git+https://github.com/zigzap/zap#24c30cb838a556dad0c2b4d6601f9418583b7260",
