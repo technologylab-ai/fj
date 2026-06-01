@@ -316,20 +316,32 @@ tagged union (`.no_color`, `.escape_codes`, `.windows_api`). Use
 
 ---
 
-## 10. Library code that needs `io` but has no `Init`
+## 10. Threading `io`: keep it io-impl-independent (the global is a smell)
 
-Pure library functions (a CLI parser's `fatal`/`help`, a logging helper) often
-write to stderr/stdout but can't get `io` from a caller without changing their
-public API. The stdlib provides a hardcoded fallback for exactly this:
+The *whole point* of explicit `io` is that code is independent of the I/O
+implementation: the caller — ultimately `main` — chooses it and threads it down
+**like an allocator**. So the idiomatic move is to take `io: std.Io` as a
+parameter (or store it on a struct at construction, next to `gpa`), sourced from
+`init.io` in `main(init: std.process.Init)`. Libraries should accept `io` in
+their public API rather than conjure one internally.
 
 ```zig
-const io = std.Io.Threaded.global_single_threaded.io();
+const io = std.Io.Threaded.global_single_threaded.io(); // ← hardcodes one impl
 ```
 
-The stdlib's own docs say library code *should* accept an `Io` parameter, but
-this single-threaded global is the blessed escape hatch for debug/error/help
-paths where threading `io` through would be disproportionate. (Verified
-`Io/Threaded.zig:1704`.)
+Reaching for the single-threaded global **defeats io-independence** — it pins a
+specific implementation deep in the code, so the program can no longer be driven
+by a different `io` (async/event-loop, a test double, a different threading
+model). Treat it as a *last resort*, only for contexts whose signature is fixed
+by an external contract that `main` cannot reach — e.g. `std.Options.logFn` or a
+panic handler. Even there, prefer capturing the real `io` once at startup into
+module state over hardcoding the single-threaded one. (`global_single_threaded`
+verified at `Io/Threaded.zig:1704`.)
+
+> **Migrating fast vs. migrating right:** during a first pass it is tempting to
+> drop `global_single_threaded.io()` wherever the compiler demands an `io` you
+> don't have in scope. That compiles and runs, but each such site is debt —
+> revisit them and thread `io` from `main` instead.
 
 ---
 
@@ -430,25 +442,31 @@ return @Struct(.auto, null, &names, &types, &attrs);
 
 ## 16. Threading primitives moved to `std.Io`
 
-`std.Thread.Mutex` and `std.Thread.RwLock` were removed. The replacements
-`std.Io.Mutex` / `std.Io.Condition` require an `Io` value at **every**
-`lock`/`unlock` (`m.lock(io)`, `m.lockUncancelable(io)`, `m.unlock(io)`).
-`std.Thread.getCurrentId()` still exists.
+`std.Thread.Mutex` and `std.Thread.RwLock` did **not** disappear — they **moved**
+to `std.Io.Mutex` and `std.Io.RwLock` (both exist; verified). They take an `Io`
+on the blocking ops: `m.lock(io)` / `m.lockUncancelable(io)` / `m.unlock(io)` /
+`m.tryLock()`; RwLock adds `lockShared(io)` / `lockSharedUncancelable(io)` /
+`unlockShared(io)`. There is also `std.Io.Condition`. `std.Thread.getCurrentId()`
+and `std.Thread.spawn()` still exist.
 
-For library code that holds no `Io` (e.g. an in-memory lookup guard), a tiny
-atomic spinlock is the cleanest drop-in (matching `lock()`/`unlock()` so call
-sites are untouched):
+**Do not roll your own spinlock.** Use `std.Io.Mutex`/`std.Io.RwLock` and obtain
+the `io` the idiomatic way — threaded from `main(init)` like an allocator (§10),
+e.g. stored on the struct that owns the lock at construction:
 
 ```zig
-const SpinLock = struct {
-    locked: std.atomic.Value(bool) = .init(false),
-    pub fn lock(s: *@This()) void { while (s.locked.swap(true, .acquire)) std.atomic.spinLoopHint(); }
-    pub fn unlock(s: *@This()) void { s.locked.store(false, .release); }
-};
+// field
+lock: std.Io.Mutex = .init,
+// use (io threaded in from main, not conjured):
+self.lock.lockUncancelable(io);
+defer self.lock.unlock(io);
 ```
 
-`std.Thread.sleep(ns)` is also gone → `io.sleep(std.Io.Duration.fromNanoseconds(ns), .awake)`
-(or `std.Io.Threaded.global_single_threaded.io()` when no `Io` is threaded in).
+(The fast/uncontended path is pure atomics; `io` is only consulted to futex-wait
+on contention — but that's no reason to hardcode the global single-threaded impl;
+thread the real one. See §10.)
+
+`std.Thread.sleep(ns)` is also gone → `io.sleep(std.Io.Duration.fromNanoseconds(ns), .awake)`,
+with `io` threaded from `main` per §10.
 
 ## 17. Wall-clock time needs `io`
 
