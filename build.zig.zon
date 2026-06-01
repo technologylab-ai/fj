@@ -9,7 +9,7 @@
             .hash = "zli-0.1.1-pechgnWIAAD7CgUkGZrezU0c_eOZr7Y43CEaNhz0Ksbd",
         },
         .zap = .{
-            .url = "git+https://github.com/zigzap/zap#cf2339550f67cab03d51eb526dd636a9744f7644",
+            .url = "git+https://github.com/zigzap/zap#f993277dddd748c4815b9af0b231384317d0b1ae",
             .hash = "zap-0.10.6-GoeB87GLJAC2rPc6OGsaRL3z10XsTLqZ9l_ocGgtEQTy",
         },
         .zeit = .{
