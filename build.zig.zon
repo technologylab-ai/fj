@@ -9,8 +9,8 @@
             .hash = "zli-0.1.1-pechgnWIAAD7CgUkGZrezU0c_eOZr7Y43CEaNhz0Ksbd",
         },
         .zap = .{
-            .url = "git+https://github.com/zigzap/zap#a4b731a63931ca28773c2bbe69b7a888f8378f1f",
-            .hash = "zap-0.10.6-GoeB862NJABcvHYKBwlRxjnuf7E989OOxaMqTbh2KD6i",
+            .url = "git+https://github.com/zigzap/zap#24c30cb838a556dad0c2b4d6601f9418583b7260",
+            .hash = "zap-0.10.6-GoeB8wOLJAAxo6uwFZ-rFidsMzywA35GHZKWWSnyiaqz",
         },
         .zeit = .{
             .url = "git+https://github.com/renerocksai/zeit#e04fe6b31d3e71588eec1336c8bf27a49597c243",
