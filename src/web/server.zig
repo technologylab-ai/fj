@@ -73,7 +73,7 @@ pub fn start(io: std.Io, fj_home: []const u8, opts: InitOpts) !void {
     //
     // Note: SameSite cookie attribute is not configurable in Zap. This is a known limitation.
     var auth_lookup: AuthLookup = .empty;
-    var authenticator = try Authenticator.init(allocator, &auth_lookup, .{
+    var authenticator = try Authenticator.init(io, allocator, &auth_lookup, .{
         .usernameParam = "username",
         .passwordParam = "password",
         .loginPage = "/login",
@@ -160,7 +160,7 @@ pub fn start(io: std.Io, fj_home: []const u8, opts: InitOpts) !void {
     // App
     //
     const App = zap.App.Create(Context);
-    try App.init(allocator, &context, .{});
+    try App.init(io, allocator, &context, .{});
     defer App.deinit();
 
     //
