@@ -31,7 +31,8 @@ pub fn main(init: std.process.Init) !void {
 
     const result = zli.parse(io, &pargs, Cli.Cli);
 
-    var fj: Fj = .{ .arena = arena, .io = io, .environ = init.environ_map };
+    var errs = Fatal.ErrorStack.init(arena);
+    var fj: Fj = .{ .arena = arena, .io = io, .errs = &errs, .environ = init.environ_map };
     defer fj.deinit();
 
     switch (result) {

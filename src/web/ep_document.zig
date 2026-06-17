@@ -2,7 +2,6 @@ const std = @import("std");
 const zap = @import("zap");
 const ep_utils = @import("ep_utils.zig");
 const Context = @import("context.zig");
-const Fatal = @import("../fatal.zig");
 const Format = @import("../format.zig");
 const Allocator = std.mem.Allocator;
 const Cli = @import("../cli.zig");
@@ -491,11 +490,11 @@ pub fn create(DocumentType: type) type {
             };
 
             const result = fj.cmdCreateNewDocument(command) catch |err| {
-                const message = try std.fmt.allocPrint(
-                    arena,
-                    "{}:\n{s}",
-                    .{ err, Fatal.errormsg },
-                );
+                const chain = fj.errs.render(arena);
+                const message = if (chain.len > 0)
+                    chain
+                else
+                    try std.fmt.allocPrint(arena, "{s}", .{@errorName(err)});
                 var mustache = try zap.Mustache.fromData(html_error);
                 defer mustache.deinit();
                 const fj_config = try fj.loadConfigJson();
@@ -619,11 +618,11 @@ pub fn create(DocumentType: type) type {
                 if (compile_result) |_| {
                     break :blk "";
                 } else |err| {
-                    break :blk try std.fmt.allocPrint(
-                        arena,
-                        "Error: {}\n\n{s}",
-                        .{ err, Fatal.errormsg },
-                    );
+                    const chain = fj.errs.render(arena);
+                    break :blk if (chain.len > 0)
+                        chain
+                    else
+                        try std.fmt.allocPrint(arena, "Error: {s}", .{@errorName(err)});
                 }
             };
 

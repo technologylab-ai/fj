@@ -1,14 +1,19 @@
 const std = @import("std");
 const Fatal = @import("fatal.zig");
-const fatal = Fatal.fatal;
+const ErrorStack = Fatal.ErrorStack;
 const CommandUtils = @import("commandutils.zig");
 const showResultMessages = CommandUtils.showResultMessages;
 
 arena: std.mem.Allocator,
 io: std.Io,
+errs: *ErrorStack,
 work_dir: ?[]const u8 = null,
 
 const PdfLatex = @This();
+
+fn fatal(self: *const PdfLatex, comptime fmt: []const u8, args: anytype, err: anyerror) anyerror!noreturn {
+    return self.errs.fail(fmt, args, err);
+}
 
 const log = std.log.scoped(.pdflatex);
 
@@ -34,7 +39,7 @@ fn cmd(self: *const PdfLatex, argv: []const []const u8) !bool {
         .stderr_limit = .limited(max_output_bytes),
         .expand_arg0 = .expand,
     }) catch |err| {
-        try fatal("Could not launch `pdflatex {s}`: {}", .{ arglist, err }, err);
+        try self.fatal("Could not launch `pdflatex {s}`: {}", .{ arglist, err }, err);
     };
     switch (result.term) {
         .exited => |exit_code| {

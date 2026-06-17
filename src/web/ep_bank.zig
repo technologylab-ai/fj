@@ -5,6 +5,7 @@ const Context = @import("context.zig");
 const bank = @import("../bank.zig");
 const fj_json = @import("../json.zig");
 const Fj = @import("../fj.zig");
+const Fatal = @import("../fatal.zig");
 const format = @import("../format.zig");
 const Allocator = std.mem.Allocator;
 
@@ -311,9 +312,12 @@ fn importBankCsv(io: std.Io, arena: Allocator, fj_home: []const u8, content: []c
 
     if (new_count > 0) {
         // Load unpaid invoices for reconciliation
+        const errs = arena.create(Fatal.ErrorStack) catch @panic("OOM");
+        errs.* = Fatal.ErrorStack.init(arena);
         var fj_inst: Fj = .{
             .arena = arena,
             .io = io,
+            .errs = errs,
             .fj_home = fj_home,
         };
         const unpaid = fj_inst.loadUnpaidInvoices() catch &[_]fj_json.Invoice{};

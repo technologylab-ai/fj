@@ -55,6 +55,7 @@ pub fn get(_: *Dashboard, arena: Allocator, context: *Context, r: zap.Request) !
     const git: Git = .{
         .arena = arena,
         .io = context.io,
+        .errs = fj.errs,
         .repo_dir = context.fj_home,
     };
 

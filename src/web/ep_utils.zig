@@ -3,6 +3,7 @@ const zap = @import("zap");
 const Context = @import("context.zig");
 const Allocator = std.mem.Allocator;
 const Fj = @import("../fj.zig");
+const Fatal = @import("../fatal.zig");
 const Format = @import("../format.zig");
 const fsutil = @import("../fsutil.zig");
 
@@ -140,9 +141,12 @@ pub fn show_404(arena: Allocator, context: *Context, r: zap.Request) !void {
 }
 
 pub fn createFj(arena: Allocator, context: *Context) Fj {
+    const errs = arena.create(Fatal.ErrorStack) catch @panic("OOM");
+    errs.* = Fatal.ErrorStack.init(arena);
     const fj: Fj = .{
         .arena = arena,
         .io = context.io,
+        .errs = errs,
         .fj_home = context.fj_home,
     };
     return fj;

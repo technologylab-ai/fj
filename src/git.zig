@@ -1,14 +1,19 @@
 const std = @import("std");
 const Fatal = @import("fatal.zig");
-const fatal = Fatal.fatal;
+const ErrorStack = Fatal.ErrorStack;
 const CommandUtils = @import("commandutils.zig");
 const showResultMessages = CommandUtils.showResultMessages;
 
 arena: std.mem.Allocator,
 io: std.Io,
+errs: *ErrorStack,
 repo_dir: []const u8,
 
 const Git = @This();
+
+fn fatal(self: *const Git, comptime fmt: []const u8, args: anytype, err: anyerror) anyerror!noreturn {
+    return self.errs.fail(fmt, args, err);
+}
 
 const log = std.log.scoped(.git);
 
@@ -34,7 +39,7 @@ fn cmd(self: *const Git, argv: []const []const u8, writer: ?*std.Io.Writer) !boo
         .stderr_limit = .limited(max_output_bytes),
         .expand_arg0 = .expand,
     }) catch |err| {
-        try fatal("Could not launch `git {s}`: {}", .{ arglist, err }, err);
+        try self.fatal("Could not launch `git {s}`: {}", .{ arglist, err }, err);
     };
     switch (result.term) {
         .exited => |exit_code| {
@@ -82,15 +87,15 @@ pub fn stage(
     writer: ?*std.Io.Writer,
 ) !bool {
     var args: std.ArrayListUnmanaged([]const u8) = .empty;
-    args.append(self.arena, "git") catch try fatal("OOM!", .{}, error.OutOfMemory);
-    args.append(self.arena, "add") catch try fatal("OOM!", .{}, error.OutOfMemory);
+    args.append(self.arena, "git") catch try self.fatal("OOM!", .{}, error.OutOfMemory);
+    args.append(self.arena, "add") catch try self.fatal("OOM!", .{}, error.OutOfMemory);
 
     switch (opts) {
-        .all => args.append(self.arena, ".") catch try fatal("OOM!", .{}, error.OutOfMemory),
+        .all => args.append(self.arena, ".") catch try self.fatal("OOM!", .{}, error.OutOfMemory),
         .files => |files| {
-            for (files) |file| args.append(self.arena, file) catch try fatal("OOM!", .{}, error.OutOfMemory);
+            for (files) |file| args.append(self.arena, file) catch try self.fatal("OOM!", .{}, error.OutOfMemory);
         },
-        .file => |file| args.append(self.arena, file) catch try fatal("OOM!", .{}, error.OutOfMemory),
+        .file => |file| args.append(self.arena, file) catch try self.fatal("OOM!", .{}, error.OutOfMemory),
     }
 
     return self.cmd(args.items, writer);
@@ -122,33 +127,33 @@ pub fn remote(self: *const Git, opts: struct {
                 args.appendSlice(
                     self.arena,
                     &[_][]const u8{ "git", "remote", "show", remote_name },
-                ) catch try fatal("OOM!", .{}, error.OutOfMemory);
+                ) catch try self.fatal("OOM!", .{}, error.OutOfMemory);
                 return self.cmd(args.items, null);
             } else {
-                try fatal("fj git remote requires a --remote= !", .{}, error.Cli);
+                try self.fatal("fj git remote requires a --remote= !", .{}, error.Cli);
             }
         },
         .add => {
             if (opts.remote == null) {
-                try fatal("fj git remote add requires a --remote= !", .{}, error.Cli);
+                try self.fatal("fj git remote add requires a --remote= !", .{}, error.Cli);
             }
             if (opts.url == null) {
-                try fatal("fj git remote add requires a --url= !", .{}, error.Cli);
+                try self.fatal("fj git remote add requires a --url= !", .{}, error.Cli);
             }
             args.appendSlice(
                 self.arena,
                 &[_][]const u8{ "git", "remote", "add", opts.remote.?, opts.url.? },
-            ) catch try fatal("OOM!", .{}, error.OutOfMemory);
+            ) catch try self.fatal("OOM!", .{}, error.OutOfMemory);
             return self.cmd(args.items, null);
         },
         .delete => {
             if (opts.remote == null) {
-                try fatal("fj git remote delete requires a --remote= !", .{}, error.Cli);
+                try self.fatal("fj git remote delete requires a --remote= !", .{}, error.Cli);
             }
             args.appendSlice(
                 self.arena,
                 &[_][]const u8{ "git", "remote", "remove", opts.remote.? },
-            ) catch try fatal("OOM!", .{}, error.OutOfMemory);
+            ) catch try self.fatal("OOM!", .{}, error.OutOfMemory);
             return self.cmd(args.items, null);
         },
     }
