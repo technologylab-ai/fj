@@ -340,6 +340,7 @@ pub fn create(DocumentType: type) type {
                 .created = false,
                 .client_names = client_names,
                 .rate_names = rate_names,
+                .rates_json = ep_utils.loadRatesJson(arena, context) catch "[]",
             };
 
             var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -408,6 +409,7 @@ pub fn create(DocumentType: type) type {
                 .created = false,
                 .client_names = client_names,
                 .rate_names = rate_names,
+                .rates_json = ep_utils.loadRatesJson(arena, context) catch "[]",
             };
 
             var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -540,6 +542,7 @@ pub fn create(DocumentType: type) type {
                 .created = true,
                 .client_names = client_names,
                 .rate_names = rate_names,
+                .rates_json = ep_utils.loadRatesJson(arena, context) catch "[]",
             };
 
             var mustache = try zap.Mustache.fromData(html_document_editor);
@@ -680,9 +683,11 @@ pub fn create(DocumentType: type) type {
                     .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
                     .compile_success = false,
                     .compile_error = compile_error_msg,
+                    .compile_failed = compile_error_msg.len > 0,
                     .created = false,
                     .client_names = client_names2,
                     .rate_names = rate_names2,
+                    .rates_json = ep_utils.loadRatesJson(arena, context) catch "[]",
                 };
 
                 var mustache2 = try zap.Mustache.fromData(html_document_editor);
@@ -724,9 +729,11 @@ pub fn create(DocumentType: type) type {
                 .csrf_token = ep_utils.csrfTokenFromSession(arena, r),
                 .compile_success = true,
                 .compile_error = "",
+                .compile_failed = false,
                 .created = false,
                 .client_names = client_names,
                 .rate_names = rate_names,
+                .rates_json = ep_utils.loadRatesJson(arena, context) catch "[]",
             };
 
             var mustache = try zap.Mustache.fromData(html_document_editor);

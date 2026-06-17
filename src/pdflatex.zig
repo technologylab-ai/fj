@@ -3,6 +3,7 @@ const Fatal = @import("fatal.zig");
 const ErrorStack = Fatal.ErrorStack;
 const CommandUtils = @import("commandutils.zig");
 const showResultMessages = CommandUtils.showResultMessages;
+const fsutil = @import("fsutil.zig");
 
 arena: std.mem.Allocator,
 io: std.Io,
@@ -74,5 +75,52 @@ fn cmd(self: *const PdfLatex, argv: []const []const u8) !bool {
 }
 
 pub fn run(self: *const PdfLatex, tex_filename: []const u8) !bool {
-    return self.cmd(&[_][]const u8{ "pdflatex", tex_filename });
+    // `-interaction=nonstopmode` guarantees pdflatex never blocks on the
+    // interactive `?` prompt (e.g. inside the server, where stdin may not be
+    // EOF). The exit code alone is not a trustworthy success signal — see
+    // `logErrors` and `cmdCompileDocument` for the real detection.
+    return self.cmd(&[_][]const u8{ "pdflatex", "-interaction=nonstopmode", tex_filename });
+}
+
+/// Returns concatenated LaTeX error lines from `{work_dir}/{basename}.log`
+/// ("" if none / log unreadable). `basename` is derived from `tex_filename`
+/// (`.tex` → `.log`). TeX reserves a leading `! ` for errors, so warnings
+/// (`Overfull`, `LaTeX Warning:`, `Rerun to get …`) never match.
+pub fn logErrors(self: *const PdfLatex, tex_filename: []const u8) []const u8 {
+    const base = if (std.mem.endsWith(u8, tex_filename, ".tex"))
+        tex_filename[0 .. tex_filename.len - ".tex".len]
+    else
+        tex_filename;
+    const log_name = std.fmt.allocPrint(self.arena, "{s}.log", .{base}) catch return "";
+    const log_path = if (self.work_dir) |wd|
+        std.fs.path.join(self.arena, &.{ wd, log_name }) catch return ""
+    else
+        log_name;
+
+    var log_file = std.Io.Dir.cwd().openFile(self.io, log_path, .{}) catch return "";
+    defer log_file.close(self.io);
+    const contents = fsutil.readToEndAlloc(self.io, log_file, self.arena, max_output_bytes) catch return "";
+
+    const max_lines: usize = 30;
+    var collected: std.ArrayListUnmanaged([]const u8) = .empty;
+    var it = std.mem.splitScalar(u8, contents, '\n');
+    var prev_was_error = false;
+    while (it.next()) |line| {
+        if (collected.items.len >= max_lines) break;
+        const is_error = std.mem.startsWith(u8, line, "! ") or
+            std.mem.indexOf(u8, line, "Fatal error occurred") != null or
+            std.mem.indexOf(u8, line, "no output PDF file produced") != null;
+        if (is_error) {
+            collected.append(self.arena, line) catch break;
+            prev_was_error = true;
+            continue;
+        }
+        // Include the `l.<n> …` context line that follows a TeX error.
+        if (prev_was_error and std.mem.startsWith(u8, line, "l.")) {
+            collected.append(self.arena, line) catch break;
+        }
+        prev_was_error = false;
+    }
+    if (collected.items.len == 0) return "";
+    return std.mem.join(self.arena, "\n", collected.items) catch "";
 }

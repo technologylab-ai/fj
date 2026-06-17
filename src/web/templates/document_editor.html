@@ -16,11 +16,11 @@
       <strong class="font-bold">PDF compiled successfully!</strong>
     </div>
     {{/compile_success}}
-    {{#compile_error}}
+    {{#compile_failed}}
     <div class="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-6 whitespace-pre-wrap">
       <strong class="font-bold">Compilation Error:</strong> {{compile_error}}
     </div>
-    {{/compile_error}}
+    {{/compile_failed}}
     {{#committed}}
     <div class="bg-green-100 dark:bg-green-900 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 px-4 py-3 rounded-lg mb-6">
       <strong class="font-bold">Document committed and finalized!</strong>
@@ -59,7 +59,7 @@
 
           <!-- Structured form (shown by default when editable) -->
           {{#editable}}
-          <div id="structured-form-panel" class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          <div id="structured-form-panel" class="space-y-4 pr-2">
 
             <!-- INVOICE FIELDS -->
             {{#is_invoice}}
@@ -295,20 +295,75 @@
           {{/editable}}
         </div>
 
-       {{^is_letter}}
-        <div class="flex-1 min-w-0">
-          <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">billables.csv</h3>
-          <textarea id="csv-editor" name="billables" {{^editable}}readonly{{/editable}}
-                    class="w-full h-72 md:h-56 font-mono text-sm p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm resize-y bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">{{billables}}</textarea>
-        </div>
-       {{/is_letter}}
-
-        <div class="flex-1 min-w-0">
+        <div class="flex-1 min-w-0 flex flex-col">
           <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">{{type}}.tex</h3>
           <textarea id="tex-editor" name="tex" {{^editable}}readonly{{/editable}}
-                  class="w-full h-72 md:h-56 font-mono text-sm p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm resize-y bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">{{{tex}}}</textarea>
+                  class="w-full flex-1 min-h-[18rem] font-mono text-sm p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm resize-y bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">{{{tex}}}</textarea>
         </div>
       </div>
+
+       {{^is_letter}}
+        <div class="mb-8">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">billables.csv</h3>
+            {{#editable}}
+            <button type="button" id="toggle-csv-view" onclick="toggleCsvView()"
+                    class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+              Show Raw CSV
+            </button>
+            {{/editable}}
+          </div>
+
+          <!-- Raw CSV textarea (hidden when table is active, always the submission payload) -->
+          <div id="raw-csv-panel" style="{{#editable}}display:none;{{/editable}}">
+            <textarea id="csv-editor" name="billables" {{^editable}}readonly{{/editable}}
+                      class="w-full h-72 md:h-56 font-mono text-sm p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-500 dark:focus:border-blue-500 shadow-sm resize-y bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100">{{billables}}</textarea>
+          </div>
+
+          <!-- Table editor (shown by default when editable) -->
+          {{#editable}}
+          <div id="csv-table-panel">
+            <details class="mb-3 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded p-2">
+              <summary class="cursor-pointer font-medium">How to edit</summary>
+              <ul class="list-disc ml-5 mt-2 space-y-1">
+                <li><strong>Add row</strong> adds a billable item, <strong>Add group header</strong> starts a new section, <strong>✕</strong> deletes a row.</li>
+                <li>In <strong>Description</strong>, press <kbd>Enter</kbd> for a new line.</li>
+                <li>Start a line with <code>-&nbsp;</code> (dash + space) to make a bullet point.</li>
+                <li>Leave <strong>Price/unit</strong> blank to use the price from the document's rate file (based on the unit).</li>
+                <li>Commas in descriptions are fine — type them normally.</li>
+                <li>Use <strong>Show Raw CSV</strong> to edit the underlying file directly (<code>#</code> comments live there).</li>
+              </ul>
+            </details>
+            <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-md">
+              <table class="w-full text-sm">
+                <thead class="bg-gray-100 dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-400">
+                  <tr>
+                    <th class="px-1 py-1 text-center w-8">#</th>
+                    <th class="px-1 py-1 text-left">Description</th>
+                    <th class="px-1 py-1 text-left w-16">Amount</th>
+                    <th class="px-1 py-1 text-left w-24">Unit</th>
+                    <th class="px-1 py-1 text-left w-20">Price/unit</th>
+                    <th class="px-1 py-1 text-left w-28">Remarks</th>
+                    <th class="px-1 py-1 w-8"></th>
+                  </tr>
+                </thead>
+                <tbody id="billables-tbody"></tbody>
+              </table>
+            </div>
+            <div class="flex flex-wrap gap-2 mt-2">
+              <button type="button" id="add-row-btn"
+                      class="text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 font-medium py-1 px-3 rounded-md cursor-pointer">
+                + Add row
+              </button>
+              <button type="button" id="add-group-btn"
+                      class="text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 font-medium py-1 px-3 rounded-md cursor-pointer">
+                + Add group header
+              </button>
+            </div>
+          </div>
+          {{/editable}}
+        </div>
+       {{/is_letter}}
 
       <div class="flex flex-wrap gap-4 mt-4">
         {{#editable}}
@@ -328,6 +383,8 @@
 
     <datalist id="client-names">{{#client_names}}<option value="{{name}}">{{/client_names}}</datalist>
     <datalist id="rate-names">{{#rate_names}}<option value="{{name}}">{{/rate_names}}</datalist>
+    <datalist id="unit-names"><option value="week"><option value="day"><option value="hour"><option value="woche"><option value="tag"><option value="stunde"><option value="pauschal"></datalist>
+    <script type="application/json" id="rates-data">{{{rates_json}}}</script>
 
     <div class="mt-8">
       {{#compile}}
@@ -456,6 +513,252 @@
 
     // Initial population
     populateFormFromJson();
+  })();
+  </script>
+
+  <script>
+  // Billables table editor: parse the raw CSV into an editable table, serialize
+  // it back into #csv-editor (the single submission payload) on toggle/submit.
+  (function() {
+    var csvEl = document.getElementById('csv-editor');
+    var tbody = document.getElementById('billables-tbody');
+    // The table only exists in editable mode; view mode keeps the raw textarea.
+    if (!csvEl || !tbody) return;
+
+    var jsonEl = document.getElementById('json-editor');
+
+    // Inlined rate records (array). Indexed by shortname for price auto-fill.
+    var ratesByName = {};
+    try {
+      var arr = JSON.parse(document.getElementById('rates-data').textContent || '[]');
+      if (Array.isArray(arr)) arr.forEach(function(rt) { if (rt && rt.shortname) ratesByName[rt.shortname] = rt; });
+    } catch (e) {}
+
+    var inputCls = 'w-full text-xs p-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500';
+
+    function el(tag, cls) { var e = document.createElement(tag); if (cls) e.className = cls; return e; }
+
+    // Resolve the rate set named by the document's applicable_rates field.
+    function currentRateSet() {
+      var name = '';
+      var field = document.querySelector('[data-json-path="applicable_rates"]');
+      if (field && field.value) name = field.value.trim();
+      if (!name && jsonEl) { try { name = (JSON.parse(jsonEl.value).applicable_rates || '').trim(); } catch (e) {} }
+      return ratesByName[name] || null;
+    }
+
+    // Mirror the converter's unit keyword matching (hour/stunde, day/tag, week/woche).
+    function unitPrice(unit, rs) {
+      if (!rs) return null;
+      var u = (unit || '').trim().toLowerCase();
+      if (u.indexOf('hour') === 0 || u.indexOf('stunde') === 0) return rs.hourly;
+      if (u.indexOf('day') === 0 || u.indexOf('tag') === 0) return rs.daily;
+      if (u.indexOf('week') === 0 || u.indexOf('woche') === 0) return rs.weekly;
+      return null;
+    }
+
+    function autofill(unitEl, priceEl) {
+      if (priceEl.value.trim() !== '') return; // never clobber a user-entered price
+      var p = unitPrice(unitEl.value, currentRateSet());
+      if (p !== null && p !== undefined) priceEl.value = p;
+    }
+
+    function delCell(tr) {
+      var td = el('td', 'px-1 py-1 text-center align-top');
+      var b = el('button', 'text-red-500 hover:text-red-700 font-bold cursor-pointer');
+      b.type = 'button';
+      b.textContent = '✕';
+      b.title = 'Delete row';
+      b.addEventListener('click', function() { tr.remove(); renumber(); });
+      td.appendChild(b);
+      return td;
+    }
+
+    function createItemRow(d) {
+      d = d || {};
+      var tr = el('tr', 'border-t border-gray-100 dark:border-gray-800');
+      tr.dataset.kind = 'item';
+
+      tr.appendChild(el('td', 'row-num text-center text-xs text-gray-400 px-1 py-1 align-top'));
+
+      var descTd = el('td', 'px-1 py-1');
+      var desc = el('textarea', 'it-desc ' + inputCls + ' font-mono resize-y');
+      desc.rows = 2;
+      desc.value = d.desc || '';
+      descTd.appendChild(desc);
+      tr.appendChild(descTd);
+
+      var amtTd = el('td', 'px-1 py-1 align-top');
+      var amt = el('input', 'it-amount ' + inputCls);
+      amt.type = 'text';
+      amt.value = d.amount || '';
+      amtTd.appendChild(amt);
+      tr.appendChild(amtTd);
+
+      var unitTd = el('td', 'px-1 py-1 align-top');
+      var unit = el('input', 'it-unit ' + inputCls);
+      unit.type = 'text';
+      unit.setAttribute('list', 'unit-names');
+      unit.value = d.unit || '';
+      unitTd.appendChild(unit);
+      tr.appendChild(unitTd);
+
+      var priceTd = el('td', 'px-1 py-1 align-top');
+      var price = el('input', 'it-price ' + inputCls);
+      price.type = 'text';
+      price.placeholder = 'rate';
+      price.value = d.price || '';
+      priceTd.appendChild(price);
+      tr.appendChild(priceTd);
+
+      var remTd = el('td', 'px-1 py-1 align-top');
+      var rem = el('input', 'it-remarks ' + inputCls);
+      rem.type = 'text';
+      rem.value = d.remarks || '';
+      remTd.appendChild(rem);
+      tr.appendChild(remTd);
+
+      tr.appendChild(delCell(tr));
+
+      unit.addEventListener('change', function() { autofill(unit, price); });
+      unit.addEventListener('blur', function() { autofill(unit, price); });
+
+      return tr;
+    }
+
+    function createGroupRow(d) {
+      d = d || {};
+      var tr = el('tr', 'border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800');
+      tr.dataset.kind = 'group';
+
+      var tagTd = el('td', 'text-center text-xs text-gray-400 px-1 py-1');
+      tagTd.textContent = '§';
+      tr.appendChild(tagTd);
+
+      var nameTd = el('td', 'px-1 py-1');
+      nameTd.colSpan = 5;
+      var name = el('input', 'grp-name ' + inputCls + ' font-semibold');
+      name.type = 'text';
+      name.placeholder = 'Group header';
+      name.value = d.name || '';
+      nameTd.appendChild(name);
+      tr.appendChild(nameTd);
+
+      tr.appendChild(delCell(tr));
+      return tr;
+    }
+
+    function renumber() {
+      var n = 0;
+      tbody.querySelectorAll('tr').forEach(function(tr) {
+        if (tr.dataset.kind === 'item') {
+          n += 1;
+          var cell = tr.querySelector('.row-num');
+          if (cell) cell.textContent = n;
+        }
+      });
+    }
+
+    // Display decode / CSV encode of the description column.
+    // A literal comma can't live in the CSV (it's the column separator), so it
+    // is stored as the LaTeX macro `\comma`. `\comma` is a control word, which
+    // makes LaTeX gobble the space right after it ("a, b" would render "a,b");
+    // the trailing `{}` terminates the control word so the next char — letter
+    // or space — survives verbatim. Hence the comma is encoded as `\comma{}`.
+    function decodeDesc(s) {
+      return s.replace(/\\n/g, '\n')
+              .replace(/\\comma\\space\{\}/g, ', ') // legacy: \space{} carried the space
+              .replace(/\\comma\{\}/g, ',')          // current form
+              .replace(/\\comma/g, ',');             // legacy bare form
+    }
+    function encodeDesc(s) { return s.replace(/,/g, '\\comma{}').replace(/\r?\n/g, '\\n'); }
+
+    function parseCsv() {
+      var rows = [];
+      csvEl.value.split('\n').forEach(function(raw) {
+        var line = raw.trim();
+        if (!line || line.charAt(0) === '#') return; // skip comments + blanks
+        if (line.indexOf(',') !== -1) {
+          var p = line.split(',');
+          var price = (p[3] || '').trim();
+          var remarks = p.slice(4).join(',').trim();
+          if (/^null$/i.test(price)) price = '';
+          if (/^null$/i.test(remarks)) remarks = '';
+          rows.push({
+            kind: 'item',
+            desc: decodeDesc((p[0] || '').trim()),
+            amount: (p[1] || '').trim(),
+            unit: (p[2] || '').trim(),
+            price: price,
+            remarks: remarks
+          });
+        } else if (line.length >= 3) {
+          rows.push({ kind: 'group', name: line });
+        }
+      });
+      return rows;
+    }
+
+    function renderTable(rows) {
+      tbody.innerHTML = '';
+      rows.forEach(function(row) {
+        tbody.appendChild(row.kind === 'group' ? createGroupRow(row) : createItemRow(row));
+      });
+      renumber();
+    }
+
+    function serializeTable() {
+      var lines = [];
+      tbody.querySelectorAll('tr').forEach(function(tr) {
+        if (tr.dataset.kind === 'group') {
+          // a comma would make the converter read this as an item line
+          var name = tr.querySelector('.grp-name').value.trim().replace(/,/g, ' ');
+          if (name) lines.push(name);
+        } else {
+          var desc = tr.querySelector('.it-desc').value;
+          var amount = tr.querySelector('.it-amount').value.trim();
+          var unit = tr.querySelector('.it-unit').value.trim();
+          var price = tr.querySelector('.it-price').value.trim();
+          var remarks = tr.querySelector('.it-remarks').value.trim();
+          if (!desc.trim() && !amount && !unit && !price && !remarks) return; // drop empty rows
+          lines.push([encodeDesc(desc), amount, unit, price || 'null', remarks || 'null'].join(', '));
+        }
+      });
+      csvEl.value = lines.length ? lines.join('\n') + '\n' : '';
+    }
+
+    window.toggleCsvView = function() {
+      var rawPanel = document.getElementById('raw-csv-panel');
+      var tablePanel = document.getElementById('csv-table-panel');
+      var btn = document.getElementById('toggle-csv-view');
+      if (!rawPanel || !tablePanel || !btn) return;
+      if (rawPanel.style.display === 'none') {
+        serializeTable();            // table -> raw CSV
+        rawPanel.style.display = '';
+        tablePanel.style.display = 'none';
+        btn.textContent = 'Show Table';
+      } else {
+        renderTable(parseCsv());     // raw CSV -> table
+        rawPanel.style.display = 'none';
+        tablePanel.style.display = '';
+        btn.textContent = 'Show Raw CSV';
+      }
+    };
+
+    var addRowBtn = document.getElementById('add-row-btn');
+    if (addRowBtn) addRowBtn.addEventListener('click', function() { tbody.appendChild(createItemRow({})); renumber(); });
+    var addGroupBtn = document.getElementById('add-group-btn');
+    if (addGroupBtn) addGroupBtn.addEventListener('click', function() { tbody.appendChild(createGroupRow({})); renumber(); });
+
+    // Serialize the table into the textarea (the submission payload) when active.
+    var form = csvEl.closest('form');
+    if (form) form.addEventListener('submit', function() {
+      var tablePanel = document.getElementById('csv-table-panel');
+      if (tablePanel && tablePanel.style.display !== 'none') serializeTable();
+    });
+
+    // Initial render — table is shown by default in editable mode.
+    renderTable(parseCsv());
   })();
   </script>
 </body>

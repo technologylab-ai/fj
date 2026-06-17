@@ -122,6 +122,28 @@ pub fn loadResourceNames(arena: Allocator, context: *Context, comptime ResourceT
     return sorted;
 }
 
+/// Load all rate records. Shared by the JSON API (ep_api.handleListRates) and
+/// the document editor (price auto-fill), so the loading loop lives in one place.
+pub fn loadRates(arena: Allocator, context: *Context) ![]fj_json.Rate {
+    var fj = createFj(arena, context);
+    const list_cli: Cli.RateCommand = .{ .positional = .{ .subcommand = .list } };
+    const names = try fj.handleRecordCommand(list_cli);
+    var rates = std.ArrayListUnmanaged(fj_json.Rate).empty;
+    for (names.list) |shortname| {
+        const obj = try fj.loadRecord(fj_json.Rate, try arena.dupe(u8, shortname), .{ .custom_path = null });
+        try rates.append(arena, obj);
+    }
+    return rates.toOwnedSlice(arena);
+}
+
+/// Serialize all rate records to a JSON array for inlining into the document
+/// editor (the web page is cookie-authenticated; the /api/v1/rates endpoint is
+/// bearer-only, so it can't be fetched from the browser). Uses the same
+/// std.json.Stringify the rest of the codebase uses for JSON output.
+pub fn loadRatesJson(arena: Allocator, context: *Context) ![]const u8 {
+    return std.json.Stringify.valueAlloc(arena, try loadRates(arena, context), .{});
+}
+
 pub fn show_404(arena: Allocator, context: *Context, r: zap.Request) !void {
     var fj = createFj(arena, context);
     const fj_config = try fj.loadConfigJson();

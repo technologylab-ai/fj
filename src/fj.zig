@@ -1710,6 +1710,8 @@ pub fn cmdCreateNewDocument(self: *const Fj, args: anytype) !HandleDocumentComma
             \\# Items: description, amount, rate_name, optional_price_per_unit | null, optional remarks | null
             \\#
             \\# Note: use \comma to add a comma in the description
+            \\# Note: use \n (backslash-n) in the description for a line break; a line
+            \\#       starting with "- " (dash + space) becomes a bullet point
             \\# Note: Both amount and price_per_unit can be negative for storno/cancellation lines
             \\#
             \\# Example:
@@ -2546,6 +2548,53 @@ fn documentDir(self: *const Fj, DocumentType: type, doc_dir_: ?[]const u8, dir_o
     return document_base;
 }
 
+/// Render a billables item description into LaTeX.
+///
+/// Physical lines within a description are carried in the CSV as the literal
+/// 2-char sentinel `\n` (backslash-n), so the file stays one record per line.
+/// A line starting with `- ` (dash + space) becomes an `\item` inside an
+/// `itemize` block; any other line is text. Two consecutive text lines are
+/// joined with `\newline`; an `itemize` block supplies its own vertical break,
+/// so no separator is inserted before or after it.
+///
+/// If `raw` contains no `\n` sentinel it is returned unchanged (zero overhead,
+/// preserving the previous single-line behavior). Descriptions still pass
+/// through to LaTeX unescaped, exactly as before.
+fn renderItemDescription(self: *const Fj, raw: []const u8) ![]const u8 {
+    if (std.mem.indexOf(u8, raw, "\\n") == null) return raw;
+
+    var out = std.Io.Writer.Allocating.init(self.arena);
+
+    var line_it = std.mem.splitSequence(u8, raw, "\\n");
+    var prev_kind: enum { none, text, list } = .none;
+    var in_list = false;
+
+    while (line_it.next()) |line_untrimmed| {
+        const line = format.strip(line_untrimmed);
+        if (line.len == 0) continue;
+
+        if (std.mem.startsWith(u8, line, "- ")) {
+            if (!in_list) {
+                try out.writer.writeAll("\\begin{itemize}[nosep,leftmargin=1.2em]");
+                in_list = true;
+            }
+            try out.writer.print("\\item {s}", .{format.strip(line[2..])});
+            prev_kind = .list;
+        } else {
+            if (in_list) {
+                try out.writer.writeAll("\\end{itemize}");
+                in_list = false;
+            }
+            if (prev_kind == .text) try out.writer.writeAll("\\newline ");
+            try out.writer.writeAll(line);
+            prev_kind = .text;
+        }
+    }
+    if (in_list) try out.writer.writeAll("\\end{itemize}");
+
+    return out.written();
+}
+
 /// returns the grand total
 fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: anytype, opts: format.Opts) !i64 {
     var bfile = try subdir_spec.dir.openFile(self.io, "billables.csv", .{});
@@ -2645,7 +2694,7 @@ fn generateBillablesTex(self: *const Fj, subdir_spec: DocumentSubdirSpec, obj: a
 
             try billables_writer.writer.print("\\itemrow{{{[n]d}}}{{{[desc]s}}}{{{[amount]s}}}{{{[rate]s}}}{{{[ppu]s}{[c]c}00 €}}{{{[line]s}{[c]c}00 €}}{{\\grayit{{{[remarks]s}}}}}\n", .{
                 .n = item_count,
-                .desc = description,
+                .desc = try self.renderItemDescription(description),
                 .amount = try format.floatThousandsAlloc(self.arena, amount, opts),
                 .rate = rate_name,
                 .ppu = try format.intThousandsAlloc(self.arena, price_per_unit, opts),
@@ -2876,13 +2925,33 @@ pub fn cmdCompileDocument(self: *const Fj, args: anytype, work_dir: ?[]const u8)
         "{s}.pdf",
         .{try self.createDocumentName(DocumentType, obj.id, obj.client_shortname, &filename_buf)},
     );
-    if (try pdflatex.run(input_tex)) {
-        // 2nd run
-        if (try pdflatex.run(input_tex)) {
-            // rename pdf
-            try subdir_spec.dir.rename(temp_pdf, subdir_spec.dir, final_pdf, self.io);
-        }
+    const ok1 = try pdflatex.run(input_tex);
+    const ok2 = if (ok1) try pdflatex.run(input_tex) else false; // 2nd pass for refs/TOC
+
+    // The exit code alone is not trustworthy: pdflatex can recover from a
+    // `! LaTeX Error` and exit 0 leaving a broken PDF, or exit non-zero yet
+    // leave a stale PDF on disk. So we require BOTH passes ok AND no `! …`
+    // lines in the log AND the freshly-produced temp PDF to exist.
+    const log_errors = pdflatex.logErrors(input_tex);
+    const pdf_path = try std.fs.path.join(self.arena, &.{ subdir_spec.name, temp_pdf });
+    const pdf_present = fsutil.fileExists(self.io, pdf_path);
+
+    if (!ok2 or log_errors.len > 0 or !pdf_present) {
+        // Fail closed: do NOT rename, so any previously-good `final_pdf` is
+        // left untouched and the user sees the prior PDF plus the error.
+        try self.fatal(
+            "PDF compilation failed for `{s}/{s}`:\n{s}",
+            .{
+                subdir_spec.name,
+                input_tex,
+                if (log_errors.len > 0) log_errors else "pdflatex reported an error (see log); no PDF produced.",
+            },
+            error.PdfLatexFailed,
+        );
     }
+
+    // rename pdf
+    try subdir_spec.dir.rename(temp_pdf, subdir_spec.dir, final_pdf, self.io);
     log.info("✅ compiled to `{s}/{s}`!", .{ subdir_spec.name, final_pdf });
     return .{ .compile = try self.readDocumentFiles(DocumentType, subdir_spec) };
 }

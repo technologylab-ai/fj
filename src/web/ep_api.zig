@@ -186,20 +186,8 @@ fn handleGetClient(arena: Allocator, context: *Context, r: zap.Request, id: []co
 // ============================================================================
 
 fn handleListRates(arena: Allocator, context: *Context, r: zap.Request) !void {
-    var fj = ep_utils.createFj(arena, context);
-
-    const list_cli: Cli.RateCommand = .{
-        .positional = .{ .subcommand = .list },
-    };
-    const names = try fj.handleRecordCommand(list_cli);
-
-    var rates = std.ArrayListUnmanaged(Rate).empty;
-    for (names.list) |shortname| {
-        const obj = try fj.loadRecord(Rate, try arena.dupe(u8, shortname), .{ .custom_path = null });
-        try rates.append(arena, obj);
-    }
-
-    return sendJson(arena, r, .{ .rates = try rates.toOwnedSlice(arena) });
+    const rates = try ep_utils.loadRates(arena, context);
+    return sendJson(arena, r, .{ .rates = rates });
 }
 
 fn handleGetRate(arena: Allocator, context: *Context, r: zap.Request, id: []const u8) !void {
