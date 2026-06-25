@@ -327,6 +327,7 @@
               <summary class="cursor-pointer font-medium">How to edit</summary>
               <ul class="list-disc ml-5 mt-2 space-y-1">
                 <li><strong>Add row</strong> adds a billable item, <strong>Add group header</strong> starts a new section, <strong>✕</strong> deletes a row.</li>
+                <li>Per-row, <strong>+</strong> inserts an item row above that row and <strong>§+</strong> inserts a group header above it.</li>
                 <li>In <strong>Description</strong>, press <kbd>Enter</kbd> for a new line.</li>
                 <li>Start a line with <code>-&nbsp;</code> (dash + space) to make a bullet point.</li>
                 <li>Leave <strong>Price/unit</strong> blank to use the price from the document's rate file (based on the unit).</li>
@@ -344,7 +345,7 @@
                     <th class="px-1 py-1 text-left w-24">Unit</th>
                     <th class="px-1 py-1 text-left w-20">Price/unit</th>
                     <th class="px-1 py-1 text-left w-28">Remarks</th>
-                    <th class="px-1 py-1 w-8"></th>
+                    <th class="px-1 py-1 text-center w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="billables-tbody"></tbody>
@@ -563,8 +564,23 @@
       if (p !== null && p !== undefined) priceEl.value = p;
     }
 
-    function delCell(tr) {
-      var td = el('td', 'px-1 py-1 text-center align-top');
+    function actionsCell(tr) {
+      var td = el('td', 'px-1 py-1 text-center align-top whitespace-nowrap');
+
+      var ins = el('button', 'text-blue-500 hover:text-blue-700 font-bold cursor-pointer mr-1');
+      ins.type = 'button';
+      ins.textContent = '+';
+      ins.title = 'Insert item row above';
+      ins.addEventListener('click', function() { tbody.insertBefore(createItemRow({}), tr); renumber(); });
+      td.appendChild(ins);
+
+      var insGrp = el('button', 'text-blue-500 hover:text-blue-700 font-bold cursor-pointer mr-1');
+      insGrp.type = 'button';
+      insGrp.textContent = '§+';
+      insGrp.title = 'Insert group header above';
+      insGrp.addEventListener('click', function() { tbody.insertBefore(createGroupRow({}), tr); renumber(); });
+      td.appendChild(insGrp);
+
       var b = el('button', 'text-red-500 hover:text-red-700 font-bold cursor-pointer');
       b.type = 'button';
       b.textContent = '✕';
@@ -618,7 +634,7 @@
       remTd.appendChild(rem);
       tr.appendChild(remTd);
 
-      tr.appendChild(delCell(tr));
+      tr.appendChild(actionsCell(tr));
 
       unit.addEventListener('change', function() { autofill(unit, price); });
       unit.addEventListener('blur', function() { autofill(unit, price); });
@@ -644,7 +660,7 @@
       nameTd.appendChild(name);
       tr.appendChild(nameTd);
 
-      tr.appendChild(delCell(tr));
+      tr.appendChild(actionsCell(tr));
       return tr;
     }
 
