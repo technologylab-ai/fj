@@ -121,10 +121,13 @@ pub fn start(io: std.Io, fj_home: []const u8, opts: InitOpts) !void {
             );
         };
     }
-    // get it back
-    context.work_dir = try std.process.currentPathAlloc(io, allocator);
+    // get it back. currentPathAlloc returns a sentinel-terminated [:0]u8 whose
+    // backing allocation is len+1 bytes; free that exact slice (not the plain
+    // []const u8 view stored in the context) to avoid an alloc/free size mismatch.
+    const work_dir_z = try std.process.currentPathAlloc(io, allocator);
+    context.work_dir = work_dir_z;
     log.info("My working directory is: {s}", .{context.work_dir});
-    defer allocator.free(context.work_dir);
+    defer allocator.free(work_dir_z);
 
     // fill the lookup table
     try context.auth_lookup.put(allocator, opts.username, opts.password);
