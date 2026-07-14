@@ -366,6 +366,11 @@
         </div>
        {{/is_letter}}
 
+      {{#editable}}
+      <div id="billables-error" role="alert" style="display:none"
+           class="mt-4 px-4 py-3 rounded-md border border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200 text-sm"></div>
+      {{/editable}}
+
       <div class="flex flex-wrap gap-4 mt-4">
         {{#editable}}
         <button type="submit" formaction="/{{type}}/compile/{{id}}"
@@ -766,11 +771,42 @@
     var addGroupBtn = document.getElementById('add-group-btn');
     if (addGroupBtn) addGroupBtn.addEventListener('click', function() { tbody.appendChild(createGroupRow({})); renumber(); });
 
-    // Serialize the table into the textarea (the submission payload) when active.
+    // Mirror the converter's rule (src/fj.zig): if group headers are used, the
+    // first billables row must be a group header — no ungrouped items may precede
+    // the first group. Returns the offending group name, or null if ordering is OK.
+    function groupBeforeItemsError(csv) {
+      var sawItem = false;
+      var ls = csv.split('\n');
+      for (var i = 0; i < ls.length; i++) {
+        var line = ls[i].trim();
+        if (!line || line.charAt(0) === '#') continue;   // skip comments + blanks
+        if (line.indexOf(',') !== -1) { sawItem = true; continue; } // item row
+        if (line.length >= 3) return sawItem ? line : null;         // first group row
+      }
+      return null; // no group headers used -> no constraint
+    }
+
+    var billablesErr = document.getElementById('billables-error');
+
+    // Serialize the table into the textarea (the submission payload) when active,
+    // then guard the group-header ordering before letting the form submit.
     var form = csvEl.closest('form');
-    if (form) form.addEventListener('submit', function() {
+    if (form) form.addEventListener('submit', function(e) {
       var tablePanel = document.getElementById('csv-table-panel');
       if (tablePanel && tablePanel.style.display !== 'none') serializeTable();
+      if (billablesErr) billablesErr.style.display = 'none';
+      var badGroup = groupBeforeItemsError(csvEl.value);
+      if (badGroup) {
+        e.preventDefault();
+        e.stopPropagation(); // don't let the global submit handler disable the button / spin
+        if (billablesErr) {
+          billablesErr.textContent = 'Group header “' + badGroup + '” comes after item rows. ' +
+            'If you use group headers, the first billables row must be a group header — ' +
+            'add one at the top or move this group above the items.';
+          billablesErr.style.display = '';
+          billablesErr.scrollIntoView({ block: 'center' });
+        }
+      }
     });
 
     // Initial render — table is shown by default in editable mode.
